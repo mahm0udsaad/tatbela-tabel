@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -327,7 +327,7 @@ const ProductCard = ({ product }) => {
   )
 }
 
-export default function StorePage() {
+function StorePageContent() {
   const searchParams = useSearchParams()
   const [filters, setFilters] = useState<FilterState>({
     brand: [],
@@ -555,5 +555,25 @@ export default function StorePage() {
 
       <Footer />
     </main>
+  )
+}
+
+function StorePageFallback() {
+  return (
+    <main className="min-h-screen bg-white flex flex-col">
+      <Navbar />
+      <section className="flex-1 flex items-center justify-center text-[#8B6F47]">
+        جاري التحميل...
+      </section>
+      <Footer />
+    </main>
+  )
+}
+
+export default function StorePage() {
+  return (
+    <Suspense fallback={<StorePageFallback />}>
+      <StorePageContent />
+    </Suspense>
   )
 }

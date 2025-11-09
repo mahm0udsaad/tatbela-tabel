@@ -5,6 +5,8 @@ import { Star, ArrowRight } from "lucide-react"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 
+export const dynamic = "force-dynamic"
+
 type HeroCarouselImage = {
   id: string
   image_url: string
