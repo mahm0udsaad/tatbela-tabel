@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "../sidebar"
 import { CheckCircle, Clock, Truck, Package } from "lucide-react"
@@ -17,7 +16,6 @@ interface Order {
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
   const supabase = getSupabaseClient()
 
   useEffect(() => {
@@ -48,11 +46,6 @@ export default function AdminOrders() {
     }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-  }
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
@@ -80,7 +73,7 @@ export default function AdminOrders() {
 
   return (
     <div className="flex">
-      <AdminSidebar onLogout={handleLogout} />
+      <AdminSidebar />
       <main className="flex-1 bg-[#F5F1E8] p-8">
         <h1 className="text-3xl font-bold text-[#2B2520] mb-8">إدارة الطلبات</h1>
 

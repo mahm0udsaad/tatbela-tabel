@@ -30,11 +30,11 @@ export default function AdminLoginPage() {
       // Verify user is admin
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("is_admin")
+        .select("role")
         .eq("id", data.user?.id)
         .single()
 
-      if (profileError || !profile?.is_admin) {
+      if (profileError || profile?.role !== "admin") {
         await supabase.auth.signOut()
         throw new Error("أنت غير مخول للدخول")
       }

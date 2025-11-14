@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "../sidebar"
 import { Plus, Edit2, Trash2, Upload, Loader2, ImageDown } from "lucide-react"
@@ -31,7 +30,6 @@ export default function AdminCarouselPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const supabase = getSupabaseClient()
-  const router = useRouter()
 
   useEffect(() => {
     fetchSlides()
@@ -75,11 +73,6 @@ export default function AdminCarouselPage() {
     })
     setPreviewUrl(slide.image_url)
     setShowForm(true)
-  }
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,7 +153,7 @@ export default function AdminCarouselPage() {
 
   return (
     <div className="flex min-h-screen bg-[#F5F1E8]">
-      <AdminSidebar onLogout={handleLogout} />
+      <AdminSidebar />
       <main className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
           <div>

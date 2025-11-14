@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "../sidebar"
 import { TrendingUp, Calendar } from "lucide-react"
@@ -23,7 +22,6 @@ export default function AdminRevenue() {
     dailyData: [],
   })
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
   const supabase = getSupabaseClient()
 
   useEffect(() => {
@@ -80,14 +78,9 @@ export default function AdminRevenue() {
     }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-  }
-
   return (
     <div className="flex">
-      <AdminSidebar onLogout={handleLogout} />
+      <AdminSidebar />
       <main className="flex-1 bg-[#F5F1E8] p-8">
         <h1 className="text-3xl font-bold text-[#2B2520] mb-8">تحليل الإيرادات</h1>
 

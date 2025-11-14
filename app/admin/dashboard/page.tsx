@@ -2,7 +2,6 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase"
 import { Plus, Edit2, Trash2, Upload, BarChart3, ShoppingBag, Users, TrendingUp } from "lucide-react"
 import ReactCrop, { type Crop } from "react-image-crop"
@@ -91,7 +90,6 @@ export default function AdminDashboard() {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
-  const router = useRouter()
   const supabase = getSupabaseClient()
 
   useEffect(() => {
@@ -265,11 +263,6 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-  }
-
   const resetForm = () => {
     setFormData({
       name_ar: "",
@@ -306,7 +299,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex">
-      <AdminSidebar onLogout={handleLogout} />
+      <AdminSidebar />
       <main className="flex-1 bg-[#F5F1E8] p-8">
         <h1 className="text-3xl font-bold text-[#2B2520] mb-8">ملخص لوحة التحكم</h1>
 

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "../sidebar"
 import { Mail, Calendar } from "lucide-react"
@@ -15,7 +14,6 @@ interface User {
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
   const supabase = getSupabaseClient()
 
   useEffect(() => {
@@ -38,14 +36,9 @@ export default function AdminUsers() {
     }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-  }
-
   return (
     <div className="flex">
-      <AdminSidebar onLogout={handleLogout} />
+      <AdminSidebar />
       <main className="flex-1 bg-[#F5F1E8] p-8">
         <h1 className="text-3xl font-bold text-[#2B2520] mb-8">إدارة المستخدمين</h1>
 

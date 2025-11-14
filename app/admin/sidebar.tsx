@@ -1,16 +1,25 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { ShoppingBag, Package, BarChart3, Users, LogOut, Images } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { ShoppingBag, Package, BarChart3, Users, LogOut, Images, Layers } from "lucide-react"
+import { getSupabaseClient } from "@/lib/supabase"
 
-export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
+export function AdminSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = getSupabaseClient()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+  }
 
   const navItems = [
     { href: "/admin/dashboard", label: "لوحة التحكم", icon: BarChart3 },
     { href: "/admin/orders", label: "الطلبات", icon: ShoppingBag },
     { href: "/admin/products", label: "المنتجات", icon: Package },
+    { href: "/admin/categories", label: "الفئات", icon: Layers },
     { href: "/admin/carousel", label: "صور السلايدر", icon: Images },
     { href: "/admin/revenue", label: "الإيرادات", icon: BarChart3 },
     { href: "/admin/users", label: "المستخدمين", icon: Users },
@@ -38,7 +47,7 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
         })}
       </nav>
       <button
-        onClick={onLogout}
+        onClick={handleLogout}
         className="w-full flex items-center gap-3 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors"
       >
         <LogOut size={20} />
