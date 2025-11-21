@@ -3,8 +3,6 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 
@@ -56,7 +54,6 @@ export default function RecipesPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
 
       {/* Recipe Details Section */}
       <section className="py-16 bg-[#F5F1E8]">
@@ -255,8 +252,6 @@ export default function RecipesPage() {
           </form>
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }

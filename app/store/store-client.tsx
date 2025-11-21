@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { Star, ChevronDown } from "lucide-react"
+
+import { AddToCartButton } from "@/components/add-to-cart-button"
 
 type ProductImage = {
   image_url: string
@@ -329,27 +332,36 @@ function ProductCard({ product }: { product: ProductRecord }) {
       : 0
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow hover:shadow-lg transition border border-[#E8E2D1] flex flex-col">
-      <div className="relative h-64 bg-[#F5F1E8]">
+    <Link
+      href={`/product/${product.id}`}
+      className="bg-white rounded-2xl overflow-hidden shadow hover:shadow-lg transition border border-[#E8E2D1] flex flex-col group"
+    >
+      <div className="relative h-64 bg-[#F5F1E8] overflow-hidden">
         {primaryImage ? (
-          <img src={primaryImage} alt={product.name_ar} className="w-full h-full object-cover" />
+          <img
+            src={primaryImage}
+            alt={product.name_ar}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl">🌶️</div>
         )}
         {discount > 0 && (
-          <span className="absolute top-4 left-4 bg-[#C41E3A] text-white px-3 py-1 rounded-full text-sm font-bold">
+          <span className="absolute top-4 left-4 bg-[#C41E3A] text-white px-3 py-1 rounded-full text-sm font-bold z-10">
             -{discount}%
           </span>
         )}
         {isOutOfStock && (
-          <span className="absolute top-4 right-4 bg-gray-900/80 text-white px-3 py-1 rounded-full text-sm font-bold">
+          <span className="absolute top-4 right-4 bg-gray-900/80 text-white px-3 py-1 rounded-full text-sm font-bold z-10">
             غير متوفر
           </span>
         )}
       </div>
       <div className="p-4 flex flex-col flex-1">
         <p className="text-xs text-[#E8A835] font-semibold uppercase mb-2">{product.brand}</p>
-        <h3 className="text-lg font-bold text-[#2B2520] mb-2 line-clamp-2">{product.name_ar}</h3>
+        <h3 className="text-lg font-bold text-[#2B2520] mb-2 line-clamp-2 group-hover:text-[#E8A835] transition-colors">
+          {product.name_ar}
+        </h3>
         <p className="text-sm text-[#8B6F47] line-clamp-2 mb-4">{product.description_ar}</p>
         <div className="flex items-center gap-2 mb-4">
           <div className="flex">
@@ -371,18 +383,15 @@ function ProductCard({ product }: { product: ProductRecord }) {
             <span className="text-sm text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
           )}
         </div>
-        <button
+        <AddToCartButton 
+          productId={product.id} 
           disabled={isOutOfStock}
-          className={`mt-auto w-full py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-            isOutOfStock
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-[#E8A835] text-white hover:bg-[#D9941E]"
-          }`}
+          className="mt-auto"
         >
           {isOutOfStock ? "سيعود قريباً" : "أضف إلى السلة"}
-        </button>
+        </AddToCartButton>
       </div>
-    </div>
+    </Link>
   )
 }
 

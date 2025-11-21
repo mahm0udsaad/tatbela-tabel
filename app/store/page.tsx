@@ -1,12 +1,11 @@
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
 import { StoreClient } from "./store-client"
 
 export const dynamic = "force-dynamic"
 
-export default async function StorePage({ searchParams }: { searchParams: { search?: string } }) {
+export default async function StorePage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
   const supabase = await createClient()
+  const params = await searchParams
   const [{ data: products }, { data: categories }] = await Promise.all([
     supabase
       .from("products")
@@ -33,7 +32,6 @@ export default async function StorePage({ searchParams }: { searchParams: { sear
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
       <section className="bg-[#F5F1E8] border-y border-[#E8E2D1]">
         <div className="max-w-7xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-start justify-between gap-6">
@@ -62,10 +60,8 @@ export default async function StorePage({ searchParams }: { searchParams: { sear
       <StoreClient
         initialProducts={products ?? []}
         categories={categories ?? []}
-        initialSearch={searchParams.search ?? ""}
+        initialSearch={params.search ?? ""}
       />
-
-      <Footer />
     </main>
   )
 }

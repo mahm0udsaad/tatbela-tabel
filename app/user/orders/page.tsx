@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
 import { LogOut, ShoppingBag, Package, Truck, CheckCircle } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
 
@@ -91,7 +89,6 @@ export default function OrdersPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
 
       <section className="bg-[#F5F1E8] py-8">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
@@ -171,8 +168,6 @@ export default function OrdersPage() {
           )}
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }

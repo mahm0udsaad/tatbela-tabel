@@ -5,8 +5,6 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
 import { Eye, EyeOff } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
 
@@ -132,7 +130,6 @@ export default function SignUpPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
 
       <section className="py-12">
         <div className="max-w-md mx-auto px-4">
@@ -247,8 +244,6 @@ export default function SignUpPage() {
           </div>
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }

@@ -20,6 +20,7 @@ export function AdminSidebar() {
     { href: "/admin/orders", label: "الطلبات", icon: ShoppingBag },
     { href: "/admin/products", label: "المنتجات", icon: Package },
     { href: "/admin/categories", label: "الفئات", icon: Layers },
+    { href: "/admin/abandoned-carts", label: "السلات المتروكة", icon: ShoppingBag },
     { href: "/admin/carousel", label: "صور السلايدر", icon: Images },
     { href: "/admin/revenue", label: "الإيرادات", icon: BarChart3 },
     { href: "/admin/users", label: "المستخدمين", icon: Users },

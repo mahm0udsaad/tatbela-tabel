@@ -1,14 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
 import { Mail, ArrowRight } from "lucide-react"
 
 export default function VerifyEmailPage() {
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
 
       <section className="py-12">
         <div className="max-w-md mx-auto px-4">
@@ -35,8 +32,6 @@ export default function VerifyEmailPage() {
           </div>
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }

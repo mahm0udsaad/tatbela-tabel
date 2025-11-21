@@ -16,6 +16,8 @@ export default async function AdminProductsPage() {
         name_ar,
         description_ar,
         brand,
+        category,
+        type,
         price,
         original_price,
         stock,

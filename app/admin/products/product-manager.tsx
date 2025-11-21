@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import ReactCrop, { type Crop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
-import { Plus, Edit2, Trash2, UploadCloud, Check, AlertTriangle, Loader2, Layers } from "lucide-react"
+import { Plus, Edit2, Trash2, UploadCloud, Check, AlertTriangle, Loader2, Layers, Edit } from "lucide-react"
 import {
   upsertProductAction,
   deleteProductAction,
@@ -14,6 +14,7 @@ import {
   setPrimaryImageAction,
   deleteProductImageAction,
 } from "./actions"
+import { useToast } from "@/hooks/use-toast"
 
 type ProductImage = {
   id: string
@@ -37,6 +38,8 @@ type Product = {
   name_ar: string
   description_ar: string | null
   brand: string
+  category: string
+  type: string
   price: number
   original_price: number | null
   stock: number
@@ -56,6 +59,7 @@ type ProductFormState = {
   name_ar: string
   description_ar: string
   brand: string
+  type: string
   price: string
   original_price: string
   stock: string
@@ -76,6 +80,7 @@ const emptyProductForm: ProductFormState = {
   name_ar: "",
   description_ar: "",
   brand: "تتبيلة",
+  type: "",
   price: "",
   original_price: "",
   stock: "",
@@ -104,6 +109,7 @@ export function ProductManager({
   categories: Category[]
 }) {
   const router = useRouter()
+  const { toast } = useToast()
   const [products, setProducts] = useState<Product[]>(initialProducts ?? [])
   const [selectedProductId, setSelectedProductId] = useState<string | null>(initialProducts[0]?.id ?? null)
   const [productForm, setProductForm] = useState<ProductFormState>(initialProducts[0] ? mapProductToForm(initialProducts[0]) : emptyProductForm)
@@ -122,22 +128,36 @@ export function ProductManager({
   const imageRef = useRef<HTMLImageElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isCreatingNewProduct, setIsCreatingNewProduct] = useState(initialProducts.length === 0)
 
   const selectedProduct = useMemo(() => products.find((product) => product.id === selectedProductId) ?? null, [products, selectedProductId])
 
   useEffect(() => {
     setProducts(initialProducts ?? [])
+
     if (initialProducts.length === 0) {
       setSelectedProductId(null)
       setProductForm(emptyProductForm)
-    } else if (!selectedProductId) {
-      setSelectedProductId(initialProducts[0].id)
-      setProductForm(mapProductToForm(initialProducts[0]))
+      setIsCreatingNewProduct(true)
+      return
     }
-  }, [initialProducts, selectedProductId])
+
+    setSelectedProductId((prev) => {
+      if (prev && initialProducts.some((product) => product.id === prev)) {
+        return prev
+      }
+
+      if (isCreatingNewProduct) {
+        return null
+      }
+
+      return initialProducts[0].id
+    })
+  }, [initialProducts, isCreatingNewProduct])
 
   useEffect(() => {
     if (selectedProduct) {
+      setIsCreatingNewProduct(false)
       setProductForm(mapProductToForm(selectedProduct))
       setVariantProductId(selectedProduct.id)
       setVariantForm(emptyVariantForm)
@@ -150,6 +170,7 @@ export function ProductManager({
       name_ar: product.name_ar ?? "",
       description_ar: product.description_ar ?? "",
       brand: product.brand ?? "",
+      type: product.type ?? "",
       price: product.price?.toString() ?? "",
       original_price: product.original_price?.toString() ?? "",
       stock: product.stock?.toString() ?? "",
@@ -163,14 +184,29 @@ export function ProductManager({
       return
     }
 
+    if (!productForm.type.trim()) {
+      setErrorMessage("نوع المنتج مطلوب")
+      return
+    }
+
+    const categoryRecord = productForm.category_id ? categories.find((category) => category.id === productForm.category_id) : null
+    const selectedCategoryName = categoryRecord?.name_ar ?? selectedProduct?.category ?? null
+
+    if (!selectedCategoryName) {
+      setErrorMessage("الفئة مطلوبة")
+      return
+    }
+
     const payload = {
       id: productForm.id,
       name_ar: productForm.name_ar.trim(),
       description_ar: productForm.description_ar.trim() || null,
       brand: productForm.brand.trim(),
+      type: productForm.type.trim(),
       price: Number(productForm.price) || 0,
       original_price: productForm.original_price ? Number(productForm.original_price) : null,
       stock: Number(productForm.stock) || 0,
+      category: selectedCategoryName,
       category_id: productForm.category_id || null,
     }
 
@@ -179,10 +215,25 @@ export function ProductManager({
       setErrorMessage(null)
       const result = await upsertProductAction(payload)
       if (!result.success) {
-        setErrorMessage(result.error ?? "تعذر حفظ المنتج")
+        const message = result.error ?? "تعذر حفظ المنتج"
+        setErrorMessage(message)
+        toast({
+          title: "خطأ في الحفظ",
+          description: message,
+          variant: "destructive",
+        })
         return
       }
+      setIsCreatingNewProduct(false)
+      if (result.productId) {
+        setSelectedProductId(result.productId)
+        setVariantProductId(result.productId)
+      }
       setStatusMessage("تم حفظ المنتج بنجاح")
+      toast({
+        title: "تم حفظ المنتج",
+        description: "تم تحديث بيانات المنتج بنجاح",
+      })
       router.refresh()
     })
   }
@@ -349,6 +400,16 @@ export function ProductManager({
     return tree
   }, [categories])
 
+  const productTypeOptions = useMemo(() => {
+    const types = new Set<string>()
+    products.forEach((product) => {
+      if (product.type) {
+        types.add(product.type)
+      }
+    })
+    return Array.from(types)
+  }, [products])
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -360,6 +421,7 @@ export function ProductManager({
           <button
             className="px-4 py-2 rounded-lg border border-[#E8A835] text-[#E8A835] font-semibold hover:bg-white flex items-center gap-2"
             onClick={() => {
+              setIsCreatingNewProduct(true)
               setSelectedProductId(null)
               setProductForm(emptyProductForm)
               setVariantForm(emptyVariantForm)
@@ -419,11 +481,12 @@ export function ProductManager({
                       <button
                         className="text-sm text-[#E8A835] underline"
                         onClick={() => {
+                          setIsCreatingNewProduct(false)
                           setSelectedProductId(product.id)
                           setProductForm(mapProductToForm(product))
                         }}
                       >
-                        تحرير
+                        <Edit size={16} />
                       </button>
                     </div>
                     <p className="text-xs text-[#8B6F47] mb-2">{product.brand}</p>
@@ -452,7 +515,7 @@ export function ProductManager({
             <h2 className="text-xl font-bold text-[#2B2520] flex items-center gap-2">
               <Edit2 size={18} /> بيانات المنتج
             </h2>
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-[#2B2520] mb-2">اسم المنتج</label>
                 <input
@@ -471,6 +534,21 @@ export function ProductManager({
                   className="w-full rounded-lg border border-[#D9D4C8] px-4 py-2 focus:border-[#E8A835] focus:outline-none"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#2B2520] mb-2">نوع المنتج</label>
+                <input
+                  type="text"
+                  list="product-type-options"
+                  value={productForm.type}
+                  onChange={(e) => setProductForm((prev) => ({ ...prev, type: e.target.value }))}
+                  className="w-full rounded-lg border border-[#D9D4C8] px-4 py-2 focus:border-[#E8A835] focus:outline-none"
+                />
+                <datalist id="product-type-options">
+                  {productTypeOptions.map((typeOption) => (
+                    <option key={typeOption} value={typeOption} />
+                  ))}
+                </datalist>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-semibold text-[#2B2520] mb-2">الوصف</label>
@@ -482,7 +560,7 @@ export function ProductManager({
             </div>
             <div className="grid md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-[#2B2520] mb-2">السعر</label>
+                <label className="block text-sm font-semibold text-[#2B2520] mb-2">السعر بعد الخصم</label>
                 <input
                   type="number"
                   value={productForm.price}
@@ -491,7 +569,7 @@ export function ProductManager({
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[#2B2520] mb-2">السعر الأصلي</label>
+                <label className="block text-sm font-semibold text-[#2B2520] mb-2">السعر قبل الخصم</label>
                 <input
                   type="number"
                   value={productForm.original_price}

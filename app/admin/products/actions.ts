@@ -17,9 +17,11 @@ const productInputSchema = z.object({
   name_ar: z.string().min(2, "اسم المنتج مطلوب"),
   description_ar: z.string().optional().nullable(),
   brand: z.string().min(1, "العلامة التجارية مطلوبة"),
+  type: z.string().min(1, "نوع المنتج مطلوب"),
   price: z.number().nonnegative(),
   original_price: z.number().nonnegative().optional().nullable(),
   stock: z.number().int().nonnegative(),
+  category: z.string().min(1, "الفئة مطلوبة"),
   category_id: z.string().uuid().optional().nullable(),
 })
 
@@ -45,9 +47,11 @@ export async function upsertProductAction(input: {
   name_ar: string
   description_ar?: string | null
   brand: string
+  type: string
   price: number
   original_price?: number | null
   stock: number
+  category: string
   category_id?: string | null
 }) {
   const supabase = await createClient()
@@ -55,6 +59,7 @@ export async function upsertProductAction(input: {
 
   const mutation = {
     ...payload,
+    name: payload.name_ar,
     updated_at: new Date().toISOString(),
   }
 

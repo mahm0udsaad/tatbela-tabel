@@ -3,8 +3,6 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
 import { Phone, Mail, MapPin, Send, MessageCircle } from "lucide-react"
 
 export default function ContactPage() {
@@ -36,7 +34,6 @@ export default function ContactPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
 
       {/* Header */}
       <section className="bg-[#F5F1E8] py-12">
@@ -224,8 +221,6 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }

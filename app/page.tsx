@@ -1,6 +1,4 @@
 import Link from "next/link"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
 import { Star, ArrowRight } from "lucide-react"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { createClient as createServerClient } from "@/lib/supabase/server"
@@ -19,24 +17,31 @@ type HeroCarouselImage = {
 const fallbackHeroImages: HeroCarouselImage[] = [
   {
     id: "fallback-1",
-    image_url: "/egyptian-spices-collection.jpg",
+    image_url: "/sliders/anju-ravindranath-Nihdo084Yos-unsplash.jpg",
     alt_text: "مزيج من التوابل الأصلية",
     link_url: "/store",
     sort_order: 0,
   },
   {
     id: "fallback-2",
-    image_url: "/tatbeelah-chicken-curry.jpg",
+    image_url: "/sliders/paolo-bendandi-VVe3zOZM88E-unsplash.jpg",
     alt_text: "أطباق الكاري المميزة من تتبيلة",
     link_url: "/recipes",
     sort_order: 1,
   },
   {
     id: "fallback-3",
-    image_url: "/tabel-chicken-seasoning.jpg",
+    image_url: "/sliders/tamanna-rumee-qkgxIZOhvWI-unsplash.jpg",
     alt_text: "عروض الموسم على خلطات الدجاج",
     link_url: "/store?category=offers",
     sort_order: 2,
+  },
+  {
+    id: "fallback-4",
+    image_url: "/sliders/zahrin-lukman-VSNoQdimlQQ-unsplash.jpg",
+    alt_text: "أفضل أنواع التوابل العالمية",
+    link_url: "/store",
+    sort_order: 3,
   },
 ]
 
@@ -218,26 +223,48 @@ const recipes = [
   },
 ]
 
+import { AddToCartButton } from "@/components/add-to-cart-button"
+
+async function getFeaturedProducts() {
+  try {
+    const supabase = await createServerClient()
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .limit(4)
+      .order('reviews_count', { ascending: false })
+      
+    if (error) {
+      console.error("Error fetching featured products:", error)
+      return []
+    }
+    return data || []
+  } catch (error) {
+    console.error("Error fetching featured products:", error)
+    return []
+  }
+}
+
 export default async function Home() {
   const heroImages = await getHeroCarouselImages()
+  const featuredProducts = await getFeaturedProducts()
   const heroSlides = heroImages.length > 0 ? heroImages : fallbackHeroImages
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
 
       {/* Hero Section */}
-      <section className="relative py-20 md:py-32 overflow-hidden bg-gradient-to-b from-[#F5F1E8] to-white">
+      <section className="relative py-10 md:py-18 overflow-hidden bg-gradient-to-b from-[#F5F1E8] to-white">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-10 right-20 w-72 h-72 bg-[#E8A835]/5 rounded-full blur-3xl"></div>
           <div className="absolute bottom-10 left-10 w-96 h-96 bg-[#C41E3A]/5 rounded-full blur-3xl"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 relative z-10">
-          <Carousel className="relative" opts={{ loop: true }}>
+        <div className="max-w-8xl mx-auto px-4 relative z-10">
+          <Carousel className="relative" opts={{ loop: true, direction: "rtl" }}>
             <CarouselContent>
               {heroSlides.map((slide) => (
                 <CarouselItem key={slide.id}>
-                  <div className="relative h-[360px] md:h-[520px] overflow-hidden rounded-[32px] bg-[#1f1b16]">
+                  <div className="relative h-[460px] md:h-[720px] overflow-hidden rounded-[32px] bg-[#1f1b16]">
                     <img
                       src={slide.image_url}
                       alt={slide.alt_text ?? "صورة السلايدر"}
@@ -260,8 +287,8 @@ export default async function Home() {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className="top-1/2 left-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12" />
-            <CarouselNext className="top-1/2 right-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12" />
+            <CarouselPrevious className="hidden md:flex absolute top-1/2 right-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12 [&_svg]:rotate-180" />
+           <CarouselNext className="hidden md:flex absolute top-1/2 left-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12 [&_svg]:rotate-180" />
           </Carousel>
         </div>
       </section>
@@ -315,7 +342,7 @@ export default async function Home() {
             <p className="text-lg text-[#8B6F47]">اختر من بين مجموعتنا الواسعة من التوابل والخلطات</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {categories.map((category) => (
               <Link
                 key={category.id}
@@ -344,7 +371,7 @@ export default async function Home() {
             <p className="text-lg text-[#8B6F47]">أصل الطعم المصري الحقيقي</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {traditionalBlends.map((blend) => (
               <div
                 key={blend.id}
@@ -394,26 +421,31 @@ export default async function Home() {
             <p className="text-lg text-[#8B6F47]">أكثر المنتجات مبيعاً واستحساناً</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {featuredProducts.map((product) => (
-              <div
+              <Link
                 key={product.id}
-                className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all group"
+                href={`/product/${product.id}`}
+                className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all group flex flex-col"
               >
                 <div className="relative overflow-hidden bg-gray-100 h-64">
                   <img
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.name}
+                    src={product.image_url || "/placeholder.svg"}
+                    alt={product.name_ar}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute top-4 left-4 bg-[#C41E3A] text-white px-3 py-1 rounded-full text-sm font-bold">
-                    -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
-                  </div>
+                  {product.original_price && product.original_price > product.price && (
+                    <div className="absolute top-4 left-4 bg-[#C41E3A] text-white px-3 py-1 rounded-full text-sm font-bold z-10">
+                      -{Math.round(((product.original_price - product.price) / product.original_price) * 100)}%
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-4">
+                <div className="p-4 flex flex-col flex-1">
                   <p className="text-xs text-[#E8A835] font-semibold uppercase mb-2">{product.brand}</p>
-                  <h3 className="text-lg font-bold text-[#2B2520] mb-3">{product.name}</h3>
+                  <h3 className="text-lg font-bold text-[#2B2520] mb-3 group-hover:text-[#E8A835] transition-colors">
+                    {product.name_ar}
+                  </h3>
 
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex">
@@ -421,23 +453,23 @@ export default async function Home() {
                         <Star
                           key={i}
                           size={16}
-                          className={i < Math.floor(product.rating) ? "fill-[#E8A835] text-[#E8A835]" : "text-gray-300"}
+                          className={i < Math.floor(product.rating || 0) ? "fill-[#E8A835] text-[#E8A835]" : "text-gray-300"}
                         />
                       ))}
                     </div>
-                    <span className="text-xs text-[#8B6F47]">({product.reviews})</span>
+                    <span className="text-xs text-[#8B6F47]">({product.reviews_count || 0})</span>
                   </div>
 
                   <div className="flex items-baseline gap-2 mb-4">
                     <span className="text-2xl font-bold text-[#C41E3A]">{product.price} ج.م</span>
-                    <span className="text-sm text-gray-400 line-through">{product.originalPrice} ج.م</span>
+                    {product.original_price && product.original_price > product.price && (
+                      <span className="text-sm text-gray-400 line-through">{product.original_price} ج.م</span>
+                    )}
                   </div>
 
-                  <button className="w-full py-2 bg-[#E8A835] text-white rounded-lg font-semibold hover:bg-[#D9941E] transition-colors">
-                    أضف إلى السلة
-                  </button>
+                  <AddToCartButton productId={product.id} />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
@@ -496,8 +528,6 @@ export default async function Home() {
           </Link>
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }

@@ -2,16 +2,15 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
 
-export default function SignInPage() {
+function SignInContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = getSupabaseClient()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -20,6 +19,18 @@ export default function SignInPage() {
     email: "",
     password: "",
   })
+
+  // Check for error in URL params (from OAuth callback)
+  useEffect(() => {
+    const errorParam = searchParams.get("error")
+    if (errorParam) {
+      if (errorParam === "invalid_code") {
+        setError("رابط غير صالح أو منتهي الصلاحية. يرجى المحاولة مرة أخرى")
+      } else {
+        setError(decodeURIComponent(errorParam))
+      }
+    }
+  }, [searchParams])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -82,7 +93,6 @@ export default function SignInPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
 
       <section className="py-12">
         <div className="max-w-md mx-auto px-4">
@@ -176,8 +186,26 @@ export default function SignInPage() {
           </div>
         </div>
       </section>
-
-      <Footer />
     </main>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-white">
+        <section className="py-12">
+          <div className="max-w-md mx-auto px-4">
+            <div className="bg-white rounded-xl shadow-md p-8 border border-[#E8E2D1]">
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E8A835]"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    }>
+      <SignInContent />
+    </Suspense>
   )
 }

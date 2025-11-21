@@ -7,6 +7,8 @@ import { getSupabaseClient } from "@/lib/supabase"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 
+import { useCart } from "@/components/cart-provider"
+
 export function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -14,6 +16,9 @@ export function Navbar() {
   const supabase = getSupabaseClient()
   const pathname = usePathname()
   const router = useRouter()
+  const { cart } = useCart()
+
+  const cartCount = cart?.items.reduce((acc, item) => acc + item.quantity, 0) || 0
 
   useEffect(() => {
     const checkUser = async () => {
@@ -89,8 +94,13 @@ export function Navbar() {
 
           {/* Right side - Cart and Auth */}
           <div className="flex items-center gap-4 justify-end flex-1">
-            <Link href="/cart" className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors hidden md:flex">
+            <Link href="/cart" className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors hidden md:flex relative">
               <ShoppingCart size={24} className="text-[#2B2520]" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#C41E3A] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                  {cartCount}
+                </span>
+              )}
             </Link>
 
             {/* User Auth Menu - Desktop Only */}
@@ -199,13 +209,20 @@ export function Navbar() {
           })}
           <Link
             href="/cart"
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all relative ${
               pathname === '/cart'
                 ? 'text-[#E8A835] bg-[#E8A835]/10'
                 : 'text-[#2B2520] hover:text-[#E8A835] hover:bg-[#F5F1E8]'
             }`}
           >
-            <ShoppingCart size={20} />
+            <div className="relative">
+              <ShoppingCart size={20} />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-[#C41E3A] text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                  {cartCount}
+                </span>
+              )}
+            </div>
             <span className="text-xs font-medium">السلة</span>
           </Link>
         </div>

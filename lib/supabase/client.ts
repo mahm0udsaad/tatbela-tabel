@@ -11,11 +11,9 @@ export function createClient() {
             .split("; ")
             .find((row) => row.startsWith(`${name}=`))
             ?.split("=")[1]
-          console.log(`[Cookie Get] ${name}:`, value ? `${value.substring(0, 20)}...` : "NOT FOUND")
           return value
         },
         set(name: string, value: string, options: any) {
-          console.log(`[Cookie Set] ${name}:`, value.substring(0, 20), "... options:", options)
           
           let cookie = `${name}=${value}`
           
@@ -39,10 +37,8 @@ export function createClient() {
           }
           
           document.cookie = cookie
-          console.log(`[Cookie Set] Result:`, cookie)
         },
         remove(name: string, options: any) {
-          console.log(`[Cookie Remove] ${name}`)
           const path = options?.path || "/"
           document.cookie = `${name}=; max-age=0; path=${path}`
         },

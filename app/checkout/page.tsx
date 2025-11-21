@@ -4,21 +4,18 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import { ArrowRight, Check } from "lucide-react"
+import { ArrowRight, Check, CreditCard, Banknote, Wallet } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
 
-const orderItems = [
-  { id: 1, name: "الكمون الكامل", brand: "تتبيلة", price: 45, quantity: 2, image: "🌶️" },
-  { id: 2, name: "خلطة الشاورما", brand: "تابل", price: 40, quantity: 1, image: "🌶️" },
-]
+import { useCart } from "@/components/cart-provider"
 
 export default function CheckoutPage() {
   const router = useRouter()
   const supabase = getSupabaseClient()
+  const { cart, isLoading: isCartLoading } = useCart()
   const [currentStep, setCurrentStep] = useState<"auth" | "shipping" | "payment" | "confirmation">("auth")
   const [isLoading, setIsLoading] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online")
   const [user, setUser] = useState<any>(null)
   const [orderId, setOrderId] = useState("")
   const [formData, setFormData] = useState({
@@ -53,7 +50,8 @@ export default function CheckoutPage() {
     checkUser()
   }, [supabase])
 
-  const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const orderItems = cart?.items || []
+  const subtotal = orderItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
   const shipping = 50
   const tax = Math.round(subtotal * 0.14)
   const total = subtotal + shipping + tax
@@ -88,8 +86,8 @@ export default function CheckoutPage() {
             order_number: orderNumber,
             status: "processing",
             subtotal: subtotal,
-            shipping: shipping,
-            tax: tax,
+            shipping_cost: shipping,
+            tax_amount: tax,
             total_amount: total,
             customer_email: formData.email,
             first_name: formData.firstName,
@@ -98,6 +96,8 @@ export default function CheckoutPage() {
             address: formData.address,
             city: formData.city,
             postal_code: formData.postalCode,
+            payment_method: paymentMethod,
+            payment_status: paymentMethod === "online" ? "paid" : "pending",
           },
         ])
         .select()
@@ -109,11 +109,12 @@ export default function CheckoutPage() {
       // Save order items
       const itemsToInsert = orderItems.map((item) => ({
         order_id: newOrderId,
-        product_id: item.id,
-        product_name: item.name,
-        product_brand: item.brand,
-        price: item.price,
+        product_id: item.product.id,
+        product_name: item.product.name,
+        product_brand: item.product.brand,
+        price: item.product.price,
         quantity: item.quantity,
+        total: item.product.price * item.quantity,
       }))
 
       const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert)
@@ -130,10 +131,17 @@ export default function CheckoutPage() {
     }
   }
 
+  if (isCartLoading) {
+    return (
+      <div className="min-h-screen bg-white py-20 text-center">
+        <p className="text-[#8B6F47]">جاري تحميل السلة...</p>
+      </div>
+    )
+  }
+
   if (currentStep === "auth" && !user) {
     return (
       <main className="min-h-screen bg-white">
-        <Navbar />
 
         <section className="bg-[#F5F1E8] py-8">
           <div className="max-w-7xl mx-auto px-4">
@@ -170,15 +178,12 @@ export default function CheckoutPage() {
             </div>
           </div>
         </section>
-
-        <Footer />
       </main>
     )
   }
 
   return (
     <main className="min-h-screen bg-white">
-      <Navbar />
 
       {/* Header */}
       <section className="bg-[#F5F1E8] py-8">
@@ -197,12 +202,12 @@ export default function CheckoutPage() {
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
                     currentStep === step
                       ? "bg-[#E8A835] text-white"
-                      : index < (["shipping", "payment", "confirmation"] as const).indexOf(currentStep)
+                      : index < (["shipping", "payment", "confirmation"] as const).indexOf(currentStep as any)
                         ? "bg-green-500 text-white"
                         : "bg-gray-200 text-gray-600"
                   }`}
                 >
-                  {index < (["shipping", "payment", "confirmation"] as const).indexOf(currentStep) ? (
+                  {index < (["shipping", "payment", "confirmation"] as const).indexOf(currentStep as any) ? (
                     <Check size={20} />
                   ) : (
                     index + 1
@@ -336,61 +341,107 @@ export default function CheckoutPage() {
                 <form onSubmit={handlePaymentSubmit} className="bg-white rounded-xl shadow-md p-8">
                   <h2 className="text-2xl font-bold text-[#2B2520] mb-6">تفاصيل الدفع</h2>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-[#2B2520] mb-2">اسم حامل البطاقة*</label>
-                    <input
-                      type="text"
-                      name="cardName"
-                      value={formData.cardName}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                      placeholder="الاسم على البطاقة"
-                    />
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("online")}
+                      className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
+                        paymentMethod === "online"
+                          ? "border-[#E8A835] bg-[#FFF9F0] text-[#E8A835]"
+                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-[#E8A835]"
+                      }`}
+                    >
+                      <CreditCard size={32} className="mb-3" />
+                      <span className="font-bold">دفع إلكتروني</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("cash")}
+                      className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
+                        paymentMethod === "cash"
+                          ? "border-[#E8A835] bg-[#FFF9F0] text-[#E8A835]"
+                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-[#E8A835]"
+                      }`}
+                    >
+                      <Banknote size={32} className="mb-3" />
+                      <span className="font-bold">دفع عند الاستلام</span>
+                    </button>
                   </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-[#2B2520] mb-2">رقم البطاقة*</label>
-                    <input
-                      type="text"
-                      name="cardNumber"
-                      value={formData.cardNumber}
-                      onChange={handleChange}
-                      required
-                      placeholder="1234 5678 9012 3456"
-                      className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                      maxLength={19}
-                    />
-                  </div>
+                  {paymentMethod === "online" && (
+                    <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                      <h3 className="text-lg font-bold text-[#2B2520] mb-4">بيانات البطاقة</h3>
+                      <div className="mb-6">
+                        <label className="block text-sm font-semibold text-[#2B2520] mb-2">اسم حامل البطاقة*</label>
+                        <input
+                          type="text"
+                          name="cardName"
+                          value={formData.cardName}
+                          onChange={handleChange}
+                          required
+                          className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                          placeholder="الاسم على البطاقة"
+                        />
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-6 mb-8">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">تاريخ الانتهاء*</label>
-                      <input
-                        type="text"
-                        name="expiryDate"
-                        value={formData.expiryDate}
-                        onChange={handleChange}
-                        required
-                        placeholder="MM/YY"
-                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                        maxLength={5}
-                      />
+                      <div className="mb-6">
+                        <label className="block text-sm font-semibold text-[#2B2520] mb-2">رقم البطاقة*</label>
+                        <input
+                          type="text"
+                          name="cardNumber"
+                          value={formData.cardNumber}
+                          onChange={handleChange}
+                          required
+                          placeholder="1234 5678 9012 3456"
+                          className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                          maxLength={19}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6 mb-8">
+                        <div>
+                          <label className="block text-sm font-semibold text-[#2B2520] mb-2">تاريخ الانتهاء*</label>
+                          <input
+                            type="text"
+                            name="expiryDate"
+                            value={formData.expiryDate}
+                            onChange={handleChange}
+                            required
+                            placeholder="MM/YY"
+                            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                            maxLength={5}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-[#2B2520] mb-2">CVV*</label>
+                          <input
+                            type="text"
+                            name="cvv"
+                            value={formData.cvv}
+                            onChange={handleChange}
+                            required
+                            placeholder="123"
+                            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                            maxLength={3}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">CVV*</label>
-                      <input
-                        type="text"
-                        name="cvv"
-                        value={formData.cvv}
-                        onChange={handleChange}
-                        required
-                        placeholder="123"
-                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                        maxLength={3}
-                      />
+                  )}
+
+                  {paymentMethod === "cash" && (
+                    <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="bg-white p-2 rounded-full text-[#E8A835]">
+                        <Banknote size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-[#2B2520] mb-2">الدفع عند الاستلام</h3>
+                        <p className="text-[#8B6F47]">
+                          سيتم دفع المبلغ بالكامل لمندوب التوصيل عند استلام الطلب.
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex gap-4">
                     <button
@@ -443,11 +494,11 @@ export default function CheckoutPage() {
                 {orderItems.map((item) => (
                   <div key={item.id} className="flex justify-between items-start">
                     <div>
-                      <p className="font-semibold text-[#2B2520]">{item.name}</p>
-                      <p className="text-sm text-[#8B6F47]">{item.brand}</p>
+                      <p className="font-semibold text-[#2B2520]">{item.product.name}</p>
+                      <p className="text-sm text-[#8B6F47]">{item.product.brand}</p>
                       <p className="text-xs text-[#8B6F47] mt-1">الكمية: {item.quantity}</p>
                     </div>
-                    <p className="font-bold text-[#C41E3A]">{item.price * item.quantity} ج.م</p>
+                    <p className="font-bold text-[#C41E3A]">{item.product.price * item.quantity} ج.م</p>
                   </div>
                 ))}
               </div>
@@ -475,8 +526,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }

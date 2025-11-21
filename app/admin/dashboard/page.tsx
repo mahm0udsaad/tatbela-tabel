@@ -3,10 +3,18 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { Plus, Edit2, Trash2, Upload, BarChart3, ShoppingBag, Users, TrendingUp } from "lucide-react"
+import { Plus, Edit2, Trash2, Upload, BarChart3, ShoppingBag, Users, TrendingUp, CheckCircle, X } from "lucide-react"
 import ReactCrop, { type Crop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
 import { AdminSidebar } from "../sidebar"
+
+interface ProductImage {
+  id: string
+  image_url: string
+  storage_path?: string
+  is_primary: boolean
+  sort_order: number
+}
 
 interface Product {
   id: string
@@ -17,6 +25,7 @@ interface Product {
   price: number
   original_price: number
   image_url: string
+  product_images?: ProductImage[]
 }
 
 interface Category {
@@ -64,6 +73,8 @@ export default function AdminDashboard() {
     pendingOrders: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploadingImages, setUploadingImages] = useState(false)
   const [showProductForm, setShowProductForm] = useState(false)
   const [showCategoryForm, setShowCategoryForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -79,15 +90,34 @@ export default function AdminDashboard() {
     name_ar: "",
     slug: "",
   })
-  const [cropImage, setCropImage] = useState<string | null>(null)
+  
+  // Multi-image state
+  const [uploadedImages, setUploadedImages] = useState<Array<{
+    id: string
+    file?: File
+    preview: string
+    url?: string
+    isPrimary: boolean
+    storage_path?: string
+  }>>([])
+  
+  // Track deleted images for cleanup
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([])
+  
+  // Cropping state
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [currentCropImage, setCurrentCropImage] = useState<{
+    id: string
+    preview: string
+  } | null>(null)
   const [crop, setCrop] = useState<Crop>({
     unit: "%",
-    width: 30,
-    height: 30,
-    x: 35,
-    y: 35,
+    width: 50,
+    height: 50,
+    x: 25,
+    y: 25,
   })
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null)
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const supabase = getSupabaseClient()
@@ -100,7 +130,10 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       const [productsRes, categoriesRes] = await Promise.all([
-        supabase.from("products").select("*"),
+        supabase.from("products").select(`
+          *,
+          product_images(id, image_url, storage_path, is_primary, sort_order)
+        `),
         supabase.from("categories").select("*"),
       ])
 
@@ -121,8 +154,8 @@ export default function AdminDashboard() {
       const orders = ordersRes.data || []
       const users = usersRes.data || []
 
-      const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
-      const pendingOrders = orders.filter((order) => order.status === "pending").length
+      const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0)
+      const pendingOrders = orders.filter((order: any) => order.status === "pending").length
 
       setStats({
         totalOrders: orders.length,
@@ -138,87 +171,155 @@ export default function AdminDashboard() {
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    files.forEach((file) => {
+      if (!file.type.startsWith("image/")) return
+
       const reader = new FileReader()
       reader.onload = (event) => {
-        setCropImage(event.target?.result as string)
-        setUploadedImage(file)
+        const preview = event.target?.result as string
+        const newImage = {
+          id: `temp-${Date.now()}-${Math.random()}`,
+          file,
+          preview,
+          isPrimary: uploadedImages.length === 0, // First image is primary
+        }
+        setUploadedImages((prev) => [...prev, newImage])
       }
       reader.readAsDataURL(file)
+    })
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleRemoveImage = (imageId: string) => {
+    setUploadedImages((prev) => {
+      const imageToRemove = prev.find((img) => img.id === imageId)
+      
+      // If this is an existing image (has url, not just uploaded), track it for deletion
+      if (imageToRemove && imageToRemove.url && !imageToRemove.file) {
+        setDeletedImageIds((prevDeleted) => [...prevDeleted, imageId])
+      }
+      
+      const filtered = prev.filter((img) => img.id !== imageId)
+      // If we removed the primary image, make the first one primary
+      if (filtered.length > 0 && !filtered.some((img) => img.isPrimary)) {
+        filtered[0].isPrimary = true
+      }
+      return filtered
+    })
+  }
+
+  const handleSetPrimaryImage = (imageId: string) => {
+    setUploadedImages((prev) =>
+      prev.map((img) => ({
+        ...img,
+        isPrimary: img.id === imageId,
+      }))
+    )
+  }
+
+  const handleOpenCropModal = (imageId: string) => {
+    const image = uploadedImages.find((img) => img.id === imageId)
+    if (image) {
+      setCurrentCropImage({ id: imageId, preview: image.preview })
+      setShowCropModal(true)
+      setCrop({
+        unit: "%",
+        width: 50,
+        height: 50,
+        x: 25,
+        y: 25,
+      })
     }
   }
 
   const handleCropComplete = async () => {
-    if (!imgRef.current || !uploadedImage || !crop.width || !crop.height) return
+    if (!imgRef.current || !currentCropImage || !crop.width || !crop.height) {
+      alert("يرجى اختيار منطقة الصورة أولاً")
+      return
+    }
 
-    const image = imgRef.current
-    const scaleX = image.naturalWidth / image.width
-    const scaleY = image.naturalHeight / image.height
-    const ctx = document.createElement("canvas").getContext("2d")!
+    setUploadingImages(true)
 
-    const canvas = document.createElement("canvas")
-    const pixelRatio = window.devicePixelRatio || 1
+    try {
+      const image = imgRef.current
+      const canvas = document.createElement("canvas")
+      const scaleX = image.naturalWidth / image.width
+      const scaleY = image.naturalHeight / image.height
+      const ctx = canvas.getContext("2d")
 
-    canvas.width = crop.width * pixelRatio * scaleX
-    canvas.height = crop.height * pixelRatio * scaleY
-
-    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
-    ctx.imageSmoothingQuality = "high"
-
-    ctx.drawImage(
-      image,
-      crop.x * scaleX,
-      crop.y * scaleY,
-      crop.width * scaleX,
-      crop.height * scaleY,
-      0,
-      0,
-      crop.width * scaleX,
-      crop.height * scaleY,
-    )
-
-    canvas.toBlob(async (blob) => {
-      if (!blob) return
-
-      try {
-        const fileName = `products/${Date.now()}-${uploadedImage.name}`
-        const { error: uploadError } = await supabase.storage.from("product-images").upload(fileName, blob)
-
-        if (uploadError) throw uploadError
-
-        const { data } = supabase.storage.from("product-images").getPublicUrl(fileName)
-
-        if (editingProduct) {
-          // Update existing product
-          const { error: updateError } = await supabase
-            .from("products")
-            .update({
-              ...formData,
-              image_url: data.publicUrl,
-            })
-            .eq("id", editingProduct.id)
-
-          if (updateError) throw updateError
-        } else {
-          // Create new product
-          const { error: insertError } = await supabase.from("products").insert({
-            ...formData,
-            image_url: data.publicUrl,
-          })
-
-          if (insertError) throw insertError
-        }
-
-        setCropImage(null)
-        setUploadedImage(null)
-        setShowProductForm(false)
-        resetForm()
-        fetchData()
-      } catch (error) {
-        console.error("خطأ في رفع الصورة:", error)
+      if (!ctx) {
+        throw new Error("فشل في إنشاء سياق الرسم")
       }
-    })
+
+      const pixelRatio = window.devicePixelRatio || 1
+
+      // Calculate crop dimensions in pixels
+      const cropX = crop.x * scaleX
+      const cropY = crop.y * scaleY
+      const cropWidth = crop.width * scaleX
+      const cropHeight = crop.height * scaleY
+
+      // Set canvas size to match cropped area
+      canvas.width = cropWidth * pixelRatio
+      canvas.height = cropHeight * pixelRatio
+
+      // Scale the canvas context
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+      ctx.imageSmoothingQuality = "high"
+
+      // Draw the cropped image
+      ctx.drawImage(
+        image,
+        cropX,
+        cropY,
+        cropWidth,
+        cropHeight,
+        0,
+        0,
+        cropWidth,
+        cropHeight
+      )
+
+      // Convert to blob and update preview
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            alert("فشل في معالجة الصورة")
+            setUploadingImages(false)
+            return
+          }
+
+          // Create a new preview URL from the cropped image
+          const croppedPreview = URL.createObjectURL(blob)
+          
+          // Update the image in the list with cropped version
+          setUploadedImages((prev) =>
+            prev.map((img) =>
+              img.id === currentCropImage.id
+                ? { ...img, preview: croppedPreview, file: new File([blob], `cropped-${Date.now()}.jpg`, { type: "image/jpeg" }) }
+                : img
+            )
+          )
+
+          setShowCropModal(false)
+          setCurrentCropImage(null)
+          setUploadingImages(false)
+        },
+        "image/jpeg",
+        0.95
+      )
+    } catch (error: any) {
+      console.error("خطأ في معالجة الصورة:", error)
+      alert(`خطأ في معالجة الصورة: ${error.message || "حدث خطأ غير معروف"}`)
+      setUploadingImages(false)
+    }
   }
 
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -273,27 +374,159 @@ export default function AdminDashboard() {
       original_price: 0,
     })
     setEditingProduct(null)
+    setUploadedImages([])
+    setDeletedImageIds([])
+    setShowCropModal(false)
+    setCurrentCropImage(null)
   }
 
   const handleSaveProduct = async () => {
+    // Validate required fields
+    if (!formData.name_ar || !formData.description_ar || !formData.price) {
+      alert("يرجى ملء جميع الحقول المطلوبة")
+      return
+    }
+
+    if (!editingProduct && uploadedImages.length === 0) {
+      alert("يرجى رفع صورة واحدة على الأقل للمنتج")
+      return
+    }
+
+    setSaving(true)
+
     try {
+      let productId = editingProduct?.id
+
+      // Step 1: Create or update the product
       if (editingProduct) {
-        // Update existing product
-        const { error: updateError } = await supabase.from("products").update(formData).eq("id", editingProduct.id)
+        const { error: updateError } = await supabase
+          .from("products")
+          .update(formData)
+          .eq("id", editingProduct.id)
 
         if (updateError) throw updateError
+
+        // Step 1.5: Delete removed images from storage and database
+        if (deletedImageIds.length > 0) {
+          try {
+            // Get storage paths before deleting from database
+            const { data: imagesToDelete } = await supabase
+              .from("product_images")
+              .select("id, storage_path")
+              .in("id", deletedImageIds)
+
+            // Delete from storage
+            if (imagesToDelete && imagesToDelete.length > 0) {
+              const storagePaths = imagesToDelete
+                .filter((img: { id: string; storage_path: string | null }) => img.storage_path)
+                .map((img: { id: string; storage_path: string | null }) => img.storage_path!)
+
+              if (storagePaths.length > 0) {
+                await supabase.storage.from("product-images").remove(storagePaths)
+              }
+            }
+
+            // Delete from database
+            const { error: deleteError } = await supabase
+              .from("product_images")
+              .delete()
+              .in("id", deletedImageIds)
+
+            if (deleteError) throw deleteError
+          } catch (deleteErr) {
+            console.error("Error deleting images:", deleteErr)
+            // Continue anyway - don't fail the whole operation
+          }
+        }
       } else {
-        // Create new product
-        const { error: insertError } = await supabase.from("products").insert(formData)
+        const { data: newProduct, error: insertError } = await supabase
+          .from("products")
+          .insert(formData)
+          .select("id")
+          .single()
 
         if (insertError) throw insertError
+        productId = newProduct.id
       }
 
+      // Step 2: Handle images
+      if (uploadedImages.length > 0) {
+        // When editing, update existing images' is_primary and sort_order
+        const existingImages = uploadedImages.filter(img => !img.file && img.url)
+        const newImages = uploadedImages.filter(img => img.file)
+
+        // Update existing images
+        if (editingProduct && existingImages.length > 0) {
+          const updatePromises = existingImages.map(async (image, index) => {
+            try {
+              const { error: updateError } = await supabase
+                .from("product_images")
+                .update({
+                  is_primary: image.isPrimary,
+                  sort_order: index,
+                })
+                .eq("id", image.id)
+
+              if (updateError) throw updateError
+            } catch (error) {
+              console.error("Error updating image:", error)
+            }
+          })
+          await Promise.all(updatePromises)
+        }
+
+        // Upload and insert new images
+        if (newImages.length > 0) {
+          const imageUploadPromises = newImages.map(async (image, index) => {
+            try {
+              // Upload to storage
+              const fileName = `products/${productId}/${Date.now()}-${Math.random()}.jpg`
+              const { error: uploadError } = await supabase.storage
+                .from("product-images")
+                .upload(fileName, image.file!, {
+                  contentType: "image/jpeg",
+                  cacheControl: "3600",
+                  upsert: false,
+                })
+
+              if (uploadError) throw uploadError
+
+              // Get public URL
+              const { data } = supabase.storage.from("product-images").getPublicUrl(fileName)
+
+              // Create product_images record
+              const { error: imageRecordError } = await supabase
+                .from("product_images")
+                .insert({
+                  product_id: productId,
+                  image_url: data.publicUrl,
+                  storage_path: fileName,
+                  is_primary: image.isPrimary,
+                  sort_order: existingImages.length + index,
+                })
+
+              if (imageRecordError) throw imageRecordError
+
+              return data.publicUrl
+            } catch (error) {
+              console.error("Error uploading image:", error)
+              return null
+            }
+          })
+
+          await Promise.all(imageUploadPromises)
+        }
+      }
+
+      alert(editingProduct ? "تم تحديث المنتج بنجاح!" : "تم إضافة المنتج بنجاح!")
       setShowProductForm(false)
       resetForm()
       fetchData()
-    } catch (error) {
+    } catch (error: any) {
       console.error("خطأ في حفظ المنتج:", error)
+      alert(`خطأ في حفظ المنتج: ${error.message || "حدث خطأ غير معروف"}`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -364,52 +597,86 @@ export default function AdminDashboard() {
               </h3>
 
               <div className="space-y-6">
-                {/* Image Upload and Cropping */}
+                {/* Multi-Image Upload */}
                 <div>
-                  <label className="block text-sm font-semibold text-[#2B2520] mb-2">الصورة (مع القص)</label>
-                  {!cropImage ? (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-[#E8A835] rounded-lg p-8 text-center cursor-pointer hover:bg-[#F9F7F3] transition-colors"
-                    >
-                      <Upload size={32} className="mx-auto text-[#E8A835] mb-2" />
-                      <p className="text-[#2B2520] font-semibold">اسحب الصورة هنا أو انقر للاختيار</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="bg-white p-4 rounded-lg">
-                        <ReactCrop crop={crop} onChange={(c) => setCrop(c)} aspect={1} className="w-full">
+                  <label className="block text-sm font-semibold text-[#2B2520] mb-2">
+                    صور المنتج (يمكن رفع أكثر من صورة)
+                  </label>
+
+                  {/* Image Grid */}
+                  {uploadedImages.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      {uploadedImages.map((image) => (
+                        <div key={image.id} className="relative group">
                           <img
-                            ref={imgRef}
-                            src={cropImage || "/placeholder.svg"}
-                            alt="قص الصورة"
-                            className="max-w-full h-auto"
+                            src={image.preview}
+                            alt="معاينة"
+                            className={`w-full h-32 object-cover rounded-lg border-2 ${
+                              image.isPrimary ? "border-green-500" : "border-gray-200"
+                            }`}
                           />
-                        </ReactCrop>
-                      </div>
-                      <div className="flex gap-4">
-                        <button
-                          onClick={handleCropComplete}
-                          className="flex-1 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600"
-                        >
-                          تحديد وحفظ الصورة
-                        </button>
-                        <button
-                          onClick={() => {
-                            setCropImage(null)
-                            setUploadedImage(null)
-                          }}
-                          className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-400"
-                        >
-                          إلغاء
-                        </button>
-                      </div>
+                          {image.isPrimary && (
+                            <span className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                              أساسية
+                            </span>
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleOpenCropModal(image.id)}
+                              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                              title="قص الصورة"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            {!image.isPrimary && (
+                              <button
+                                onClick={() => handleSetPrimaryImage(image.id)}
+                                className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                                title="جعلها صورة أساسية"
+                              >
+                                <CheckCircle size={16} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleRemoveImage(image.id)}
+                              className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                              title="حذف"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
+
+                  {/* Upload Area */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const files = Array.from(e.dataTransfer.files)
+                      const input = fileInputRef.current
+                      if (input) {
+                        const dt = new DataTransfer()
+                        files.forEach((file) => dt.items.add(file))
+                        input.files = dt.files
+                        handleImageUpload({ target: input } as any)
+                      }
+                    }}
+                    className="border-2 border-dashed border-[#E8A835] rounded-lg p-8 text-center cursor-pointer hover:bg-[#F9F7F3] transition-colors"
+                  >
+                    <Upload size={32} className="mx-auto text-[#E8A835] mb-2" />
+                    <p className="text-[#2B2520] font-semibold">اسحب الصور هنا أو انقر لاختيار</p>
+                    <p className="text-sm text-[#8B6F47] mt-2">يمكنك اختيار أكثر من صورة • يمكنك قص أي صورة بعد الرفع</p>
+                  </div>
+
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     onChange={handleImageUpload}
                   />
@@ -477,17 +744,95 @@ export default function AdminDashboard() {
 
                 <div className="flex gap-4">
                   <button
-                    onClick={() => setShowProductForm(false)}
-                    className="flex-1 py-3 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400 transition-colors"
+                    onClick={() => {
+                      setShowProductForm(false)
+                      resetForm()
+                    }}
+                    disabled={saving}
+                    className="flex-1 py-3 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     إلغاء
                   </button>
                   <button
                     onClick={handleSaveProduct}
-                    className="flex-1 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors"
+                    disabled={saving}
+                    className="flex-1 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
-                    حفظ المنتج
+                    {saving ? "جاري الحفظ..." : editingProduct ? "تحديث المنتج" : "حفظ المنتج"}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Crop Modal */}
+          {showCropModal && currentCropImage && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-[#D9D4C8] flex items-center justify-between sticky top-0 bg-white">
+                  <h3 className="text-xl font-bold text-[#2B2520]">قص الصورة</h3>
+                  <button
+                    onClick={() => {
+                      setShowCropModal(false)
+                      setCurrentCropImage(null)
+                    }}
+                    disabled={uploadingImages}
+                    className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="bg-[#F5F1E8] p-4 rounded-lg">
+                    <p className="text-sm text-[#8B6F47] mb-2 text-center">
+                      اسحب لتحديد المنطقة المراد قصها • القص اختياري
+                    </p>
+                    <ReactCrop
+                      crop={crop}
+                      onChange={(c) => setCrop(c)}
+                      aspect={1}
+                      className="w-full"
+                    >
+                      <img
+                        ref={imgRef}
+                        src={currentCropImage.preview}
+                        alt="قص الصورة"
+                        className="max-w-full h-auto max-h-[60vh]"
+                        onLoad={() => {
+                          if (imgRef.current) {
+                            const { width, height } = imgRef.current
+                            const size = Math.min(width, height) * 0.6
+                            setCrop({
+                              unit: "px",
+                              width: size,
+                              height: size,
+                              x: (width - size) / 2,
+                              y: (height - size) / 2,
+                            })
+                          }
+                        }}
+                      />
+                    </ReactCrop>
+                  </div>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => {
+                        setShowCropModal(false)
+                        setCurrentCropImage(null)
+                      }}
+                      disabled={uploadingImages}
+                      className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 disabled:opacity-50"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      onClick={handleCropComplete}
+                      disabled={uploadingImages}
+                      className="flex-1 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 disabled:bg-gray-400"
+                    >
+                      {uploadingImages ? "جاري المعالجة..." : "✓ تطبيق القص"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -522,15 +867,43 @@ export default function AdminDashboard() {
                             price: product.price,
                             original_price: product.original_price,
                           })
+                          
+                          // Load existing images
+                          if (product.product_images && product.product_images.length > 0) {
+                            const existingImages = product.product_images
+                              .sort((a, b) => a.sort_order - b.sort_order)
+                              .map((img) => ({
+                                id: img.id,
+                                preview: img.image_url,
+                                url: img.image_url,
+                                storage_path: img.storage_path,
+                                isPrimary: img.is_primary,
+                              }))
+                            setUploadedImages(existingImages)
+                          } else if (product.image_url) {
+                            // Fallback to old single image
+                            setUploadedImages([{
+                              id: "existing",
+                              preview: product.image_url,
+                              url: product.image_url,
+                              isPrimary: true,
+                            }])
+                          }
+                          
+                          // Reset deleted images tracker
+                          setDeletedImageIds([])
+                          
                           setShowProductForm(true)
                         }}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                        title="تعديل المنتج"
                       >
                         <Edit2 size={18} />
                       </button>
                       <button
                         onClick={() => handleDeleteProduct(product.id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                        title="حذف المنتج"
                       >
                         <Trash2 size={18} />
                       </button>
