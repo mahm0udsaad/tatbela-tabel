@@ -772,8 +772,19 @@ export function ProductManager({
               >
                 إلغاء
               </button>
-              <button className="px-4 py-2 rounded-lg bg-[#E8A835] text-white font-bold" onClick={handleCropConfirm}>
-                حفظ الصورة
+              <button 
+                className="px-4 py-2 rounded-lg bg-[#E8A835] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" 
+                onClick={handleCropConfirm}
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} />
+                    جاري الحفظ...
+                  </>
+                ) : (
+                  "حفظ الصورة"
+                )}
               </button>
             </div>
           </div>
