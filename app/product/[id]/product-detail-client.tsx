@@ -166,11 +166,12 @@ export function ProductDetailClient({
               <div className="flex">
                 {images.map((image) => (
                   <div key={image.id} className="flex-[0_0_100%] min-w-0">
-                    <div className="relative aspect-square md:h-[480px]">
+                    <div className="relative h-[320px] md:h-[520px] flex items-center justify-center">
                       <img
                         src={image.image_url}
                         alt={product.name_ar}
-                        className="w-full h-full object-cover"
+                        className="max-w-full object-contain"
+                        loading="lazy"
                       />
                       {isOutOfStock && (
                         <span className="absolute top-4 left-4 bg-black/80 text-white px-3 py-1 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-semibold">
@@ -231,7 +232,14 @@ export function ProductDetailClient({
                       : "border-transparent hover:border-[#E8E2D1]"
                   }`}
                 >
-                  <img src={image.image_url} alt={product.name_ar} className="w-full h-full object-cover" />
+                  <div className="w-full h-full flex items-center justify-center bg-[#F5F1E8]">
+                    <img
+                      src={image.image_url}
+                      alt={product.name_ar}
+                      className="max-h-full max-w-full object-contain"
+                      loading="lazy"
+                    />
+                  </div>
                 </button>
               ))}
             </div>

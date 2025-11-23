@@ -3,6 +3,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
+export type CartProductImage = {
+  image_url: string | null
+  is_primary: boolean | null
+  sort_order: number | null
+}
+
 export type CartItem = {
   id: string
   product_id: string
@@ -15,6 +21,7 @@ export type CartItem = {
     image_url: string | null
     brand: string
     category: string
+    product_images: CartProductImage[] | null
   }
 }
 
@@ -43,7 +50,12 @@ export async function getCart(): Promise<Cart | null> {
         price,
         image_url,
         brand,
-        category
+        category,
+        product_images (
+          image_url,
+          is_primary,
+          sort_order
+        )
       )
     )
   `)
@@ -62,12 +74,17 @@ export async function getCart(): Promise<Cart | null> {
     return null
   }
 
-  const items = data.cart_items.map((item: any) => ({
-    id: item.id,
-    product_id: item.product_id,
-    quantity: item.quantity,
-    product: item.products
-  }))
+  const items = data.cart_items
+    .filter((item: any) => Boolean(item.products))
+    .map((item: any) => ({
+      id: item.id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      product: {
+        ...item.products,
+        product_images: item.products.product_images ?? null
+      }
+    }))
 
   const subtotal = items.reduce((sum: number, item: CartItem) => {
     return sum + (item.product.price * item.quantity)

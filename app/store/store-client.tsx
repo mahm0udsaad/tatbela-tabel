@@ -21,6 +21,7 @@ type ProductRecord = {
   name_ar: string
   description_ar: string | null
   brand: string
+  type: string | null
   price: number
   original_price: number | null
   rating: number | null
@@ -28,6 +29,7 @@ type ProductRecord = {
   stock: number
   category_id: string | null
   created_at?: string | null
+  is_featured?: boolean | null
   product_images: ProductImage[] | null
   product_variants: ProductVariant[] | null
 }
@@ -358,6 +360,11 @@ function ProductCard({ product }: { product: ProductRecord }) {
         )}
       </div>
       <div className="p-4 flex flex-col flex-1">
+        {product.is_featured ? (
+          <span className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full bg-[#E8A835]/10 text-[#E8A835] text-xs font-bold">
+            ⭐ منتج مميز
+          </span>
+        ) : null}
         <p className="text-xs text-[#E8A835] font-semibold uppercase mb-2">{product.brand}</p>
         <h3 className="text-lg font-bold text-[#2B2520] mb-2 line-clamp-2 group-hover:text-[#E8A835] transition-colors">
           {product.name_ar}

@@ -23,6 +23,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         reviews_count,
         stock,
         category_id,
+        is_featured,
         product_images (id, image_url, is_primary),
         product_variants (id, sku, size, weight, variant_type, price, stock)
       `,
@@ -52,6 +53,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           rating,
           reviews_count,
           stock,
+          is_featured,
           product_images (id, image_url, is_primary),
           product_variants (id, sku, size, weight, variant_type, price, stock)
         `,

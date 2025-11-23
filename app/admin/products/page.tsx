@@ -21,6 +21,7 @@ export default async function AdminProductsPage() {
         price,
         original_price,
         stock,
+        is_featured,
         category_id,
         product_images (
           id,

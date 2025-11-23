@@ -82,6 +82,7 @@ export default function AdminDashboard() {
     name_ar: "",
     description_ar: "",
     brand: "تتبيلة",
+    type: "",
     category: "",
     price: 0,
     original_price: 0,
@@ -369,6 +370,7 @@ export default function AdminDashboard() {
       name_ar: "",
       description_ar: "",
       brand: "تتبيلة",
+      type: "",
       category: "",
       price: 0,
       original_price: 0,
@@ -381,8 +383,11 @@ export default function AdminDashboard() {
   }
 
   const handleSaveProduct = async () => {
+    const trimmedName = (formData.name_ar || "").trim()
+    const trimmedDescription = (formData.description_ar || "").trim()
+
     // Validate required fields
-    if (!formData.name_ar || !formData.description_ar || !formData.price) {
+    if (!trimmedName || !trimmedDescription || !formData.price) {
       alert("يرجى ملء جميع الحقول المطلوبة")
       return
     }
@@ -394,6 +399,21 @@ export default function AdminDashboard() {
 
     setSaving(true)
 
+    const basePrice = Number.isFinite(formData.price) ? formData.price : 0
+    const normalizedFormData = {
+      ...formData,
+      name_ar: trimmedName,
+      name: trimmedName,
+      description_ar: trimmedDescription,
+      price: basePrice,
+      original_price:
+        typeof formData.original_price === "number" &&
+        Number.isFinite(formData.original_price) &&
+        formData.original_price > basePrice
+          ? formData.original_price
+          : null,
+    }
+
     try {
       let productId = editingProduct?.id
 
@@ -401,7 +421,7 @@ export default function AdminDashboard() {
       if (editingProduct) {
         const { error: updateError } = await supabase
           .from("products")
-          .update(formData)
+          .update(normalizedFormData)
           .eq("id", editingProduct.id)
 
         if (updateError) throw updateError
@@ -441,7 +461,7 @@ export default function AdminDashboard() {
       } else {
         const { data: newProduct, error: insertError } = await supabase
           .from("products")
-          .insert(formData)
+          .insert(normalizedFormData)
           .select("id")
           .single()
 
@@ -708,6 +728,37 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#2B2520] mb-2">نوع المنتج</label>
+                    <input
+                      type="text"
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      className="w-full px-4 py-2 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                      placeholder="مثال: توابل، بهارات، خلطات"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#2B2520] mb-2">الفئة</label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full px-4 py-2 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                      required
+                    >
+                      <option value="">اختر الفئة</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.name_ar}>
+                          {cat.name_ar}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-[#2B2520] mb-2">الوصف بالعربية</label>
                   <textarea
@@ -861,7 +912,7 @@ export default function AdminDashboard() {
                           setEditingProduct(product)
                           setFormData({
                             name_ar: product.name_ar,
-                            description_ar: product.description_ar,
+                            description_ar: product.description_ar ?? "",
                             brand: product.brand,
                             category: product.category,
                             price: product.price,

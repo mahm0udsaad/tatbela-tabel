@@ -23,6 +23,7 @@ const productInputSchema = z.object({
   stock: z.number().int().nonnegative(),
   category: z.string().min(1, "الفئة مطلوبة"),
   category_id: z.string().uuid().optional().nullable(),
+  is_featured: z.boolean().default(false),
 })
 
 const variantInputSchema = z.object({
@@ -53,18 +54,29 @@ export async function upsertProductAction(input: {
   stock: number
   category: string
   category_id?: string | null
+  is_featured?: boolean
 }) {
   const supabase = await createClient()
   const payload = productInputSchema.parse(input)
+  const normalizedOriginalPrice =
+    typeof payload.original_price === "number" && payload.original_price > payload.price
+      ? payload.original_price
+      : null
 
   const mutation = {
-    ...payload,
+    id: payload.id,
+    name_ar: payload.name_ar,
+    description_ar: payload.description_ar,
+    brand: payload.brand,
+    type: payload.type,
+    price: payload.price,
+    original_price: normalizedOriginalPrice,
+    stock: payload.stock,
+    category: payload.category,
+    category_id: payload.category_id,
     name: payload.name_ar,
+    is_featured: payload.is_featured ?? false,
     updated_at: new Date().toISOString(),
-  }
-
-  if (!mutation.original_price) {
-    mutation.original_price = null
   }
 
   const { data, error } = await supabase

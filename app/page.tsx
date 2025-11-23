@@ -73,7 +73,7 @@ const categories = [
     arabicName: "التوابل",
     description: "توابل طبيعية مختارة بعناية",
     icon: "🌶️",
-    href: "/store?category=spices",
+    href: "/store",
   },
   {
     id: 2,
@@ -81,7 +81,7 @@ const categories = [
     arabicName: "الخلطات",
     description: "خلطات مصرية أصلية",
     icon: "🥘",
-    href: "/store?category=blends",
+    href: "/blends",
   },
   {
     id: 3,
@@ -89,7 +89,7 @@ const categories = [
     arabicName: "الصوصات",
     description: "صوصات لذيذة وشهية",
     icon: "🍲",
-    href: "/store?category=sauces",
+    href: "/sauces",
   },
   {
     id: 4,
@@ -97,52 +97,36 @@ const categories = [
     arabicName: "العروض",
     description: "أفضل العروض والخصومات",
     icon: "🎁",
-    href: "/store?category=offers",
+    href: "/offers",
   },
 ]
 
-const featuredProducts = [
-  {
-    id: 1,
-    name: "الكمون الكامل",
-    brand: "تتبيلة",
-    price: 45,
-    originalPrice: 60,
-    rating: 4.8,
-    reviews: 234,
-    image: "/cumin-seeds.jpg",
-  },
-  {
-    id: 2,
-    name: "خلطة الفول",
-    brand: "تابل",
-    price: 35,
-    originalPrice: 50,
-    rating: 4.9,
-    reviews: 156,
-    image: "/fava-beans-spice-blend.jpg",
-  },
-  {
-    id: 3,
-    name: "الفلفل الأحمر المطحون",
-    brand: "تتبيلة",
-    price: 55,
-    originalPrice: 75,
-    rating: 4.7,
-    reviews: 189,
-    image: "/paprika-powder.jpg",
-  },
-  {
-    id: 4,
-    name: "خلطة الشاورما",
-    brand: "تابل",
-    price: 40,
-    originalPrice: 65,
-    rating: 4.9,
-    reviews: 278,
-    image: "/shawarma-spice-blend.jpg",
-  },
-]
+type FeaturedProductImage = {
+  image_url: string
+  is_primary: boolean
+}
+
+type FeaturedProductRecord = {
+  id: string
+  name_ar: string
+  brand: string
+  price: number
+  original_price: number | null
+  rating: number | null
+  reviews_count: number | null
+  product_images: FeaturedProductImage[] | null
+}
+
+type FeaturedProductCard = {
+  id: string
+  name_ar: string
+  brand: string
+  price: number
+  original_price: number | null
+  rating: number | null
+  reviews_count: number | null
+  image_url: string | null
+}
 
 const testimonials = [
   {
@@ -225,24 +209,79 @@ const recipes = [
 
 import { AddToCartButton } from "@/components/add-to-cart-button"
 
-async function getFeaturedProducts() {
+async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
+  const baseSelect = `
+    id,
+    name_ar,
+    brand,
+    price,
+    original_price,
+    rating,
+    reviews_count,
+    product_images (image_url, is_primary)
+  `
+
   try {
     const supabase = await createServerClient()
     const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .limit(4)
-      .order('reviews_count', { ascending: false })
-      
+      .from("products")
+      .select(baseSelect)
+      .eq("is_featured", true)
+      .order("updated_at", { ascending: false })
+      .limit(8)
+
     if (error) {
       console.error("Error fetching featured products:", error)
       return []
     }
-    return data || []
+
+    let featured = mapFeaturedProducts(data)
+
+    if (featured.length < 8) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("products")
+        .select(baseSelect)
+        .order("reviews_count", { ascending: false })
+        .limit(8)
+
+      if (fallbackError) {
+        console.error("Error fetching fallback featured products:", fallbackError)
+        return featured
+      }
+
+      const fallback = mapFeaturedProducts(fallbackData).filter(
+        (product) => !featured.some((existing) => existing.id === product.id),
+      )
+
+      featured = [...featured, ...fallback]
+    }
+
+    return featured.slice(0, 8)
   } catch (error) {
     console.error("Error fetching featured products:", error)
     return []
   }
+}
+
+function mapFeaturedProducts(rows: FeaturedProductRecord[] | null | undefined): FeaturedProductCard[] {
+  if (!rows) return []
+  return rows.map((product) => {
+    const primaryImage =
+      product.product_images?.find((image) => image.is_primary)?.image_url ??
+      product.product_images?.[0]?.image_url ??
+      null
+
+    return {
+      id: product.id,
+      name_ar: product.name_ar,
+      brand: product.brand,
+      price: product.price,
+      original_price: product.original_price,
+      rating: product.rating,
+      reviews_count: product.reviews_count,
+      image_url: primaryImage,
+    }
+  })
 }
 
 export default async function Home() {
@@ -292,6 +331,79 @@ export default async function Home() {
           </Carousel>
         </div>
       </section>
+      {featuredProducts.length > 0 && (
+        <section className="relative z-10 -mt-16 mb-16 px-4">
+          <div className="max-w-7xl mx-auto rounded-[32px] border border-[#E8E2D1] bg-[#FAF9F6] p-6 md:p-10 shadow-2xl">
+            <div className="mb-10 flex flex-col items-center text-center">
+              <p className="mb-2 text-sm uppercase tracking-[0.3em] text-[#8B6F47]">Featured • مختار بعناية</p>
+              <h3 className="text-3xl font-bold text-[#2B2520] md:text-4xl">أبرز منتجات Tatbeelah & Tabel</h3>
+              <p className="mt-3 max-w-2xl text-[#8B6F47]">مزيج من أفضل منتجاتنا الأعلى تقييماً والأكثر طلباً.</p>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+              {featuredProducts.map((product) => (
+                <div
+                  key={`hero-featured-${product.id}`}
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E8E2D1] bg-white transition-all duration-300 hover:border-[#E8A835] hover:shadow-xl"
+                >
+                  <Link href={`/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-[#F5F1E8]">
+                    {product.image_url ? (
+                      <img
+                        src={product.image_url}
+                        alt={product.name_ar}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-4xl">🌶️</div>
+                    )}
+                    {product.original_price && product.original_price > product.price && (
+                      <div className="absolute left-2 top-2 rounded-full bg-[#C41E3A] px-2 py-1 text-[10px] font-bold text-white shadow-sm">
+                        خصم {Math.round(((product.original_price - product.price) / product.original_price) * 100)}%
+                      </div>
+                    )}
+                  </Link>
+                  <div className="flex flex-1 flex-col gap-2 p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-[#E8A835]">{product.brand}</p>
+                        <Link href={`/product/${product.id}`}>
+                          <h4 className="mt-1 line-clamp-1 text-base font-bold text-[#2B2520] transition-colors hover:text-[#C41E3A]">
+                            {product.name_ar}
+                          </h4>
+                        </Link>
+                      </div>
+                      <div className="flex items-center gap-1 rounded-md bg-[#F5F1E8] px-2 py-1">
+                        <Star size={12} className="fill-[#E8A835] text-[#E8A835]" />
+                        <span className="text-xs font-bold text-[#2B2520]">
+                          {product.rating ? product.rating.toFixed(1) : "جديد"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-auto flex items-center justify-between border-t border-[#F5F1E8] pt-3">
+                      <div className="flex flex-col">
+                        <span className="text-lg font-extrabold text-[#C41E3A]">{product.price} ج.م</span>
+                        {product.original_price && product.original_price > product.price && (
+                          <span className="text-xs text-gray-400 line-through">{product.original_price} ج.م</span>
+                        )}
+                      </div>
+                      <AddToCartButton productId={product.id} className="h-9 px-4 text-xs" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-10 flex justify-center">
+              <Link
+                href="/store?featured=1"
+                className="inline-flex items-center justify-center rounded-full bg-[#2B2520] px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-[#2B2520]/20 transition-all hover:-translate-y-0.5 hover:bg-[#1b1612]"
+              >
+                عرض الكل
+                <ArrowRight className="mr-2 h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* New Recipes/Traditional Blends Section */}
       <section className="py-20 bg-[#F5F1E8]">
@@ -471,6 +583,11 @@ export default async function Home() {
                 </div>
               </Link>
             ))}
+            {featuredProducts.length === 0 && (
+              <div className="col-span-2 lg:col-span-4 rounded-2xl border border-dashed border-[#D9D4C8] p-10 text-center text-[#8B6F47]">
+                لا توجد منتجات مميزة حالياً. قم بتمييز المنتجات من لوحة التحكم لتظهر هنا.
+              </div>
+            )}
           </div>
 
           <div className="text-center mt-12">

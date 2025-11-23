@@ -3,11 +3,27 @@
 import Link from "next/link"
 import { ArrowRight, Trash2, Plus, Minus, ShoppingBag } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
-import { useRouter } from "next/navigation"
+import type { CartItem } from "@/lib/actions/cart"
+
+const getProductImageUrl = (item: CartItem) => {
+  const images = item.product.product_images ?? []
+  if (images.length === 0) {
+    return item.product.image_url || null
+  }
+
+  const sorted = [...images].sort((a, b) => {
+    const aPrimary = Boolean(a.is_primary)
+    const bPrimary = Boolean(b.is_primary)
+    if (aPrimary && !bPrimary) return -1
+    if (!aPrimary && bPrimary) return 1
+    return (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  })
+
+  return sorted[0]?.image_url || item.product.image_url || null
+}
 
 export function CartClient() {
   const { cart, isLoading, removeItem, updateQuantity } = useCart()
-  const router = useRouter()
 
   if (isLoading) {
     return (
@@ -47,63 +63,66 @@ export function CartClient() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Cart Items */}
           <div className="flex-1 space-y-4">
-            {cart.items.map((item) => (
-              <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-[#E8E2D1] flex gap-4 sm:gap-6">
-                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-[#F5F1E8] rounded-lg overflow-hidden flex-shrink-0">
-                  {item.product.image_url ? (
-                    <img
-                      src={item.product.image_url}
-                      alt={item.product.name_ar}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl">🌶️</div>
-                  )}
-                </div>
+            {cart.items.map((item) => {
+              const imageUrl = getProductImageUrl(item)
+              return (
+                <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-[#E8E2D1] flex gap-4 sm:gap-6">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 bg-[#F5F1E8] rounded-lg overflow-hidden flex-shrink-0">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={item.product.name_ar}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-2xl">🌶️</div>
+                    )}
+                  </div>
 
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start gap-4">
-                      <div>
-                        <p className="text-xs text-[#E8A835] font-semibold mb-1">{item.product.brand}</p>
-                        <h3 className="text-lg font-bold text-[#2B2520]">{item.product.name_ar}</h3>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start gap-4">
+                        <div>
+                          <p className="text-xs text-[#E8A835] font-semibold mb-1">{item.product.brand}</p>
+                          <h3 className="text-lg font-bold text-[#2B2520]">{item.product.name_ar}</h3>
+                        </div>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="حذف"
+                        >
+                          <Trash2 size={20} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                        title="حذف"
-                      >
-                        <Trash2 size={20} />
-                      </button>
+                      <p className="text-[#C41E3A] font-bold mt-1">{item.product.price.toFixed(2)} ج.م</p>
                     </div>
-                    <p className="text-[#C41E3A] font-bold mt-1">{item.product.price.toFixed(2)} ج.م</p>
-                  </div>
 
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center border border-[#D9D4C8] rounded-lg">
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="px-3 py-1 hover:bg-[#F5F1E8] text-[#2B2520]"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="px-3 font-semibold text-[#2B2520] min-w-[2rem] text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="px-3 py-1 hover:bg-[#F5F1E8] text-[#2B2520]"
-                      >
-                        <Plus size={16} />
-                      </button>
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center border border-[#D9D4C8] rounded-lg">
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          className="px-3 py-1 hover:bg-[#F5F1E8] text-[#2B2520]"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <span className="px-3 font-semibold text-[#2B2520] min-w-[2rem] text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="px-3 py-1 hover:bg-[#F5F1E8] text-[#2B2520]"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                      <p className="font-bold text-[#2B2520]">
+                        {(item.product.price * item.quantity).toFixed(2)} ج.م
+                      </p>
                     </div>
-                    <p className="font-bold text-[#2B2520]">
-                      {(item.product.price * item.quantity).toFixed(2)} ج.م
-                    </p>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Order Summary */}

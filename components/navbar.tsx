@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ShoppingCart, User, LogOut, Home, Store, Blend, Soup, Phone, Search } from "lucide-react"
+import { ShoppingCart, User, LogOut, Home, Store, Blend, Soup, Phone, Search, Tag } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
 import Image from "next/image"
@@ -41,6 +41,7 @@ export function Navbar() {
     { href: "/store", label: "التوابل", icon: Store, shortLabel: "التوابل" },
     { href: "/blends", label: "الخلطات", icon: Blend, shortLabel: "الخلطات" },
     { href: "/sauces", label: "الصوصات", icon: Soup, shortLabel: "الصوصات" },
+    { href: "/offers", label: "العروض", icon: Tag, shortLabel: "العروض" },
     { href: "/contact", label: "تواصل معنا", icon: Phone, shortLabel: "اتصل" },
   ]
 
