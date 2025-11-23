@@ -385,8 +385,8 @@ export default async function Home() {
                         {product.original_price && product.original_price > product.price && (
                           <span className="text-xs text-gray-400 line-through">{product.original_price} ج.م</span>
                         )}
+                      <AddToCartButton productId={product.id} className="h-9 px-2 text-xs" />
                       </div>
-                      <AddToCartButton productId={product.id} className="h-9 px-4 text-xs" />
                     </div>
                   </div>
                 </div>
@@ -522,82 +522,6 @@ export default async function Home() {
           >
             اغتنم العرض الآن
           </Link>
-        </div>
-      </section>
-
-      {/* Featured Products Section */}
-      <section className="py-20 bg-[#F5F1E8]">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-[#2B2520] mb-4">المنتجات المميزة</h2>
-            <p className="text-lg text-[#8B6F47]">أكثر المنتجات مبيعاً واستحساناً</p>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <Link
-                key={product.id}
-                href={`/product/${product.id}`}
-                className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all group flex flex-col"
-              >
-                <div className="relative overflow-hidden bg-gray-100 h-64">
-                  <img
-                    src={product.image_url || "/placeholder.svg"}
-                    alt={product.name_ar}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {product.original_price && product.original_price > product.price && (
-                    <div className="absolute top-4 left-4 bg-[#C41E3A] text-white px-3 py-1 rounded-full text-sm font-bold z-10">
-                      -{Math.round(((product.original_price - product.price) / product.original_price) * 100)}%
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-4 flex flex-col flex-1">
-                  <p className="text-xs text-[#E8A835] font-semibold uppercase mb-2">{product.brand}</p>
-                  <h3 className="text-lg font-bold text-[#2B2520] mb-3 group-hover:text-[#E8A835] transition-colors">
-                    {product.name_ar}
-                  </h3>
-
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="flex">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          size={16}
-                          className={i < Math.floor(product.rating || 0) ? "fill-[#E8A835] text-[#E8A835]" : "text-gray-300"}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-xs text-[#8B6F47]">({product.reviews_count || 0})</span>
-                  </div>
-
-                  <div className="flex items-baseline gap-2 mb-4">
-                    <span className="text-2xl font-bold text-[#C41E3A]">{product.price} ج.م</span>
-                    {product.original_price && product.original_price > product.price && (
-                      <span className="text-sm text-gray-400 line-through">{product.original_price} ج.م</span>
-                    )}
-                  </div>
-
-                  <AddToCartButton productId={product.id} />
-                </div>
-              </Link>
-            ))}
-            {featuredProducts.length === 0 && (
-              <div className="col-span-2 lg:col-span-4 rounded-2xl border border-dashed border-[#D9D4C8] p-10 text-center text-[#8B6F47]">
-                لا توجد منتجات مميزة حالياً. قم بتمييز المنتجات من لوحة التحكم لتظهر هنا.
-              </div>
-            )}
-          </div>
-
-          <div className="text-center mt-12">
-            <Link
-              href="/store"
-              className="inline-block px-8 py-3 bg-[#2B2520] text-white rounded-lg font-bold hover:bg-[#1a1512] transition-colors"
-            >
-              عرض جميع المنتجات
-            </Link>
-          </div>
         </div>
       </section>
 
