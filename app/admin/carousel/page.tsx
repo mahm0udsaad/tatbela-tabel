@@ -1,9 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "../sidebar"
 import { Plus, Edit2, Trash2, Upload, Loader2, ImageDown } from "lucide-react"
+import ReactCrop, { type Crop } from "react-image-crop"
+import "react-image-crop/dist/ReactCrop.css"
+
+const HERO_ASPECT_RATIO = 1408 / 720
 
 interface CarouselImage {
   id: string
@@ -28,6 +32,12 @@ export default function AdminCarouselPage() {
   const [formData, setFormData] = useState<FormState>({ alt_text: "", link_url: "", sort_order: 0 })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [cropSourceUrl, setCropSourceUrl] = useState<string | null>(null)
+  const [isLocalImage, setIsLocalImage] = useState(false)
+  const [crop, setCrop] = useState<Crop>({ unit: "px", width: 0, height: 0, x: 0, y: 0 })
+  const imageRef = useRef<HTMLImageElement | null>(null)
+  const [isCropInitialized, setIsCropInitialized] = useState(false)
+  const [isApplyingCrop, setIsApplyingCrop] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const supabase = getSupabaseClient()
 
@@ -56,6 +66,10 @@ export default function AdminCarouselPage() {
     setFormData({ alt_text: "", link_url: "", sort_order: 0 })
     setSelectedFile(null)
     setPreviewUrl(null)
+    setCropSourceUrl(null)
+    setIsLocalImage(false)
+    setCrop({ unit: "px", width: 0, height: 0, x: 0, y: 0 })
+    setIsCropInitialized(false)
     setEditingSlide(null)
   }
 
@@ -72,6 +86,9 @@ export default function AdminCarouselPage() {
       sort_order: slide.sort_order ?? 0,
     })
     setPreviewUrl(slide.image_url)
+    setCropSourceUrl(null)
+    setIsLocalImage(false)
+    setCrop({ unit: "px", width: 0, height: 0, x: 0, y: 0 })
     setShowForm(true)
   }
 
@@ -79,7 +96,101 @@ export default function AdminCarouselPage() {
     const file = event.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      setPreviewUrl(URL.createObjectURL(file))
+      const objectUrl = URL.createObjectURL(file)
+      setPreviewUrl(objectUrl)
+      setCropSourceUrl(objectUrl)
+      setIsLocalImage(true)
+      setIsCropInitialized(false)
+      setCrop({ unit: "px", width: 0, height: 0, x: 0, y: 0 })
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
+  useEffect(() => {
+    return () => {
+      if (cropSourceUrl && cropSourceUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(cropSourceUrl)
+      }
+    }
+  }, [cropSourceUrl])
+
+  const initializeCropArea = (img: HTMLImageElement) => {
+    const displayedWidth = img.width
+    const displayedHeight = img.height
+
+    if (!displayedWidth || !displayedHeight) return
+
+    const possibleWidth = Math.min(displayedWidth, displayedHeight * HERO_ASPECT_RATIO)
+    const possibleHeight = possibleWidth / HERO_ASPECT_RATIO
+
+    setCrop({
+      unit: "px",
+      width: possibleWidth,
+      height: possibleHeight,
+      x: (displayedWidth - possibleWidth) / 2,
+      y: (displayedHeight - possibleHeight) / 2,
+    })
+    setIsCropInitialized(true)
+  }
+
+  const handleCropApply = () => {
+    if (!imageRef.current || !crop.width || !crop.height) {
+      alert("يرجى تحديد منطقة مناسبة من الصورة أولاً")
+      return
+    }
+
+    setIsApplyingCrop(true)
+    try {
+      const image = imageRef.current
+      const canvas = document.createElement("canvas")
+      const scaleX = image.naturalWidth / image.width
+      const scaleY = image.naturalHeight / image.height
+      const ctx = canvas.getContext("2d")
+
+      if (!ctx) {
+        throw new Error("فشل في معالجة الصورة")
+      }
+
+      const cropX = (crop.x ?? 0) * scaleX
+      const cropY = (crop.y ?? 0) * scaleY
+      const cropWidth = (crop.width ?? 0) * scaleX
+      const cropHeight = (crop.height ?? 0) * scaleY
+
+      canvas.width = cropWidth
+      canvas.height = cropHeight
+      ctx.imageSmoothingQuality = "high"
+      ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            alert("تعذر إنشاء النسخة المقصوصة")
+            setIsApplyingCrop(false)
+            return
+          }
+
+          const croppedUrl = URL.createObjectURL(blob)
+          const fileExtension = selectedFile?.name.split(".").pop() || "jpg"
+          const fileType = selectedFile?.type || "image/jpeg"
+          const croppedFile = new File([blob], `carousel-${Date.now()}.${fileExtension}`, { type: fileType })
+          setPreviewUrl(croppedUrl)
+          setSelectedFile(croppedFile)
+          setIsApplyingCrop(false)
+        },
+        selectedFile?.type || "image/jpeg",
+        0.95
+      )
+    } catch (error) {
+      console.error("فشل في قص الصورة", error)
+      alert("حدث خطأ أثناء معالجة الصورة")
+      setIsApplyingCrop(false)
     }
   }
 
@@ -233,6 +344,62 @@ export default function AdminCarouselPage() {
                   </div>
                 </div>
               </div>
+
+              {previewUrl && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#2B2520]">معاينة السلايدر بالحجم الحقيقي</p>
+                      <p className="text-xs text-[#8B6F47]">
+                        تظهر الصورة بالارتفاع المستخدم في الصفحة الرئيسية للتأكد من كونها مناسبة تماماً
+                      </p>
+                    </div>
+                    <div className="relative h-[460px] md:h-[720px] rounded-[32px] overflow-hidden bg-[#1f1b16] border border-[#E8A835]/40">
+                      <img src={previewUrl} alt="معاينة السلايدر" className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/70" />
+                      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white/80 text-xs">
+                        <span>نسبة عرض {HERO_ASPECT_RATIO.toFixed(2)} : 1</span>
+                        <span>الارتفاع 720px (على الشاشات الكبيرة)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isLocalImage && cropSourceUrl && (
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[#2B2520]">تحديد الجزء الظاهر من الصورة</p>
+                        <p className="text-xs text-[#8B6F47]">
+                          إذا كانت صورتك أعرض من المطلوب يمكنك سحب وحجم إطار المعاينة لاختيار الجزء المناسب
+                        </p>
+                      </div>
+                      <div className="bg-[#F5F1E8] p-4 rounded-2xl border border-[#E8A835]/20">
+                        <ReactCrop crop={crop} onChange={(newCrop) => setCrop(newCrop)} aspect={HERO_ASPECT_RATIO} keepSelection>
+                          <img
+                            ref={imageRef}
+                            src={cropSourceUrl}
+                            alt="اختيار منطقة السلايدر"
+                            className="max-h-[420px] w-full object-contain"
+                            onLoad={(event) => {
+                              imageRef.current = event.currentTarget
+                              if (!isCropInitialized) {
+                                initializeCropArea(event.currentTarget)
+                              }
+                            }}
+                          />
+                        </ReactCrop>
+                        <button
+                          type="button"
+                          onClick={handleCropApply}
+                          disabled={isApplyingCrop}
+                          className="mt-4 w-full px-4 py-2 bg-[#2B2520] text-white rounded-lg font-semibold hover:bg-[#403830] disabled:opacity-60"
+                        >
+                          {isApplyingCrop ? "جاري تطبيق القص..." : "تطبيق القص المحدد"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center gap-4">
                 <button
