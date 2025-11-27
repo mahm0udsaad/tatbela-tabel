@@ -326,8 +326,8 @@ export default async function Home() {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className="hidden md:flex absolute top-1/2 right-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12 [&_svg]:rotate-180" />
-           <CarouselNext className="hidden md:flex absolute top-1/2 left-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12 [&_svg]:rotate-180" />
+            <CarouselPrevious className="hidden md:flex absolute top-1/2  right-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12 [&_svg]:rotate-180" />
+           <CarouselNext className="hidden md:flex absolute top-1/2 left-6 trasnlate-x-100rem -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12 [&_svg]:rotate-180" />
           </Carousel>
         </div>
       </section>

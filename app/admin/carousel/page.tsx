@@ -6,6 +6,9 @@ import { AdminSidebar } from "../sidebar"
 import { Plus, Edit2, Trash2, Upload, Loader2, ImageDown } from "lucide-react"
 import ReactCrop, { type Crop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core"
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 const HERO_ASPECT_RATIO = 1408 / 720
 
@@ -24,6 +27,71 @@ interface FormState {
   sort_order: number
 }
 
+function SortableSlide({ 
+  slide, 
+  onEdit, 
+  onDelete 
+}: { 
+  slide: CarouselImage, 
+  onEdit: (s: CarouselImage) => void, 
+  onDelete: (s: CarouselImage) => void 
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: slide.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      {...attributes} 
+      {...listeners} 
+      className="border border-[#E8A835]/30 rounded-2xl overflow-hidden bg-[#FFFDF8] touch-none"
+    >
+      <div className="aspect-[16/9] bg-[#F5F1E8]">
+        <img src={slide.image_url} alt={slide.alt_text ?? "صورة"} className="h-full w-full object-cover pointer-events-none" />
+      </div>
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-[#8B6F47]">الترتيب: {slide.sort_order ?? 0}</span>
+          {slide.link_url && (
+            <span className="text-xs text-[#C41E3A] bg-[#C41E3A]/10 px-2 py-1 rounded-full">{slide.link_url}</span>
+          )}
+        </div>
+        {slide.alt_text && <p className="text-[#2B2520] font-semibold">{slide.alt_text}</p>}
+        <div 
+          className="flex items-center gap-3"
+          onPointerDown={(e) => e.stopPropagation()} 
+        >
+          <button
+            onClick={() => onEdit(slide)}
+            className="flex-1 px-4 py-2 bg-white border border-[#E8A835] text-[#E8A835] rounded-lg font-semibold hover:bg-[#FFF3D6] flex items-center justify-center gap-2"
+          >
+            <Edit2 size={16} />
+            تعديل
+          </button>
+          <button
+            onClick={() => onDelete(slide)}
+            className="flex-1 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg font-semibold hover:bg-red-100 flex items-center justify-center gap-2"
+          >
+            <Trash2 size={16} />
+            حذف
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminCarouselPage() {
   const [slides, setSlides] = useState<CarouselImage[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,6 +108,17 @@ export default function AdminCarouselPage() {
   const [isApplyingCrop, setIsApplyingCrop] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const supabase = getSupabaseClient()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     fetchSlides()
@@ -60,6 +139,40 @@ export default function AdminCarouselPage() {
       setSlides(data || [])
     }
     setLoading(false)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      setSlides((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over.id)
+        const newItems = arrayMove(items, oldIndex, newIndex)
+
+        // Update sort orders locally
+        const updatedItems = newItems.map((item, index) => ({
+            ...item,
+            sort_order: index
+        }))
+
+        // Persist
+        persistSortOrder(updatedItems)
+
+        return updatedItems
+      })
+    }
+  }
+
+  const persistSortOrder = async (items: CarouselImage[]) => {
+    try {
+        const updates = items.map((item, index) => 
+            supabase.from("hero_carousel_images").update({ sort_order: index }).eq("id", item.id)
+        )
+        await Promise.all(updates)
+    } catch (error) {
+        console.error("Failed to update sort order", error)
+    }
   }
 
   const resetForm = () => {
@@ -163,10 +276,27 @@ export default function AdminCarouselPage() {
       const cropWidth = (crop.width ?? 0) * scaleX
       const cropHeight = (crop.height ?? 0) * scaleY
 
-      canvas.width = cropWidth
-      canvas.height = cropHeight
+      // Optimization: Limit max width/height to improve upload speed
+      const MAX_DIMENSION = 1920
+      let targetWidth = cropWidth
+      let targetHeight = cropHeight
+
+      if (targetWidth > MAX_DIMENSION || targetHeight > MAX_DIMENSION) {
+        if (targetWidth > targetHeight) {
+          const ratio = MAX_DIMENSION / targetWidth
+          targetWidth = MAX_DIMENSION
+          targetHeight = targetHeight * ratio
+        } else {
+          const ratio = MAX_DIMENSION / targetHeight
+          targetHeight = MAX_DIMENSION
+          targetWidth = targetWidth * ratio
+        }
+      }
+
+      canvas.width = targetWidth
+      canvas.height = targetHeight
       ctx.imageSmoothingQuality = "high"
-      ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
+      ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight)
 
       canvas.toBlob(
         (blob) => {
@@ -177,15 +307,15 @@ export default function AdminCarouselPage() {
           }
 
           const croppedUrl = URL.createObjectURL(blob)
-          const fileExtension = selectedFile?.name.split(".").pop() || "jpg"
-          const fileType = selectedFile?.type || "image/jpeg"
-          const croppedFile = new File([blob], `carousel-${Date.now()}.${fileExtension}`, { type: fileType })
+          const fileExtension = "jpg" // Force JPG for optimized size
+          const fileType = "image/jpeg"
+          const croppedFile = new File([blob], `carousel-${Date.now()}.jpg`, { type: fileType })
           setPreviewUrl(croppedUrl)
           setSelectedFile(croppedFile)
           setIsApplyingCrop(false)
         },
-        selectedFile?.type || "image/jpeg",
-        0.95
+        "image/jpeg",
+        0.8 // Quality 0.8 for balance between quality and size
       )
     } catch (error) {
       console.error("فشل في قص الصورة", error)
@@ -438,40 +568,24 @@ export default function AdminCarouselPage() {
               لا توجد صور حالياً. ابدأ بإضافة صورة جديدة.
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2">
-              {slides.map((slide) => (
-                <div key={slide.id} className="border border-[#E8A835]/30 rounded-2xl overflow-hidden bg-[#FFFDF8]">
-                  <div className="aspect-[16/9] bg-[#F5F1E8]">
-                    <img src={slide.image_url} alt={slide.alt_text ?? "صورة"} className="h-full w-full object-cover" />
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#8B6F47]">الترتيب: {slide.sort_order ?? 0}</span>
-                      {slide.link_url && (
-                        <span className="text-xs text-[#C41E3A] bg-[#C41E3A]/10 px-2 py-1 rounded-full">{slide.link_url}</span>
-                      )}
-                    </div>
-                    {slide.alt_text && <p className="text-[#2B2520] font-semibold">{slide.alt_text}</p>}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => startEdit(slide)}
-                        className="flex-1 px-4 py-2 bg-white border border-[#E8A835] text-[#E8A835] rounded-lg font-semibold hover:bg-[#FFF3D6] flex items-center justify-center gap-2"
-                      >
-                        <Edit2 size={16} />
-                        تعديل
-                      </button>
-                      <button
-                        onClick={() => handleDelete(slide)}
-                        className="flex-1 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg font-semibold hover:bg-red-100 flex items-center justify-center gap-2"
-                      >
-                        <Trash2 size={16} />
-                        حذف
-                      </button>
-                    </div>
-                  </div>
+            <DndContext 
+              sensors={sensors} 
+              collisionDetection={closestCenter} 
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={slides} strategy={rectSortingStrategy}>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {slides.map((slide) => (
+                    <SortableSlide 
+                      key={slide.id} 
+                      slide={slide} 
+                      onEdit={startEdit} 
+                      onDelete={handleDelete} 
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </main>

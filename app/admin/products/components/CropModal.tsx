@@ -1,10 +1,14 @@
 "use client"
 
-import type { RefObject } from "react"
-import ReactCrop, { type Crop } from "react-image-crop"
+import { useState, useEffect, useRef } from "react"
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
 import { Loader2 } from "lucide-react"
-import type { CropFileState } from "../types"
+
+type CropFileState = {
+  file: File
+  src: string
+}
 
 type CropModalProps = {
   cropFile: CropFileState
@@ -13,29 +17,100 @@ type CropModalProps = {
   onClose: () => void
   onConfirm: () => void
   isPending: boolean
-  imageRef: RefObject<HTMLImageElement | null>
+  imageRef: React.RefObject<HTMLImageElement | null>
 }
 
-export function CropModal({ cropFile, crop, onCropChange, onClose, onConfirm, isPending, imageRef }: CropModalProps) {
+// Helper to create centered crop with proper dimensions
+function getCenterCrop(
+  mediaWidth: number,
+  mediaHeight: number,
+  aspect: number
+): Crop {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 90, // Default to 90% of image width
+      },
+      aspect,
+      mediaWidth,
+      mediaHeight
+    ),
+    mediaWidth,
+    mediaHeight
+  )
+}
+
+export function CropModal({ 
+  cropFile, 
+  crop, 
+  onCropChange, 
+  onClose, 
+  onConfirm, 
+  isPending, 
+  imageRef 
+}: CropModalProps) {
+  const [imgLoaded, setImgLoaded] = useState(false)
+
+  // Reset loaded state when cropFile changes
+  useEffect(() => {
+    setImgLoaded(false)
+  }, [cropFile?.src])
+
+  // Initialize default crop when image loads
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth: width, naturalHeight: height } = e.currentTarget
+    
+    // Create a centered crop that's 90% of the image size
+    const defaultCrop = getCenterCrop(width, height, 1) // aspect ratio 1:1 for square
+    
+    onCropChange(defaultCrop)
+    setImgLoaded(true)
+  }
+
   if (!cropFile) return null
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-xl font-bold text-[#2B2520]">قص الصورة</h3>
+        <div className="space-y-2">
+          <h3 className="text-xl font-bold text-[#2B2520]">قص الصورة</h3>
+          <p className="text-sm text-[#8B6F47]">
+            اسحب حواف المربع لتعديل منطقة القص. سيتم حفظ الصورة بنسبة 1:1 (مربع)
+          </p>
+        </div>
+        
         <div className="rounded-2xl border border-dashed border-[#E8A835] bg-[#F5F1E8] p-4 max-h-[65vh] overflow-auto">
-          <ReactCrop crop={crop} onChange={onCropChange} aspect={1} className="flex items-center justify-center">
-            <img src={cropFile.src} alt="قص الصورة" ref={imageRef} className="max-h-[60vh] w-full object-contain" />
+          <ReactCrop 
+            crop={crop} 
+            onChange={onCropChange}
+            aspect={1} // 1:1 aspect ratio for consistent square images
+            minWidth={100} // Minimum crop size
+            minHeight={100}
+            className="flex items-center justify-center"
+          >
+            <img 
+              src={cropFile.src} 
+              alt="قص الصورة" 
+              ref={imageRef}
+              onLoad={onImageLoad}
+              className="max-h-[60vh] w-full object-contain" 
+            />
           </ReactCrop>
         </div>
+
         <div className="flex justify-end gap-3">
-          <button className="px-4 py-2 rounded-lg border border-[#D9D4C8] text-[#8B6F47]" onClick={onClose}>
+          <button 
+            className="px-4 py-2 rounded-lg border border-[#D9D4C8] text-[#8B6F47] hover:bg-gray-50 transition-colors"
+            onClick={onClose}
+            disabled={isPending}
+          >
             إلغاء
           </button>
           <button
-            className="px-4 py-2 rounded-lg bg-[#E8A835] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-4 py-2 rounded-lg bg-[#E8A835] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 hover:bg-[#d99a2e] transition-colors"
             onClick={onConfirm}
-            disabled={isPending}
+            disabled={isPending || imgLoaded}
           >
             {isPending ? (
               <>

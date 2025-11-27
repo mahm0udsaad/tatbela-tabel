@@ -3,7 +3,7 @@
 import type { ChangeEvent } from "react"
 import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import type { Crop } from "react-image-crop"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   deleteProductAction,
   deleteProductImageAction,
@@ -34,6 +34,8 @@ export type UseProductManagerArgs = {
 
 export function useProductManager({ initialProducts, categories }: UseProductManagerArgs) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [products, setProducts] = useState<Product[]>(initialProducts ?? [])
   
@@ -61,12 +63,25 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   const [isPending, startTransition] = useTransition()
   const [isCreatingNewProduct, setIsCreatingNewProduct] = useState(false)
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
+  const resetHandledKey = useRef<string | null>(null)
 
   const selectedProduct = useMemo(() => products.find((product) => product.id === selectedProductId) ?? null, [products, selectedProductId])
 
   useEffect(() => {
     setProducts(initialProducts ?? [])
   }, [initialProducts])
+
+  const resetKey = searchParams.get("reset")
+
+  useEffect(() => {
+    if (resetKey && resetKey !== resetHandledKey.current) {
+      setSelectedCategoryId(null)
+      setSelectedProductId(null)
+      setIsCreatingNewProduct(false)
+      resetHandledKey.current = resetKey
+      router.replace(pathname, { scroll: false })
+    }
+  }, [resetKey, router, pathname])
 
   // When category changes, select the first product in that category or start new
   useEffect(() => {
@@ -78,6 +93,11 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
 
     const productsInCat = products.filter(p => p.category_id === selectedCategoryId)
     if (productsInCat.length > 0) {
+      // If we already have a selected product and it belongs to this category, keep it selected
+      if (selectedProductId && productsInCat.some(p => p.id === selectedProductId)) {
+        return
+      }
+      
       setSelectedProductId(productsInCat[0].id)
       setIsCreatingNewProduct(false)
     } else {
@@ -87,24 +107,33 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       // We don't necessarily want to start creating immediately unless user clicks "New Product"
       setIsCreatingNewProduct(false)
     }
-  }, [selectedCategoryId, products])
+  }, [selectedCategoryId, products, selectedProductId])
 
   useEffect(() => {
     if (selectedProduct) {
       setIsCreatingNewProduct(false)
-      setProductForm(mapProductToForm(selectedProduct))
-      setVariantProductId(selectedProduct.id)
-      setVariantForm(emptyVariantForm)
+      // Only reset form if we switched to a DIFFERENT product
+      if (selectedProduct.id !== productForm.id) {
+        setProductForm(mapProductToForm(selectedProduct))
+        setVariantProductId(selectedProduct.id)
+        setVariantForm(emptyVariantForm)
+      }
     } else if (isCreatingNewProduct) {
       // Keep form empty but preserve category if selected
-      setProductForm(prev => ({
-        ...emptyProductForm,
-        category_id: selectedCategoryId ?? prev.category_id
-      }))
+      setProductForm(prev => {
+        // If we're already in create mode for this category, don't reset the form
+        if (!prev.id && prev.category_id === selectedCategoryId) {
+          return prev
+        }
+        return {
+          ...emptyProductForm,
+          category_id: selectedCategoryId ?? prev.category_id
+        }
+      })
       setVariantProductId(null)
       setVariantForm(emptyVariantForm)
     }
-  }, [selectedProduct, isCreatingNewProduct, selectedCategoryId])
+  }, [selectedProduct, isCreatingNewProduct, selectedCategoryId, productForm.id])
 
   const selectCategory = (categoryId: string) => {
     setSelectedCategoryId(categoryId)
@@ -304,29 +333,14 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       fileInputRef.current.value = ""
     }
 
-    if (selectedProduct && !isCreatingNewProduct) {
-      startTransition(async () => {
-        const formData = new FormData()
-        formData.append("productId", selectedProduct.id)
-        const isFirst = !selectedProduct.product_images || selectedProduct.product_images.length === 0
-        formData.append("isPrimary", isFirst ? "true" : "false")
-        formData.append("file", file)
-
-        const result = await uploadProductImageAction(formData)
-        if (!result.success) {
-          setErrorMessage(result.error ?? "تعذر رفع الصورة")
-          return
-        }
-        setStatusMessage("تم رفع الصورة")
-        router.refresh()
-      })
-    } else {
-      const reader = new FileReader()
-      reader.onload = () => {
-        setPendingImages((prev) => [...prev, { id: crypto.randomUUID(), file, src: reader.result as string }])
-      }
-      reader.readAsDataURL(file)
+    const reader = new FileReader()
+    reader.onload = () => {
+      setCropFile({ file, src: reader.result as string })
+      setCropImageId(null)
+      // Reset crop to a reasonable default (e.g., center)
+      setCrop({ unit: "%", width: 90, height: 90, x: 5, y: 5 })
     }
+    reader.readAsDataURL(file)
   }
 
   const handleDeletePendingImage = (id: string) => {
@@ -342,6 +356,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       reader.onload = () => {
         setCropFile({ file, src: reader.result as string })
         setCropImageId(imageId)
+        setCrop({ unit: "%", width: 90, height: 90, x: 5, y: 5 })
       }
       reader.readAsDataURL(file)
     } catch (e) {
@@ -350,7 +365,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   }
 
   const confirmCrop = () => {
-    if (!cropFile || !selectedProduct || !imageRef.current || !crop.width || !crop.height) return
+    if (!cropFile || !imageRef.current || !crop.width || !crop.height) return
 
     const imageElement = imageRef.current
     const scaleX = imageElement.naturalWidth / imageElement.width
@@ -379,6 +394,20 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       if (!blob) return
 
       const croppedFile = new File([blob], cropFile.file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" })
+      
+      // If we don't have a product yet (creating new), add to pending images
+      if (!selectedProduct || isCreatingNewProduct) {
+         const reader = new FileReader()
+         reader.onload = () => {
+           setPendingImages((prev) => [...prev, { id: crypto.randomUUID(), file: croppedFile, src: reader.result as string }])
+           setCropFile(null)
+           setCropImageId(null)
+         }
+         reader.readAsDataURL(croppedFile)
+         return
+      }
+
+      // If we have a product, upload immediately
       const formData = new FormData()
       formData.append("productId", selectedProduct.id)
 
@@ -451,6 +480,11 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
 
   const updateCrop = (nextCrop: Crop) => setCrop(nextCrop)
 
+  const selectedCategoryName = useMemo(() => {
+    if (!selectedCategoryId) return null
+    return categories.find((cat) => cat.id === selectedCategoryId)?.name_ar ?? null
+  }, [categories, selectedCategoryId])
+
   const categoryOptions = useMemo<CategoryOption[]>(() => {
     const roots = categories.filter((cat) => !cat.parent_id)
     const tree: CategoryOption[] = []
@@ -468,6 +502,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   return {
     products: filteredProducts, // Return filtered products to view
     selectedCategoryId,
+    selectedCategoryName,
     selectedProduct,
     selectedProductId,
     productForm,

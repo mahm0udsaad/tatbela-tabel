@@ -38,7 +38,7 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/", label: "الصفحة الرئيسية", icon: Home, shortLabel: "الرئيسية" },
-    { href: "/store", label: "التوابل", icon: Store, shortLabel: "التوابل" },
+    { href: "/store", label: "العطاره", icon: Store, shortLabel: "العطاره" },
     { href: "/blends", label: "الخلطات", icon: Blend, shortLabel: "الخلطات" },
     { href: "/sauces", label: "الصوصات", icon: Soup, shortLabel: "الصوصات" },
     { href: "/offers", label: "العروض", icon: Tag, shortLabel: "العروض" },
@@ -59,7 +59,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-20">
           {/* Logo - Hidden on Mobile */}
           <Link href="/" className="flex items-center gap-3 flex-1">
-            <Image src="/icon.png" alt="logo" width={100} height={100} className="w-64 h-40" />
+            <Image src="/icon.png" alt="logo" width={100} height={100} className="sm:w-64 sm:h-40 w-[175px] h-30" />
           </Link>
 
           {/* Desktop Menu */}

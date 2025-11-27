@@ -51,11 +51,12 @@ export function ProductManager({
 
   return (
     <div className="space-y-6">
-      <ProductHeader 
-        onCreateNew={manager.startNewProduct} 
-        onSave={manager.submitProduct} 
-        isPending={manager.isPending} 
+      <ProductHeader
+        onCreateNew={manager.startNewProduct}
+        onSave={manager.submitProduct}
+        isPending={manager.isPending}
         onBack={manager.clearCategorySelection}
+        selectedCategoryName={manager.selectedCategoryName}
       />
 
       <StatusBanner statusMessage={manager.statusMessage} errorMessage={manager.errorMessage} />

@@ -141,6 +141,9 @@
   }
 }
 
+.ltr {
+  direction: ltr;
+}
 /* RTL support for Arabic language */
 html[dir="rtl"] {
   direction: rtl;

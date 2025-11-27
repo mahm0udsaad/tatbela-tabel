@@ -1,5 +1,6 @@
 "use client"
 
+import type { MouseEvent } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ShoppingBag, Package, BarChart3, Users, LogOut, Images, Layers } from "lucide-react"
@@ -26,6 +27,16 @@ export function AdminSidebar() {
     { href: "/admin/users", label: "المستخدمين", icon: Users },
   ]
 
+  const handleProductsNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href !== "/admin/products") return
+    event.preventDefault()
+    if (pathname === "/admin/products") {
+      router.replace(`${href}?reset=${Date.now()}`)
+    } else {
+      router.push(href)
+    }
+  }
+
   return (
     <aside className="w-64 bg-[#2B2520] text-white min-h-screen p-6">
       <h1 className="text-2xl font-bold mb-8">لوحة التحكم</h1>
@@ -40,6 +51,7 @@ export function AdminSidebar() {
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isActive ? "bg-[#E8A835] text-white" : "text-[#D9D4C8] hover:bg-[#3d3630]"
               }`}
+              onClick={(event) => handleProductsNavClick(event, item.href)}
             >
               <Icon size={20} />
               <span>{item.label}</span>

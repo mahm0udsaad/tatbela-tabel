@@ -162,7 +162,7 @@ export function ProductDetailClient({
         <div className="space-y-4">
           {/* Main Carousel */}
           <div className="relative rounded-2xl overflow-hidden bg-[#F5F1E8] border border-[#E8E2D1]">
-            <div className="overflow-hidden" ref={emblaRef}>
+            <div dir="ltr" className="ltr overflow-hidden" ref={emblaRef}>
               <div className="flex">
                 {images.map((image) => (
                   <div key={image.id} className="flex-[0_0_100%] min-w-0">

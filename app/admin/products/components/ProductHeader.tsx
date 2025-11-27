@@ -7,9 +7,15 @@ type ProductHeaderProps = {
   onSave: () => void
   isPending: boolean
   onBack?: () => void
+  selectedCategoryName?: string | null
 }
 
-export function ProductHeader({ onCreateNew, onSave, isPending, onBack }: ProductHeaderProps) {
+export function ProductHeader({ onCreateNew, onSave, isPending, onBack, selectedCategoryName }: ProductHeaderProps) {
+  const title = selectedCategoryName ? `إدارة المنتجات < ${selectedCategoryName}` : "إدارة المنتجات"
+  const subtitle = selectedCategoryName
+    ? `أنت تدير الآن فئة ${selectedCategoryName}. يمكنك العودة لاختيار فئة مختلفة في أي وقت.`
+    : "تحكم كامل بالمنتجات، المتغيرات، ومستوى المخزون"
+
   return (
     <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div className="flex items-center gap-4">
@@ -23,8 +29,8 @@ export function ProductHeader({ onCreateNew, onSave, isPending, onBack }: Produc
           </button>
         )}
         <div>
-          <h1 className="text-3xl font-bold text-[#2B2520]">إدارة المنتجات</h1>
-          <p className="text-[#8B6F47]">تحكم كامل بالمنتجات، المتغيرات، ومستوى المخزون</p>
+          <h1 className="text-3xl font-bold text-[#2B2520]">{title}</h1>
+          <p className="text-[#8B6F47]">{subtitle}</p>
         </div>
       </div>
       <div className="flex gap-3">
