@@ -1,4 +1,4 @@
-const PAYMOB_API_BASE = process.env.PAYMOB_API_BASE || "https://accept.paymob.com/api"
+const PAYMOB_API_BASE = process.env.PAYMOB_API_BASE || "https://accept.paymobsolutions.com/api"
 const PAYMOB_API_KEY = process.env.PAYMOB_API_KEY
 const PAYMOB_INTEGRATION_ID = process.env.PAYMOB_INTEGRATION_ID
 const PAYMOB_IFRAME_ID = process.env.PAYMOB_IFRAME_ID
@@ -25,6 +25,7 @@ interface BillingData {
   building?: string
   city: string
   state?: string
+  postal_code?: string
   country: string
 }
 
@@ -134,6 +135,7 @@ async function requestPaymentKey({
         city: billingData.city || "Cairo",
         state: billingData.state ?? "NA",
         country: billingData.country || "EG",
+        postal_code: billingData.postal_code ?? "NA",
         email: billingData.email,
         phone_number: billingData.phone_number,
         first_name: billingData.first_name,

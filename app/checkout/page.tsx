@@ -4,10 +4,20 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Check, CreditCard, Banknote, Wallet } from "lucide-react"
+import { ArrowRight, Check, CreditCard, Banknote, ShieldCheck } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
 
 import { useCart } from "@/components/cart-provider"
+
+type ShippingFormData = {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  postalCode: string
+}
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -18,8 +28,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online")
   const [user, setUser] = useState<any>(null)
   const [orderId, setOrderId] = useState("")
-  const [formData, setFormData] = useState({
-    // Shipping
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [formData, setFormData] = useState<ShippingFormData>({
     firstName: "",
     lastName: "",
     email: "",
@@ -27,11 +37,6 @@ export default function CheckoutPage() {
     address: "",
     city: "",
     postalCode: "",
-    // Payment
-    cardName: "",
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
   })
 
   useEffect(() => {
@@ -69,63 +74,146 @@ export default function CheckoutPage() {
     setCurrentStep("payment")
   }
 
+  const persistOrder = async (orderNumber: string) => {
+    const { data: orderData, error: orderError } = await supabase
+      .from("orders")
+      .insert([
+        {
+          user_id: user.id,
+          order_number: orderNumber,
+          status: "processing",
+          subtotal: subtotal,
+          shipping_cost: shipping,
+          tax_amount: tax,
+          total_amount: total,
+          customer_email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          postal_code: formData.postalCode,
+          payment_method: paymentMethod,
+          payment_status: "pending",
+        },
+      ])
+      .select()
+
+    if (orderError) throw orderError
+
+    const newOrderId = orderData?.[0]?.id
+
+    if (!newOrderId) {
+      throw new Error("لم نتمكن من إنشاء الطلب في قاعدة البيانات")
+    }
+
+    const itemsToInsert = orderItems.map((item) => ({
+      order_id: newOrderId,
+      product_id: item.product.id,
+      product_name: item.product.name,
+      product_brand: item.product.brand,
+      price: item.product.price,
+      quantity: item.quantity,
+      total: item.product.price * item.quantity,
+    }))
+
+    if (itemsToInsert.length > 0) {
+      const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert)
+      if (itemsError) throw itemsError
+    }
+
+    return { newOrderId }
+  }
+
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!orderItems.length) {
+      setPaymentError("سلة التسوق فارغة")
+      return
+    }
+
+    if (!user) {
+      setPaymentError("يرجى تسجيل الدخول لإكمال عملية الدفع")
+      setCurrentStep("auth")
+      router.push("/auth/sign-in")
+      return
+    }
+
+    setPaymentError(null)
     setIsLoading(true)
 
-    try {
-      // Generate order number
-      const orderNumber = `TT${Date.now()}`
+    const orderNumber = `TT${Date.now()}`
 
-      // Save order to database
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .insert([
-          {
-            user_id: user.id,
-            order_number: orderNumber,
-            status: "processing",
-            subtotal: subtotal,
-            shipping_cost: shipping,
-            tax_amount: tax,
-            total_amount: total,
-            customer_email: formData.email,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
+    try {
+      await persistOrder(orderNumber)
+
+      if (paymentMethod === "cash") {
+        setOrderId(orderNumber)
+        setCurrentStep("confirmation")
+        return
+      }
+
+      const paymobItemsPayload = [
+        ...orderItems.map((item) => ({
+          name: item.product.name,
+          price: item.product.price * item.quantity,
+          quantity: 1,
+          description: item.product.brand,
+        })),
+      ]
+
+      if (shipping > 0) {
+        paymobItemsPayload.push({
+          name: "الشحن",
+          price: shipping,
+          quantity: 1,
+          description: "تكلفة التوصيل",
+        })
+      }
+
+      if (tax > 0) {
+        paymobItemsPayload.push({
+          name: "الضريبة",
+          price: tax,
+          quantity: 1,
+          description: "ضريبة القيمة المضافة",
+        })
+      }
+
+      const paymobResponse = await fetch("/api/paymob", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: total,
+          currency: "EGP",
+          merchantOrderId: orderNumber,
+          billing: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
             phone: formData.phone,
             address: formData.address,
             city: formData.city,
-            postal_code: formData.postalCode,
-            payment_method: paymentMethod,
-            payment_status: paymentMethod === "online" ? "paid" : "pending",
+            postalCode: formData.postalCode,
           },
-        ])
-        .select()
+          items: paymobItemsPayload,
+        }),
+      })
 
-      if (orderError) throw orderError
+      const paymobPayload = await paymobResponse.json().catch(() => ({}))
+      if (!paymobResponse.ok) {
+        throw new Error(paymobPayload?.error || "تعذر بدء عملية الدفع عبر Paymob")
+      }
 
-      const newOrderId = orderData[0].id
+      if (!paymobPayload?.iframeUrl) {
+        throw new Error("استجابة Paymob غير مكتملة")
+      }
 
-      // Save order items
-      const itemsToInsert = orderItems.map((item) => ({
-        order_id: newOrderId,
-        product_id: item.product.id,
-        product_name: item.product.name,
-        product_brand: item.product.brand,
-        price: item.product.price,
-        quantity: item.quantity,
-        total: item.product.price * item.quantity,
-      }))
-
-      const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert)
-
-      if (itemsError) throw itemsError
-
-      setOrderId(orderNumber)
-      setCurrentStep("confirmation")
+      window.location.href = paymobPayload.iframeUrl as string
     } catch (error) {
       console.error("Error saving order:", error)
-      alert("حدث خطأ في معالجة الطلب. يرجى المحاولة مرة أخرى")
+      setPaymentError("حدث خطأ في معالجة الطلب. يرجى المحاولة مرة أخرى")
     } finally {
       setIsLoading(false)
     }
@@ -368,66 +456,20 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {paymentMethod === "online" && (
-                    <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                      <h3 className="text-lg font-bold text-[#2B2520] mb-4">بيانات البطاقة</h3>
-                      <div className="mb-6">
-                        <label className="block text-sm font-semibold text-[#2B2520] mb-2">اسم حامل البطاقة*</label>
-                        <input
-                          type="text"
-                          name="cardName"
-                          value={formData.cardName}
-                          onChange={handleChange}
-                          required
-                          className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                          placeholder="الاسم على البطاقة"
-                        />
-                      </div>
-
-                      <div className="mb-6">
-                        <label className="block text-sm font-semibold text-[#2B2520] mb-2">رقم البطاقة*</label>
-                        <input
-                          type="text"
-                          name="cardNumber"
-                          value={formData.cardNumber}
-                          onChange={handleChange}
-                          required
-                          placeholder="1234 5678 9012 3456"
-                          className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                          maxLength={19}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6 mb-8">
-                        <div>
-                          <label className="block text-sm font-semibold text-[#2B2520] mb-2">تاريخ الانتهاء*</label>
-                          <input
-                            type="text"
-                            name="expiryDate"
-                            value={formData.expiryDate}
-                            onChange={handleChange}
-                            required
-                            placeholder="MM/YY"
-                            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                            maxLength={5}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-[#2B2520] mb-2">CVV*</label>
-                          <input
-                            type="text"
-                            name="cvv"
-                            value={formData.cvv}
-                            onChange={handleChange}
-                            required
-                            placeholder="123"
-                            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                            maxLength={3}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+          {paymentMethod === "online" && (
+            <div className="bg-[#FFF9F0] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300 border border-[#F5D9A3]">
+              <div className="bg-white p-3 rounded-full text-[#E8A835]">
+                <ShieldCheck size={28} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#2B2520] mb-2">دفع إلكتروني آمن عبر Paymob</h3>
+                <p className="text-[#8B6F47]">
+                  بعد الضغط على زر إتمام الطلب سيتم تحويلك تلقائياً إلى بوابة Paymob الآمنة لإدخال بيانات البطاقة أو
+                  المحافظة الإلكترونية الخاصة بك. لا نقوم بحفظ أي بيانات حساسة على خوادمنا.
+                </p>
+              </div>
+            </div>
+          )}
 
                   {paymentMethod === "cash" && (
                     <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -443,7 +485,7 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  <div className="flex gap-4">
+          <div className="flex flex-col gap-4">
                     <button
                       type="button"
                       onClick={() => setCurrentStep("shipping")}
@@ -459,6 +501,7 @@ export default function CheckoutPage() {
                       {isLoading ? "جاري المعالجة..." : "إتمام الطلب"}
                       <Check size={20} />
                     </button>
+            {paymentError && <p className="text-center text-sm text-red-600">{paymentError}</p>}
                   </div>
                 </form>
               )}
