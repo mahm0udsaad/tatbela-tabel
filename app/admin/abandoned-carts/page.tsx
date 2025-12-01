@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from "react"
-import { AdminSidebar } from "../sidebar"
 import { getSupabaseClient } from "@/lib/supabase"
 import { ShoppingCart, Clock, AlertCircle } from "lucide-react"
 
@@ -73,10 +72,8 @@ export default function AbandonedCartsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F5F1E8]">
-      <AdminSidebar />
-      <main className="flex-1 p-8">
-        <h1 className="text-3xl font-bold text-[#2B2520] mb-8">السلات المتروكة</h1>
+    <div className="bg-[#F5F1E8] rounded-lg">
+      <h1 className="text-3xl font-bold text-[#2B2520] mb-8">السلات المتروكة</h1>
         
         {loading ? (
           <div className="text-center py-12">
@@ -151,7 +148,6 @@ export default function AbandonedCartsPage() {
             })}
           </div>
         )}
-      </main>
     </div>
   )
 }

@@ -5,9 +5,16 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowRight, Check, CreditCard, Banknote, ShieldCheck } from "lucide-react"
-import { getSupabaseClient } from "@/lib/supabase"
+import type { ZodIssue } from "zod"
 
 import { useCart } from "@/components/cart-provider"
+import { getSupabaseClient } from "@/lib/supabase"
+import {
+  paymobBillingSchema,
+  paymobRequestSchema,
+  type PaymobBillingData,
+  type PaymobRequestPayload,
+} from "@/lib/validation/paymob"
 
 type ShippingFormData = {
   firstName: string
@@ -22,13 +29,14 @@ type ShippingFormData = {
 export default function CheckoutPage() {
   const router = useRouter()
   const supabase = getSupabaseClient()
-  const { cart, isLoading: isCartLoading } = useCart()
+  const { cart, isLoading: isCartLoading, clearCart } = useCart()
   const [currentStep, setCurrentStep] = useState<"auth" | "shipping" | "payment" | "confirmation">("auth")
   const [isLoading, setIsLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online")
   const [user, setUser] = useState<any>(null)
   const [orderId, setOrderId] = useState("")
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [shippingError, setShippingError] = useState<string | null>(null)
   const [formData, setFormData] = useState<ShippingFormData>({
     firstName: "",
     lastName: "",
@@ -61,20 +69,58 @@ export default function CheckoutPage() {
   const tax = Math.round(subtotal * 0.14)
   const total = subtotal + shipping + tax
 
+  const formatValidationIssues = (issues: ZodIssue[]) => {
+    if (!issues.length) return "يرجى التحقق من بيانات التوصيل"
+    return issues[0]?.message || "يرجى التحقق من بيانات التوصيل"
+  }
+
+  const getSanitizedShippingData = (): ShippingFormData => ({
+    firstName: formData.firstName.trim(),
+    lastName: formData.lastName.trim(),
+    email: formData.email.trim(),
+    phone: formData.phone.trim(),
+    address: formData.address.trim(),
+    city: formData.city.trim(),
+    postalCode: formData.postalCode.trim(),
+  })
+
+  const buildBillingPayload = (data: ShippingFormData): PaymobBillingData => ({
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    phone: data.phone,
+    address: data.address,
+    city: data.city,
+    postalCode: data.postalCode || undefined,
+  })
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }))
+    if (shippingError) setShippingError(null)
+    if (paymentError) setPaymentError(null)
   }
 
   const handleShippingSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const sanitizedData = getSanitizedShippingData()
+    const billingPayload = buildBillingPayload(sanitizedData)
+    const validationResult = paymobBillingSchema.safeParse(billingPayload)
+
+    if (!validationResult.success) {
+      setShippingError(formatValidationIssues(validationResult.error.issues))
+      return
+    }
+
+    setFormData(sanitizedData)
+    setShippingError(null)
     setCurrentStep("payment")
   }
 
-  const persistOrder = async (orderNumber: string) => {
+  const persistOrder = async (orderNumber: string, billingData: ShippingFormData) => {
     const { data: orderData, error: orderError } = await supabase
       .from("orders")
       .insert([
@@ -86,13 +132,13 @@ export default function CheckoutPage() {
           shipping_cost: shipping,
           tax_amount: tax,
           total_amount: total,
-          customer_email: formData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          address: formData.address,
-          city: formData.city,
-          postal_code: formData.postalCode,
+          customer_email: billingData.email,
+          first_name: billingData.firstName,
+          last_name: billingData.lastName,
+          phone: billingData.phone,
+          address: billingData.address,
+          city: billingData.city,
+          postal_code: billingData.postalCode,
           payment_method: paymentMethod,
           payment_status: "pending",
         },
@@ -140,25 +186,27 @@ export default function CheckoutPage() {
       return
     }
 
-    setPaymentError(null)
-    setIsLoading(true)
+    const sanitizedShippingData = getSanitizedShippingData()
+    const billingPayload = buildBillingPayload(sanitizedShippingData)
+    const billingValidation = paymobBillingSchema.safeParse(billingPayload)
+
+    if (!billingValidation.success) {
+      const validationMessage = formatValidationIssues(billingValidation.error.issues)
+      setShippingError(validationMessage)
+      setCurrentStep("shipping")
+      setPaymentError(null)
+      return
+    }
 
     const orderNumber = `TT${Date.now()}`
+    let onlinePaymentPayload: PaymobRequestPayload | null = null
 
-    try {
-      await persistOrder(orderNumber)
-
-      if (paymentMethod === "cash") {
-        setOrderId(orderNumber)
-        setCurrentStep("confirmation")
-        return
-      }
-
-      const paymobItemsPayload = [
+    if (paymentMethod === "online") {
+      const paymobItemsPayload: PaymobRequestPayload["items"] = [
         ...orderItems.map((item) => ({
           name: item.product.name,
-          price: item.product.price * item.quantity,
-          quantity: 1,
+          price: Number(item.product.price),
+          quantity: item.quantity,
           description: item.product.brand,
         })),
       ]
@@ -181,29 +229,52 @@ export default function CheckoutPage() {
         })
       }
 
+      const validationResult = paymobRequestSchema.safeParse({
+        amount: total,
+        currency: "EGP",
+        merchantOrderId: orderNumber,
+        billing: billingValidation.data,
+        items: paymobItemsPayload,
+      })
+
+      if (!validationResult.success) {
+        setPaymentError(formatValidationIssues(validationResult.error.issues))
+        return
+      }
+
+      onlinePaymentPayload = validationResult.data
+    }
+
+    setFormData(sanitizedShippingData)
+    setShippingError(null)
+    setPaymentError(null)
+    setIsLoading(true)
+
+    try {
+      await persistOrder(orderNumber, sanitizedShippingData)
+      await clearCart()
+
+      if (paymentMethod === "cash") {
+        setOrderId(orderNumber)
+        setCurrentStep("confirmation")
+        return
+      }
+
+      if (!onlinePaymentPayload) {
+        throw new Error("بيانات الدفع غير متاحة")
+      }
+
       const paymobResponse = await fetch("/api/paymob", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: total,
-          currency: "EGP",
-          merchantOrderId: orderNumber,
-          billing: {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            city: formData.city,
-            postalCode: formData.postalCode,
-          },
-          items: paymobItemsPayload,
-        }),
+        body: JSON.stringify(onlinePaymentPayload),
       })
 
       const paymobPayload = await paymobResponse.json().catch(() => ({}))
       if (!paymobResponse.ok) {
-        throw new Error(paymobPayload?.error || "تعذر بدء عملية الدفع عبر Paymob")
+        const apiErrorMessage =
+          paymobPayload?.details?.[0]?.message || paymobPayload?.error || "تعذر بدء عملية الدفع عبر Paymob"
+        throw new Error(apiErrorMessage)
       }
 
       if (!paymobPayload?.iframeUrl) {
@@ -213,7 +284,9 @@ export default function CheckoutPage() {
       window.location.href = paymobPayload.iframeUrl as string
     } catch (error) {
       console.error("Error saving order:", error)
-      setPaymentError("حدث خطأ في معالجة الطلب. يرجى المحاولة مرة أخرى")
+      setPaymentError(
+        error instanceof Error ? error.message : "حدث خطأ في معالجة الطلب. يرجى المحاولة مرة أخرى"
+      )
     } finally {
       setIsLoading(false)
     }
@@ -421,6 +494,7 @@ export default function CheckoutPage() {
                     متابعة للدفع
                     <ArrowRight size={20} />
                   </button>
+                  {shippingError && <p className="mt-4 text-center text-sm text-red-600">{shippingError}</p>}
                 </form>
               )}
 
@@ -487,19 +561,19 @@ export default function CheckoutPage() {
 
           <div className="flex flex-col gap-4">
                     <button
-                      type="button"
-                      onClick={() => setCurrentStep("shipping")}
-                      className="flex-1 px-8 py-3 border-2 border-[#E8A835] text-[#E8A835] rounded-lg font-bold hover:bg-[#F5F1E8] transition-colors"
-                    >
-                      العودة
-                    </button>
-                    <button
                       type="submit"
                       disabled={isLoading}
                       className="flex-1 px-8 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {isLoading ? "جاري المعالجة..." : "إتمام الطلب"}
                       <Check size={20} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep("shipping")}
+                      className="flex-1 px-8 py-3 border-2 border-[#E8A835] text-[#E8A835] rounded-lg font-bold hover:bg-[#F5F1E8] transition-colors"
+                    >
+                      العودة
                     </button>
             {paymentError && <p className="text-center text-sm text-red-600">{paymentError}</p>}
                   </div>

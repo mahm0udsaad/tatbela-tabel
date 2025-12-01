@@ -1,9 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import { LayoutWrapper } from "@/components/layout-wrapper"
+import { WebsiteLayout } from "@/components/website-layout"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -39,10 +37,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl">
-      <body className={`font-sans antialiased`}>
-        <LayoutWrapper>
-          {children}
-        </LayoutWrapper>
+      <body className="font-sans antialiased">
+        <WebsiteLayout>{children}</WebsiteLayout>
         <Analytics />
       </body>
     </html>

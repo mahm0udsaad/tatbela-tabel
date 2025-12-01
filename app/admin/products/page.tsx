@@ -1,4 +1,3 @@
-import { AdminSidebar } from "../sidebar"
 import { createClient } from "@/lib/supabase/server"
 import { ProductManager } from "./product-manager"
 
@@ -51,11 +50,8 @@ export default async function AdminProductsPage() {
   }
 
   return (
-    <div className="flex">
-      <AdminSidebar />
-      <main className="flex-1 bg-[#F5F1E8] p-6">
-        <ProductManager initialProducts={products ?? []} categories={categories ?? []} />
-      </main>
+    <div className="bg-[#F5F1E8] rounded-lg">
+      <ProductManager initialProducts={products ?? []} categories={categories ?? []} />
     </div>
   )
 }

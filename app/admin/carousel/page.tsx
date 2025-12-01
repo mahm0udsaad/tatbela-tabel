@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "../sidebar"
 import { Plus, Edit2, Trash2, Upload, Loader2, ImageDown } from "lucide-react"
 import ReactCrop, { type Crop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
@@ -393,9 +392,7 @@ export default function AdminCarouselPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F5F1E8]">
-      <AdminSidebar />
-      <main className="flex-1 p-8">
+    <div className="bg-[#F5F1E8] rounded-lg">
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="text-sm text-[#8B6F47] mb-2">مظهر الصفحة الرئيسية</p>
@@ -588,7 +585,6 @@ export default function AdminCarouselPage() {
             </DndContext>
           )}
         </div>
-      </main>
     </div>
   )
 }

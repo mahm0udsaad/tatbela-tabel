@@ -39,9 +39,9 @@ const buildRedirectTransaction = (params: RedirectParams) => ({
   owner: params.owner,
   pending: params.pending,
   source_data: {
-    pan: params.source_data_pan,
-    sub_type: params.source_data_sub_type,
-    type: params.source_data_type,
+    pan: params["source_data.pan"] || params.source_data_pan,
+    sub_type: params["source_data.sub_type"] || params.source_data_sub_type,
+    type: params["source_data.type"] || params.source_data_type,
   },
   success: params.success,
 })
@@ -85,11 +85,12 @@ interface OrderInfo {
 }
 
 interface PaymentStatusPageProps {
-  searchParams: SearchParams
+  searchParams: Promise<SearchParams>
 }
 
 export default async function PaymentStatusPage({ searchParams }: PaymentStatusPageProps) {
-  const params = normalizeParams(searchParams)
+  const resolvedSearchParams = await searchParams
+  const params = normalizeParams(resolvedSearchParams)
   const hasRequiredParams = Boolean(params.hmac && params.merchant_order_id)
 
   let isSignatureValid = false

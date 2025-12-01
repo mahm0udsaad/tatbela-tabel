@@ -1,38 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
-import { z, ZodError } from "zod"
+import { ZodError } from "zod"
 
 import { createPaymobPayment, type PaymobItem } from "@/lib/payments/paymob"
-
-const requestSchema = z.object({
-  amount: z.number().positive(),
-  currency: z.string().default("EGP"),
-  merchantOrderId: z.string().min(3),
-  billing: z.object({
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
-    email: z.string().email(),
-    phone: z.string().min(5),
-    address: z.string().min(3),
-    city: z.string().min(2),
-    state: z.string().optional(),
-    postalCode: z.string().optional(),
-    country: z.string().optional(),
-  }),
-  items: z
-    .array(
-      z.object({
-        name: z.string(),
-        price: z.number().positive(),
-        quantity: z.number().int().positive(),
-        description: z.string().optional(),
-      })
-    )
-    .min(1),
-})
+import { paymobRequestSchema } from "@/lib/validation/paymob"
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = requestSchema.parse(await request.json())
+    const payload = paymobRequestSchema.parse(await request.json())
 
     const amountCents = Math.round(payload.amount * 100)
     const paymobItems: PaymobItem[] = payload.items.map((item) => ({

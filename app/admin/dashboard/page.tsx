@@ -6,7 +6,6 @@ import { getSupabaseClient } from "@/lib/supabase"
 import { Plus, Edit2, Trash2, Upload, BarChart3, ShoppingBag, Users, TrendingUp, CheckCircle, X } from "lucide-react"
 import ReactCrop, { type Crop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
-import { AdminSidebar } from "../sidebar"
 
 interface ProductImage {
   id: string
@@ -551,10 +550,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="flex">
-      <AdminSidebar />
-      <main className="flex-1 bg-[#F5F1E8] p-8">
-        <h1 className="text-3xl font-bold text-[#2B2520] mb-8">ملخص لوحة التحكم</h1>
+    <div className="bg-[#F5F1E8] rounded-lg">
+      <h1 className="text-3xl font-bold text-[#2B2520] mb-8">ملخص لوحة التحكم</h1>
 
         {loading ? (
           <div className="text-center py-12">
@@ -965,7 +962,6 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
-      </main>
     </div>
   )
 }

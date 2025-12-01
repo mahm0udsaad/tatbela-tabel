@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useTransition } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { addToCart, getCart, removeItemFromCart, updateCartItemQuantity, type Cart } from '@/lib/actions/cart'
+import { addToCart, getCart, removeItemFromCart, updateCartItemQuantity, clearCart as clearCartAction, type Cart } from '@/lib/actions/cart'
 import { useRouter } from 'next/navigation'
 
 type CartContextType = {
@@ -12,6 +12,7 @@ type CartContextType = {
   removeItem: (itemId: string) => Promise<void>
   updateQuantity: (itemId: string, quantity: number) => Promise<void>
   refreshCart: () => Promise<void>
+  clearCart: () => Promise<void>
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -94,8 +95,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const clearCart = async () => {
+    try {
+      await clearCartAction()
+      await refreshCart()
+    } catch (error) {
+      console.error('Failed to clear cart', error)
+      throw error
+    }
+  }
+
   return (
-    <CartContext.Provider value={{ cart, isLoading, addItem, removeItem, updateQuantity, refreshCart }}>
+    <CartContext.Provider value={{ cart, isLoading, addItem, removeItem, updateQuantity, refreshCart, clearCart }}>
       {children}
     </CartContext.Provider>
   )

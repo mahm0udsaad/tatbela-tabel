@@ -212,3 +212,46 @@ export async function removeItemFromCart(itemId: string) {
   return { success: true }
 }
 
+export async function clearCart() {
+  const supabase = await createClient()
+  const cookieStore = await cookies()
+  const cartIdCookie = cookieStore.get('cartId')?.value
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let cartIdToClear: string | null = null
+
+  if (user) {
+    const { data: userCart, error } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (error) throw error
+    cartIdToClear = userCart?.id ?? null
+  } else if (cartIdCookie) {
+    cartIdToClear = cartIdCookie
+  }
+
+  if (!cartIdToClear) {
+    if (cartIdCookie) {
+      cookieStore.delete('cartId')
+    }
+    return { success: true }
+  }
+
+  const { error: deleteError } = await supabase.from('cart_items').delete().eq('cart_id', cartIdToClear)
+  if (deleteError) throw deleteError
+
+  await supabase.from('carts').update({ updated_at: new Date().toISOString() }).eq('id', cartIdToClear)
+
+  if (!user && cartIdCookie) {
+    cookieStore.delete('cartId')
+  }
+
+  return { success: true }
+}
+

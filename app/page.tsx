@@ -14,6 +14,30 @@ type HeroCarouselImage = {
   created_at?: string
 }
 
+type HomepagePromotion = {
+  id: string
+  tagline: string | null
+  title: string
+  description: string | null
+  cta_label: string | null
+  cta_url: string | null
+  background_from: string | null
+  background_via: string | null
+  background_to: string | null
+  is_active: boolean
+}
+
+type PromotionContent = {
+  tagline: string | null
+  title: string
+  description: string | null
+  cta_label: string | null
+  cta_url: string | null
+  background_from: string
+  background_via: string
+  background_to: string
+}
+
 const fallbackHeroImages: HeroCarouselImage[] = [
   {
     id: "fallback-1",
@@ -45,6 +69,17 @@ const fallbackHeroImages: HeroCarouselImage[] = [
   },
 ]
 
+const fallbackPromotion: PromotionContent = {
+  tagline: "عرض حصري محدود",
+  title: "خصم 10% على كل المنتجات",
+  description: "استمتع بأفضل التوابل المصرية الأصلية بسعر خاص. العرض محدود الوقت فقط!",
+  cta_label: "اغتنم العرض الآن",
+  cta_url: "/store",
+  background_from: "#0f2027",
+  background_via: "#203a43",
+  background_to: "#2c5364",
+}
+
 async function getHeroCarouselImages(): Promise<HeroCarouselImage[]> {
   try {
     const supabase = await createServerClient()
@@ -63,6 +98,29 @@ async function getHeroCarouselImages(): Promise<HeroCarouselImage[]> {
   } catch (error) {
     console.error("فشل في جلب صور السلايدر", error)
     return []
+  }
+}
+
+async function getHomepagePromotion(): Promise<HomepagePromotion | null> {
+  try {
+    const supabase = await createServerClient()
+    const { data, error } = await supabase
+      .from("homepage_promotions")
+      .select(
+        "id, tagline, title, description, cta_label, cta_url, background_from, background_via, background_to, is_active",
+      )
+      .order("updated_at", { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error("فشل في جلب قسم العروض", error)
+      return null
+    }
+
+    return data?.[0] ?? null
+  } catch (error) {
+    console.error("فشل في جلب قسم العروض", error)
+    return null
   }
 }
 
@@ -287,12 +345,28 @@ function mapFeaturedProducts(rows: FeaturedProductRecord[] | null | undefined): 
 export default async function Home() {
   const heroImages = await getHeroCarouselImages()
   const featuredProducts = await getFeaturedProducts()
+  const promotion = await getHomepagePromotion()
   const heroSlides = heroImages.length > 0 ? heroImages : fallbackHeroImages
+  const activePromotion: PromotionContent | null =
+    promotion && promotion.is_active
+      ? {
+          tagline: promotion.tagline,
+          title: promotion.title,
+          description: promotion.description,
+          cta_label: promotion.cta_label,
+          cta_url: promotion.cta_url,
+          background_from: promotion.background_from ?? fallbackPromotion.background_from,
+          background_via: promotion.background_via ?? fallbackPromotion.background_via,
+          background_to: promotion.background_to ?? fallbackPromotion.background_to,
+        }
+      : null
+  const shouldRenderPromotion = promotion ? promotion.is_active : true
+  const promoContent = activePromotion ?? fallbackPromotion
   return (
     <main className="min-h-screen bg-white">
 
       {/* Hero Section */}
-      <section className="relative py-10 md:py-18 overflow-hidden bg-gradient-to-b from-[#F5F1E8] to-white">
+      <section className="relative pb-6 md:pb-6 overflow-hidden bg-gradient-to-b from-[#F5F1E8] to-white">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-10 right-20 w-72 h-72 bg-[#E8A835]/5 rounded-full blur-3xl"></div>
           <div className="absolute bottom-10 left-10 w-96 h-96 bg-[#C41E3A]/5 rounded-full blur-3xl"></div>
@@ -303,7 +377,7 @@ export default async function Home() {
             <CarouselContent>
               {heroSlides.map((slide) => (
                 <CarouselItem key={slide.id}>
-                  <div className="relative h-[460px] md:h-[720px] overflow-hidden rounded-[32px] bg-[#1f1b16]">
+                  <div className="relative h-[460px] md:h-[600px] overflow-hidden rounded-[32px] bg-[#1f1b16]">
                     <img
                       src={slide.image_url}
                       alt={slide.alt_text ?? "صورة السلايدر"}
@@ -405,47 +479,6 @@ export default async function Home() {
         </section>
       )}
 
-      {/* New Recipes/Traditional Blends Section */}
-      <section className="py-20 bg-[#F5F1E8]">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-[#2B2520] mb-4">وصفاتنا التقليدية</h2>
-            <p className="text-lg text-[#8B6F47]">استكشف وصفاتنا الشهية واستخدم توابلنا الأصلية</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {recipes.map((recipe) => (
-              <div
-                key={recipe.id}
-                className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
-              >
-                <div className="relative overflow-hidden bg-gray-100 h-48">
-                  <img
-                    src={recipe.image || "/placeholder.svg"}
-                    alt={recipe.title}
-                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-[#2B2520] mb-2">{recipe.title}</h3>
-                  <p className="text-[#8B6F47] mb-4">{recipe.description}</p>
-                  <div className="flex items-center gap-4 text-sm text-[#C41E3A] font-semibold mb-4">
-                    <span>تحضير: {recipe.prepTime}</span>
-                    <span>طهي: {recipe.cookTime}</span>
-                  </div>
-                  <Link
-                    href="/recipes"
-                    className="inline-block px-6 py-2 bg-[#E8A835] text-white rounded-lg font-semibold hover:bg-[#D9941E] transition-colors"
-                  >
-                    عرض الوصفة
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Categories Section */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4">
@@ -475,55 +508,35 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Traditional Blends Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-[#2B2520] mb-4">الخلطات التقليدية</h2>
-            <p className="text-lg text-[#8B6F47]">أصل الطعم المصري الحقيقي</p>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {traditionalBlends.map((blend) => (
-              <div
-                key={blend.id}
-                className="bg-[#F5F1E8] rounded-xl p-6 hover:shadow-lg transition-all border border-[#E8A835]/20 hover:border-[#E8A835]"
-              >
-                <img
-                  src={blend.image || "/placeholder.svg"}
-                  alt={blend.name}
-                  className="w-full h-40 object-cover rounded-lg mb-4"
-                />
-                <h3 className="text-lg font-bold text-[#2B2520] mb-2">{blend.name}</h3>
-                <p className="text-sm text-[#C41E3A] font-semibold mb-2">الاستخدام:</p>
-                <p className="text-sm text-[#8B6F47] mb-4">{blend.recipe}</p>
-                <p className="text-xs text-[#8B6F47] border-t border-[#E8A835]/30 pt-3">
-                  <span className="font-semibold">المكونات:</span> {blend.ingredients}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Promotional Section */}
-      <section className="py-16 bg-gradient-to-r from-[#C41E3A] via-[#E8A835] to-[#C41E3A]">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="inline-block mb-6 px-6 py-2 bg-white/20 rounded-full">
-            <span className="text-white text-lg font-bold">عرض حصري محدود</span>
+      {shouldRenderPromotion && (
+        <section
+          className="py-16"
+          style={{
+            backgroundImage: `linear-gradient(to right, ${promoContent.background_from}, ${promoContent.background_via}, ${promoContent.background_to})`,
+          }}
+        >
+          <div className="mx-auto max-w-7xl px-4 text-center">
+            {promoContent.tagline && (
+              <div className="mb-6 inline-block rounded-full bg-white/20 px-6 py-2">
+                <span className="text-lg font-bold text-white">{promoContent.tagline}</span>
+              </div>
+            )}
+            <h2 className="mb-6 text-4xl font-bold text-white md:text-5xl">{promoContent.title}</h2>
+            {promoContent.description && (
+              <p className="mx-auto mb-8 max-w-2xl text-xl text-white/90">{promoContent.description}</p>
+            )}
+            {promoContent.cta_url && (
+              <Link
+                href={promoContent.cta_url}
+                className="inline-block rounded-lg bg-white px-10 py-4 text-lg font-bold text-[#C41E3A] transition-colors hover:bg-gray-100"
+              >
+                {promoContent.cta_label || "تسوق الآن"}
+              </Link>
+            )}
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">خصم 10% على كل المنتجات</h2>
-          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            استمتع بأفضل التوابل المصرية الأصلية بسعر خاص. العرض محدود الوقت فقط!
-          </p>
-          <Link
-            href="/store"
-            className="inline-block px-10 py-4 bg-white text-[#C41E3A] rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors"
-          >
-            اغتنم العرض الآن
-          </Link>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Testimonials Section */}
       <section className="py-20 bg-white">
@@ -554,21 +567,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-[#C41E3A] to-[#E8A835]">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">هل أنت مستعد لاكتشاف الطعم الحقيقي؟</h2>
-          <p className="text-lg text-white/90 mb-8">
-            تابعنا على وسائل التواصل الاجتماعي للحصول على أحدث العروض والنصائح الطهويَّة
-          </p>
-          <Link
-            href="/store"
-            className="inline-block px-8 py-3 bg-white text-[#C41E3A] rounded-lg font-bold hover:bg-gray-100 transition-colors"
-          >
-            ابدأ التسوق الآن
-          </Link>
-        </div>
-      </section>
     </main>
   )
 }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "../sidebar"
 import { CheckCircle, Clock, Truck, Package, Eye, X } from "lucide-react"
 import {
   Dialog,
@@ -125,11 +124,17 @@ export default function AdminOrders() {
     return labels[status] || status
   }
 
+  const getPaymentMethodLabel = (method: string) => {
+    return method === "online" ? "دفع إلكتروني" : "دفع عند الاستلام"
+  }
+
+  const getPaymentMethodClasses = (method: string) => {
+    return method === "online" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+  }
+
   return (
-    <div className="flex">
-      <AdminSidebar />
-      <main className="flex-1 bg-[#F5F1E8] p-8">
-        <h1 className="text-3xl font-bold text-[#2B2520] mb-8">إدارة الطلبات</h1>
+    <div className=" rounded-lg">
+      <h1 className="text-3xl font-bold text-[#2B2520] mb-8">إدارة الطلبات</h1>
 
         {loading ? (
           <div className="text-center py-12">
@@ -143,6 +148,7 @@ export default function AdminOrders() {
                   <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">رقم الطلب</th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">المبلغ</th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">الحالة</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">طريقة الدفع</th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">التاريخ</th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">الإجراءات</th>
                 </tr>
@@ -150,20 +156,29 @@ export default function AdminOrders() {
               <tbody>
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-[#8B6F47]">
+                    <td colSpan={6} className="px-6 py-8 text-center text-[#8B6F47]">
                       لا توجد طلبات حالياً
                     </td>
                   </tr>
                 ) : (
                   orders.map((order) => (
                     <tr key={order.id} className="border-b border-[#D9D4C8] hover:bg-[#F9F7F3]">
-                      <td className="px-6 py-4 text-[#2B2520] font-semibold">{order.id}</td>
+                      <td className="px-6 py-4 text-[#2B2520] font-semibold">
+                        {order.order_number || order.id}
+                      </td>
                       <td className="px-6 py-4 text-[#C41E3A] font-semibold">{order.total_amount.toFixed(2)} ج.م</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {getStatusIcon(order.status)}
                           <span>{getStatusLabel(order.status)}</span>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentMethodClasses(order.payment_method)}`}
+                        >
+                          {getPaymentMethodLabel(order.payment_method)}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-[#8B6F47]">
                         {new Date(order.created_at).toLocaleDateString("ar-EG")}
@@ -193,7 +208,16 @@ export default function AdminOrders() {
                             </DialogTrigger>
                             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                               <DialogHeader>
-                                <DialogTitle>تفاصيل الطلب #{selectedOrder?.order_number}</DialogTitle>
+                                <DialogTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <span>تفاصيل الطلب #{selectedOrder?.order_number || selectedOrder?.id}</span>
+                                  {selectedOrder && (
+                                    <span
+                                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentMethodClasses(selectedOrder.payment_method)}`}
+                                    >
+                                      {getPaymentMethodLabel(selectedOrder.payment_method)}
+                                    </span>
+                                  )}
+                                </DialogTitle>
                                 <DialogDescription>
                                   تم الطلب في {selectedOrder && new Date(selectedOrder.created_at).toLocaleDateString("ar-EG")}
                                 </DialogDescription>
@@ -271,7 +295,7 @@ export default function AdminOrders() {
                                     <div className="mt-2 pt-2 border-t border-[#D9D4C8] flex justify-between text-sm">
                                       <span className="text-[#8B6F47]">طريقة الدفع:</span>
                                       <span className="font-semibold">
-                                        {selectedOrder.payment_method === "online" ? "دفع إلكتروني" : "دفع عند الاستلام"}
+                                        {getPaymentMethodLabel(selectedOrder.payment_method)}
                                       </span>
                                     </div>
                                   </div>
@@ -288,7 +312,6 @@ export default function AdminOrders() {
             </table>
           </div>
         )}
-      </main>
     </div>
   )
 }

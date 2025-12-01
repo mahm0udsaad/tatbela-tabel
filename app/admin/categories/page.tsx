@@ -1,4 +1,3 @@
-import { AdminSidebar } from "../sidebar"
 import { createClient } from "@/lib/supabase/server"
 import { CategoryManager } from "./category-manager"
 
@@ -16,11 +15,8 @@ export default async function AdminCategoriesPage() {
   }
 
   return (
-    <div className="flex">
-      <AdminSidebar />
-      <main className="flex-1 bg-[#F5F1E8] p-6">
-        <CategoryManager initialCategories={categories ?? []} />
-      </main>
+    <div className="bg-[#F5F1E8] rounded-lg">
+      <CategoryManager initialCategories={categories ?? []} />
     </div>
   )
 }

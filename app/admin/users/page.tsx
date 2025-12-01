@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "../sidebar"
 import { Mail, Calendar } from "lucide-react"
 
 interface User {
@@ -37,10 +36,8 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="flex">
-      <AdminSidebar />
-      <main className="flex-1 bg-[#F5F1E8] p-8">
-        <h1 className="text-3xl font-bold text-[#2B2520] mb-8">إدارة المستخدمين</h1>
+    <div className="bg-[#F5F1E8] rounded-lg">
+      <h1 className="text-3xl font-bold text-[#2B2520] mb-8">إدارة المستخدمين</h1>
 
         {loading ? (
           <div className="text-center py-12">
@@ -82,7 +79,6 @@ export default function AdminUsers() {
             </table>
           </div>
         )}
-      </main>
     </div>
   )
 }
