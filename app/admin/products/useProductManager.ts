@@ -370,26 +370,39 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
     if (!cropFile || !imageRef.current || !crop.width || !crop.height) return
 
     const imageElement = imageRef.current
-    const scaleX = imageElement.naturalWidth / imageElement.width
-    const scaleY = imageElement.naturalHeight / imageElement.height
+    const displayedWidth = imageElement.width
+    const displayedHeight = imageElement.height
+    const scaleX = imageElement.naturalWidth / displayedWidth
+    const scaleY = imageElement.naturalHeight / displayedHeight
+
+    // Convert percentage-based crop values to pixel values on the displayed image
+    const cropX = crop.unit === '%' ? ((crop.x ?? 0) / 100) * displayedWidth : (crop.x ?? 0)
+    const cropY = crop.unit === '%' ? ((crop.y ?? 0) / 100) * displayedHeight : (crop.y ?? 0)
+    const cropW = crop.unit === '%' ? ((crop.width ?? 0) / 100) * displayedWidth : (crop.width ?? 0)
+    const cropH = crop.unit === '%' ? ((crop.height ?? 0) / 100) * displayedHeight : (crop.height ?? 0)
+
+    // Scale to natural image dimensions
+    const naturalCropX = cropX * scaleX
+    const naturalCropY = cropY * scaleY
+    const naturalCropWidth = cropW * scaleX
+    const naturalCropHeight = cropH * scaleY
+
     const canvas = document.createElement("canvas")
-    const cropWidth = (crop.width ?? 0) * scaleX
-    const cropHeight = (crop.height ?? 0) * scaleY
-    canvas.width = cropWidth
-    canvas.height = cropHeight
+    canvas.width = naturalCropWidth
+    canvas.height = naturalCropHeight
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
     ctx.drawImage(
       imageElement,
-      (crop.x ?? 0) * scaleX,
-      (crop.y ?? 0) * scaleY,
-      cropWidth,
-      cropHeight,
+      naturalCropX,
+      naturalCropY,
+      naturalCropWidth,
+      naturalCropHeight,
       0,
       0,
-      cropWidth,
-      cropHeight,
+      naturalCropWidth,
+      naturalCropHeight,
     )
 
     canvas.toBlob(async (blob) => {

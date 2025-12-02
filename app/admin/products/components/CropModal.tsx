@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
 import { Loader2 } from "lucide-react"
@@ -17,7 +17,7 @@ type CropModalProps = {
   onClose: () => void
   onConfirm: () => void
   isPending: boolean
-  imageRef: React.RefObject<HTMLImageElement | null>
+  imageRef: React.MutableRefObject<HTMLImageElement | null>
 }
 
 // Helper to create centered crop with proper dimensions
@@ -57,15 +57,27 @@ export function CropModal({
     setImgLoaded(false)
   }, [cropFile?.src])
 
-  // Initialize default crop when image loads
-  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { naturalWidth: width, naturalHeight: height } = e.currentTarget
-    
-    // Create a centered crop that's 90% of the image size
-    const defaultCrop = getCenterCrop(width, height, 1) // aspect ratio 1:1 for square
-    
+  // Handle image load - initialize default crop
+  const handleImageReady = useCallback((img: HTMLImageElement) => {
+    const { naturalWidth: width, naturalHeight: height } = img
+    const defaultCrop = getCenterCrop(width, height, 1)
     onCropChange(defaultCrop)
     setImgLoaded(true)
+  }, [onCropChange])
+
+  // Callback ref to handle both initial load and cached images
+  const setImageRef = useCallback((img: HTMLImageElement | null) => {
+    imageRef.current = img
+    if (img && img.complete && img.naturalWidth > 0 && !imgLoaded) {
+      handleImageReady(img)
+    }
+  }, [imageRef, imgLoaded, handleImageReady])
+
+  // Handle onLoad event for non-cached images
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    if (!imgLoaded) {
+      handleImageReady(e.currentTarget)
+    }
   }
 
   if (!cropFile) return null
@@ -92,7 +104,7 @@ export function CropModal({
             <img 
               src={cropFile.src} 
               alt="قص الصورة" 
-              ref={imageRef}
+              ref={setImageRef}
               onLoad={onImageLoad}
               className="max-h-[60vh] w-full object-contain" 
             />
@@ -110,7 +122,7 @@ export function CropModal({
           <button
             className="px-4 py-2 rounded-lg bg-[#E8A835] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 hover:bg-[#d99a2e] transition-colors"
             onClick={onConfirm}
-            disabled={isPending || imgLoaded}
+            disabled={isPending || !imgLoaded}
           >
             {isPending ? (
               <>
