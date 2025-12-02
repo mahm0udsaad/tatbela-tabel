@@ -91,6 +91,11 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       return
     }
 
+    // Don't auto-select a product if we're creating a new one
+    if (isCreatingNewProduct) {
+      return
+    }
+
     const productsInCat = products.filter(p => p.category_id === selectedCategoryId)
     if (productsInCat.length > 0) {
       // If we already have a selected product and it belongs to this category, keep it selected
@@ -99,15 +104,12 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       }
       
       setSelectedProductId(productsInCat[0].id)
-      setIsCreatingNewProduct(false)
     } else {
-      // If no products in category, maybe start new product automatically?
-      // Or just show empty state.
-      setSelectedProductId(null)
+      // If no products in category, show empty state
       // We don't necessarily want to start creating immediately unless user clicks "New Product"
-      setIsCreatingNewProduct(false)
+      setSelectedProductId(null)
     }
-  }, [selectedCategoryId, products, selectedProductId])
+  }, [selectedCategoryId, products, selectedProductId, isCreatingNewProduct])
 
   useEffect(() => {
     if (selectedProduct) {
