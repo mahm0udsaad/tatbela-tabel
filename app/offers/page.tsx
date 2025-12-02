@@ -29,6 +29,7 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
       `,
       )
       .not("original_price", "is", null)
+      .eq("is_archived", false)
       .order("created_at", { ascending: false }),
     supabase.from("categories").select("id, name_ar, parent_id, slug, sort_order").order("sort_order", { ascending: true }),
   ])

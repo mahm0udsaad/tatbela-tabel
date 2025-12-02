@@ -256,9 +256,22 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       const result = await deleteProductAction(productId)
       if (!result.success) {
         setErrorMessage(result.error ?? "تعذر حذف المنتج")
+        toast({ title: "خطأ", description: result.error ?? "تعذر حذف المنتج", variant: "destructive" })
         return
       }
-      setStatusMessage("تم حذف المنتج")
+      
+      // Check if product was archived instead of deleted
+      if ('archived' in result && result.archived) {
+        setStatusMessage(result.message ?? "تم أرشفة المنتج")
+        toast({ 
+          title: "تم أرشفة المنتج", 
+          description: "المنتج مرتبط بطلبات سابقة وتم أرشفته بدلاً من حذفه" 
+        })
+      } else {
+        setStatusMessage("تم حذف المنتج")
+        toast({ title: "تم حذف المنتج", description: "تم حذف المنتج بنجاح" })
+      }
+      
       if (selectedProductId === productId) {
         // If we deleted the selected product, try to select another one or new product
         // but wait for refresh/state update

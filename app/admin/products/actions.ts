@@ -95,10 +95,49 @@ export async function upsertProductAction(input: {
 
 export async function deleteProductAction(productId: string) {
   const supabase = await createClient()
+  
+  // Check if product has any order items referencing it
+  const { count: orderItemsCount } = await supabase
+    .from("order_items")
+    .select("*", { count: "exact", head: true })
+    .eq("product_id", productId)
+
+  // If product has orders, soft delete (archive) instead of hard delete
+  if (orderItemsCount && orderItemsCount > 0) {
+    const { error: archiveError } = await supabase
+      .from("products")
+      .update({ is_archived: true })
+      .eq("id", productId)
+
+    if (archiveError) {
+      return { success: false, error: archiveError.message }
+    }
+
+    revalidateCommercePaths()
+    return { success: true, archived: true, message: "تم أرشفة المنتج لأنه مرتبط بطلبات سابقة" }
+  }
+
+  // No orders reference this product, safe to hard delete
+  // First delete related data (images, variants, cart_items)
+  await supabase.from("product_images").delete().eq("product_id", productId)
+  await supabase.from("product_variants").delete().eq("product_id", productId)
+  await supabase.from("cart_items").delete().eq("product_id", productId)
+
   const { error } = await supabase.from("products").delete().eq("id", productId)
 
   if (error) {
-    return { success: false, error: error.message }
+    // Fallback to archive if delete still fails
+    const { error: archiveError } = await supabase
+      .from("products")
+      .update({ is_archived: true })
+      .eq("id", productId)
+
+    if (archiveError) {
+      return { success: false, error: error.message }
+    }
+
+    revalidateCommercePaths()
+    return { success: true, archived: true, message: "تم أرشفة المنتج" }
   }
 
   revalidateCommercePaths()

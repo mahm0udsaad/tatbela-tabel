@@ -28,6 +28,7 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
         product_variants (stock)
       `,
       )
+      .eq("is_archived", false) // Exclude archived products
       .order("created_at", { ascending: false }),
     supabase.from("categories").select("id, name_ar, parent_id, slug, sort_order").order("sort_order", { ascending: true }),
   ])

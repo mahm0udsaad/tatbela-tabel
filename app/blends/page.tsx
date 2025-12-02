@@ -44,6 +44,7 @@ export default async function BlendsPage({ searchParams }: { searchParams: Promi
         product_variants (stock)
       `,
     )
+    .eq("is_archived", false)
     .order("created_at", { ascending: false })
 
   const { data: productsData } =

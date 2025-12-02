@@ -59,6 +59,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         `,
         )
         .eq("category_id", product.category_id)
+        .eq("is_archived", false)
         .neq("id", id)
         .limit(8)
         .order("created_at", { ascending: false })

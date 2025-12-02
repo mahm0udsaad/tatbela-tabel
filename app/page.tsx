@@ -285,6 +285,7 @@ async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
       .from("products")
       .select(baseSelect)
       .eq("is_featured", true)
+      .eq("is_archived", false)
       .order("updated_at", { ascending: false })
       .limit(8)
 
@@ -299,6 +300,7 @@ async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("products")
         .select(baseSelect)
+        .eq("is_archived", false)
         .order("reviews_count", { ascending: false })
         .limit(8)
 
