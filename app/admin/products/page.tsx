@@ -18,11 +18,14 @@ export default async function AdminProductsPage() {
         category,
         type,
         price,
+        price_per_kilo,
+        pricing_mode,
         original_price,
         stock,
         is_featured,
         category_id,
         is_archived,
+        sort_order,
         product_images (
           id,
           image_url,
@@ -41,7 +44,7 @@ export default async function AdminProductsPage() {
       `,
       )
       .eq("is_archived", false) // Exclude archived products
-      .order("created_at", { ascending: false })
+      .order("sort_order", { ascending: true })
       .order("sort_order", { referencedTable: "product_images", ascending: true })
       .order("is_primary", { referencedTable: "product_images", ascending: false }),
     supabase.from("categories").select("id, name_ar, parent_id").order("sort_order", { ascending: true }),

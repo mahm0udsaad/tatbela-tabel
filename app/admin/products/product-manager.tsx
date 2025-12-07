@@ -5,8 +5,8 @@ import { ProductHeader } from "./components/ProductHeader"
 import { StatusBanner } from "./components/StatusBanner"
 import { ProductListPanel } from "./components/ProductListPanel"
 import { ProductDetailsCard } from "./components/ProductDetailsCard"
-import { VariantsCard } from "./components/VariantsCard"
 import { ProductImagesCard } from "./components/ProductImagesCard"
+import { VariantsCard } from "./components/VariantsCard"
 import { CropModal } from "./components/CropModal"
 import { AddCategoryModal } from "./components/AddCategoryModal"
 import { CategoryGrid } from "./components/CategoryGrid"
@@ -20,9 +20,9 @@ export function ProductManager({
   categories: Category[]
 }) {
   const manager = useProductManager({ initialProducts, categories })
-  const productTypeOptions = ["توابل", "بهارات", "خلطات", "صوصات"]
+  const productTypeOptions = ["صوصات", "عطارة", "خلطات"]
 
-  if (!manager.selectedCategoryId) {
+  if (!manager.selectedCategoryId && manager.viewFilter === "category") {
     return (
       <div className="space-y-6">
          <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -51,12 +51,49 @@ export function ProductManager({
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-sm text-[#8B6F47]">عرض:</span>
+        <button
+          onClick={() => manager.setViewFilter("category")}
+          className={`px-3 py-1.5 rounded-full text-sm border ${
+            manager.viewFilter === "category" ? "bg-[#E8A835] text-white border-[#E8A835]" : "border-[#E8E2D1] text-[#2B2520]"
+          }`}
+        >
+          حسب الفئة
+        </button>
+        <button
+          onClick={() => manager.setViewFilter("all")}
+          className={`px-3 py-1.5 rounded-full text-sm border ${
+            manager.viewFilter === "all" ? "bg-[#E8A835] text-white border-[#E8A835]" : "border-[#E8E2D1] text-[#2B2520]"
+          }`}
+        >
+          كل المنتجات
+        </button>
+        <button
+          onClick={() => manager.setViewFilter("featured")}
+          className={`px-3 py-1.5 rounded-full text-sm border ${
+            manager.viewFilter === "featured" ? "bg-[#E8A835] text-white border-[#E8A835]" : "border-[#E8E2D1] text-[#2B2520]"
+          }`}
+        >
+          المميزة
+        </button>
+        {manager.selectedCategoryName && manager.viewFilter === "category" && (
+          <span className="ml-2 text-sm text-[#2B2520]">الفئة الحالية: {manager.selectedCategoryName}</span>
+        )}
+      </div>
+
       <ProductHeader
         onCreateNew={manager.startNewProduct}
         onSave={manager.submitProduct}
         isPending={manager.isPending}
         onBack={manager.clearCategorySelection}
-        selectedCategoryName={manager.selectedCategoryName}
+        selectedCategoryName={
+          manager.viewFilter === "all"
+            ? "كل المنتجات"
+            : manager.viewFilter === "featured"
+              ? "المنتجات المميزة"
+              : manager.selectedCategoryName
+        }
       />
 
       <StatusBanner statusMessage={manager.statusMessage} errorMessage={manager.errorMessage} />
@@ -76,15 +113,7 @@ export function ProductManager({
             categoryOptions={manager.categoryOptions}
             productTypeOptions={productTypeOptions}
             onAddCategory={manager.openAddCategoryModal}
-          />
-
-          <VariantsCard
-            selectedProduct={manager.selectedProduct}
-            variantForm={manager.variantForm}
-            onFieldChange={manager.updateVariantField}
-            onSubmit={manager.submitVariant}
-            onEditVariant={manager.editVariant}
-            onDeleteVariant={manager.deleteVariant}
+            lockCategory={manager.viewFilter === "category" && Boolean(manager.selectedCategoryId)}
           />
 
           <ProductImagesCard
@@ -97,6 +126,14 @@ export function ProductManager({
             pendingImages={manager.pendingImages}
             onDeletePending={manager.handleDeletePendingImage}
             onCropImage={manager.openCropModal}
+          />
+          <VariantsCard
+            selectedProduct={manager.selectedProduct}
+            variantForm={manager.variantForm}
+            onFieldChange={manager.updateVariantField}
+            onSubmit={manager.submitVariant}
+            onEditVariant={manager.editVariant}
+            onDeleteVariant={manager.deleteVariant}
           />
         </div>
       </section>
@@ -116,6 +153,14 @@ export function ProductManager({
         onClose={manager.closeAddCategoryModal}
         onSuccess={manager.closeAddCategoryModal}
       />
+
+      <button
+        className="fixed bottom-4 left-4 z-40 px-4 py-3 rounded-full bg-[#E8A835] text-white font-bold shadow-lg hover:bg-[#D9941E] disabled:opacity-60"
+        onClick={manager.submitProduct}
+        disabled={manager.isPending}
+      >
+        حفظ التغييرات
+      </button>
     </div>
   )
 }

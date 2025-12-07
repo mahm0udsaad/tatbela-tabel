@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
 import { Mail, Calendar } from "lucide-react"
 
@@ -10,28 +10,70 @@ interface User {
   created_at: string
 }
 
+const PAGE_SIZE = 25
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const supabase = getSupabaseClient()
 
   useEffect(() => {
-    fetchUsers()
+    fetchUsers(true)
   }, [])
 
-  const fetchUsers = async () => {
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          fetchUsers()
+        }
+      },
+      { rootMargin: "200px" },
+    )
+
+    const target = loadMoreRef.current
+    if (target) observer.observe(target)
+
+    return () => {
+      if (target) observer.unobserve(target)
+    }
+  }, [hasMore, loading, loadingMore])
+
+  const fetchUsers = async (reset = false) => {
+    if (!reset && (loading || loadingMore)) return
+
+    if (reset) {
+      setLoading(true)
+      setHasMore(true)
+    } else {
+      setLoadingMore(true)
+    }
+
+    const from = reset ? 0 : users.length
+    const to = from + PAGE_SIZE - 1
+
     try {
-      const { data: profiles, error } = await supabase
+      const { data: profiles, error, count } = await supabase
         .from("profiles")
-        .select("id, email, created_at")
+        .select("id, email, created_at", { count: "exact" })
         .order("created_at", { ascending: false })
+        .range(from, to)
 
       if (error) throw error
-      setUsers(profiles || [])
+      const received = profiles?.length ?? 0
+      const previousLength = reset ? 0 : users.length
+      const totalLoaded = previousLength + received
+
+      setUsers((prev) => (reset ? profiles || [] : [...prev, ...(profiles || [])]))
+      setHasMore(count ? totalLoaded < count : received === PAGE_SIZE)
     } catch (error) {
       console.error("خطأ في جلب المستخدمين:", error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
@@ -75,8 +117,16 @@ export default function AdminUsers() {
                     </tr>
                   ))
                 )}
+                {!loading && loadingMore && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-center text-[#8B6F47]">
+                      جاري تحميل المزيد...
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
+            <div ref={loadMoreRef} className="h-8" aria-hidden />
           </div>
         )}
     </div>

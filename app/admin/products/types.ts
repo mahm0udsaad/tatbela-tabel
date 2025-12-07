@@ -23,10 +23,13 @@ export type Product = {
   category: string
   type: string
   price: number
+  price_per_kilo?: number | null
+  pricing_mode?: "unit" | "per_kilo" | null
   original_price: number | null
   stock: number
   is_featured: boolean
   category_id: string | null
+  sort_order: number | null
   product_images: ProductImage[] | null
   product_variants: ProductVariant[] | null
 }
@@ -44,16 +47,21 @@ export type ProductFormState = {
   brand: string
   type: string
   price: string
+  price_per_kilo: string
+  pricing_mode: "unit" | "per_kilo"
   original_price: string
   stock: string
   category_id: string
   is_featured: boolean
 }
 
+export type WeightUnit = "g" | "kg"
+
 export type VariantFormState = {
   id?: string
   sku: string
   weight: string
+  weight_unit: WeightUnit
   size: string
   variant_type: string
   price: string
@@ -73,6 +81,8 @@ export const emptyProductForm: ProductFormState = {
   brand: "",
   type: "",
   price: "",
+  price_per_kilo: "",
+  pricing_mode: "unit",
   original_price: "",
   stock: "",
   category_id: "",
@@ -82,6 +92,7 @@ export const emptyProductForm: ProductFormState = {
 export const emptyVariantForm: VariantFormState = {
   sku: "",
   weight: "",
+  weight_unit: "g",
   size: "",
   variant_type: "",
   price: "",
@@ -96,6 +107,8 @@ export function mapProductToForm(product: Product): ProductFormState {
     brand: product.brand ?? "",
     type: product.type ?? "",
     price: product.price?.toString() ?? "",
+    price_per_kilo: product.price_per_kilo?.toString() ?? "",
+    pricing_mode: (product.pricing_mode as "unit" | "per_kilo") ?? "unit",
     original_price: product.original_price?.toString() ?? "",
     stock: product.stock?.toString() ?? "",
     category_id: product.category_id ?? "",

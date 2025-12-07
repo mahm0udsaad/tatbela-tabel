@@ -75,9 +75,9 @@ const fallbackPromotion: PromotionContent = {
   description: "استمتع بأفضل التوابل المصرية الأصلية بسعر خاص. العرض محدود الوقت فقط!",
   cta_label: "اغتنم العرض الآن",
   cta_url: "/store",
-  background_from: "#0f2027",
-  background_via: "#203a43",
-  background_to: "#2c5364",
+  background_from: "#1A4D2E",
+  background_via: "#0F2F1F",
+  background_to: "#1A4D2E",
 }
 
 async function getHeroCarouselImages(): Promise<HeroCarouselImage[]> {
@@ -127,8 +127,8 @@ async function getHomepagePromotion(): Promise<HomepagePromotion | null> {
 const categories = [
   {
     id: 1,
-    name: "التوابل",
-    arabicName: "التوابل",
+    name: "العطارة",
+    arabicName: "العطارة",
     description: "توابل طبيعية مختارة بعناية",
     icon: "🌶️",
     href: "/store",
@@ -207,64 +207,6 @@ const testimonials = [
   },
 ]
 
-const traditionalBlends = [
-  {
-    id: 1,
-    name: "خلطة فاتيتا",
-    recipe: "استخدم ملعقة صغيرة من الخليط مع الطعام",
-    ingredients: "كمون، كزبرة، فلفل أسود، ملح",
-    image: "/traditional-spice-blend.jpg",
-  },
-  {
-    id: 2,
-    name: "خلطة الشاورما",
-    recipe: "مثالية للدجاج واللحوم المشوية",
-    ingredients: "ثوم، بابريكا، كمون، أوريجانو",
-    image: "/shawarma-spice-blend.jpg",
-  },
-  {
-    id: 3,
-    name: "خلطة الملوخية",
-    recipe: "أضف ملعقة صغيرة قبل الطهي",
-    ingredients: "ثوم، كزبرة، فلفل أسود، ملح",
-    image: "/molokheya-spice-blend.jpg",
-  },
-  {
-    id: 4,
-    name: "خلطة العدس",
-    recipe: "للعدس والشوربات",
-    ingredients: "كمون، بصل، فلفل، كزبرة",
-    image: "/lentil-spice-blend.jpg",
-  },
-]
-
-const recipes = [
-  {
-    id: 1,
-    title: "دجاج مشوي بالشاورما",
-    description: "دجاج لذيذ ومشوي بطريقة تقليدية",
-    prepTime: "15 دقيقة",
-    cookTime: "30 دقيقة",
-    image: "/grilled-chicken-shawarma.jpg",
-  },
-  {
-    id: 2,
-    title: "لحم مشوي",
-    description: "لحم طري وشهي مع التتبيلات الأصلية",
-    prepTime: "20 دقيقة",
-    cookTime: "40 دقيقة",
-    image: "/grilled-meat-arabic.jpg",
-  },
-  {
-    id: 3,
-    title: "أرز بالتوابل",
-    description: "أرز فاخر مع خليط التوابل",
-    prepTime: "10 دقيقة",
-    cookTime: "25 دقيقة",
-    image: "/spiced-rice-arabic.jpg",
-  },
-]
-
 import { AddToCartButton } from "@/components/add-to-cart-button"
 
 async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
@@ -286,6 +228,7 @@ async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
       .select(baseSelect)
       .eq("is_featured", true)
       .eq("is_archived", false)
+      .order("sort_order", { ascending: true })
       .order("updated_at", { ascending: false })
       .limit(8)
 
@@ -365,50 +308,55 @@ export default async function Home() {
   const shouldRenderPromotion = promotion ? promotion.is_active : true
   const promoContent = activePromotion ?? fallbackPromotion
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-[#FAFAF8] bg-[url('/pattern-bg.svg')] bg-repeat bg-[length:400px_400px]">
 
       {/* Hero Section */}
-      <section className="relative pb-6 md:pb-6 overflow-hidden bg-gradient-to-b from-[#F5F1E8] to-white">
+      <section className="relative pb-0 overflow-hidden bg-gradient-to-b from-[#F5F1E8] to-white min-h-[calc(100vh-80px)] md:min-h-[calc(100vh-96px)]">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-10 right-20 w-72 h-72 bg-[#E8A835]/5 rounded-full blur-3xl"></div>
           <div className="absolute bottom-10 left-10 w-96 h-96 bg-[#C41E3A]/5 rounded-full blur-3xl"></div>
         </div>
 
         <div className="max-w-8xl mx-auto px-4 relative z-10">
-          <Carousel className="relative" opts={{ loop: true, direction: "rtl" }}>
+          <Carousel className="relative h-[72vh] md:h-[80vh] lg:h-[85vh] xl:h-[90vh] min-h-[520px]" opts={{ loop: true, direction: "rtl" }}>
             <CarouselContent>
               {heroSlides.map((slide) => (
-                <CarouselItem key={slide.id}>
-                  <div className="relative h-[460px] md:h-[600px] overflow-hidden rounded-[32px] bg-[#1f1b16]">
-                    <img
-                      src={slide.image_url}
-                      alt={slide.alt_text ?? "صورة السلايدر"}
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
-                    <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 flex flex-col gap-4 text-white">
-                      {slide.alt_text && <p className="text-2xl font-bold">{slide.alt_text}</p>}
-                      {slide.link_url && (
-                        <Link
-                          href={slide.link_url}
-                          className="inline-flex items-center gap-2 bg-white/20 backdrop-blur px-5 py-2 rounded-full text-sm font-semibold hover:bg-white/30"
-                        >
-                          استكشف الآن
-                          <ArrowRight size={18} />
-                        </Link>
-                      )}
+                <CarouselItem key={slide.id} className="h-full">
+                  {slide.link_url ? (
+                    <Link href={slide.link_url} className="block relative h-full w-full overflow-hidden rounded-[32px] bg-[#1f1b16] cursor-pointer group">
+                      <img
+                        src={slide.image_url}
+                        alt={slide.alt_text ?? "صورة السلايدر"}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
+                      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 flex flex-col gap-4 text-white">
+                        {slide.alt_text && <p className="text-2xl font-bold">{slide.alt_text}</p>}
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="relative h-full overflow-hidden rounded-[32px] bg-[#1f1b16]">
+                      <img
+                        src={slide.image_url}
+                        alt={slide.alt_text ?? "صورة السلايدر"}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
+                      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 flex flex-col gap-4 text-white">
+                        {slide.alt_text && <p className="text-2xl font-bold">{slide.alt_text}</p>}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className="hidden md:flex absolute top-1/2  right-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12 [&_svg]:rotate-180" />
-           <CarouselNext className="hidden md:flex absolute top-1/2 left-6 trasnlate-x-100rem -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-12 w-12 [&_svg]:rotate-180" />
+            <CarouselPrevious className="flex absolute top-1/2 left-3 md:left-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-10 w-10 md:h-12 md:w-12" />
+            <CarouselNext className="flex absolute top-1/2 right-3 md:right-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-10 w-10 md:h-12 md:w-12" />
           </Carousel>
         </div>
       </section>
       {featuredProducts.length > 0 && (
-        <section className="relative z-10 -mt-16 mb-16 px-4">
+        <section className="relative z-10 -mt-12 md:-mt-20 mb-16 px-4">
           <div className="max-w-7xl mx-auto rounded-[32px] border border-[#E8E2D1] bg-[#FAF9F6] p-6 md:p-10 shadow-2xl">
             <div className="mb-10 flex flex-col items-center text-center">
               <p className="mb-2 text-sm uppercase tracking-[0.3em] text-[#8B6F47]">Featured • مختار بعناية</p>
@@ -426,7 +374,7 @@ export default async function Home() {
                       <img
                         src={product.image_url}
                         alt={product.name_ar}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105 bg-white"
                         loading="lazy"
                       />
                     ) : (

@@ -343,7 +343,7 @@ function ProductCard({ product }: { product: ProductRecord }) {
           <img
             src={primaryImage}
             alt={product.name_ar}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 bg-white"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl">🌶️</div>

@@ -37,7 +37,7 @@ export function Navbar() {
   }, [supabase])
 
   const navLinks = [
-    { href: "/store", label: "العطاره", icon: Store, shortLabel: "العطاره" },
+    { href: "/store", label: "العطارة", icon: Store, shortLabel: "العطارة" },
     { href: "/blends", label: "الخلطات", icon: Blend, shortLabel: "الخلطات" },
     { href: "/sauces", label: "الصوصات", icon: Soup, shortLabel: "الصوصات" },
     { href: "/offers", label: "العروض", icon: Tag, shortLabel: "العروض" },

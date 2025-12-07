@@ -3,7 +3,7 @@ import { Facebook, Twitter, Instagram, Mail, Phone } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="pb-12 bg-[#2B2520] text-white">
+    <footer className="pb-12 bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand Info */}
@@ -81,7 +81,7 @@ export function Footer() {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-[#8B6F47]/30 pt-8">
+        <div className="border-t border-[#2D6A4F]/50 pt-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
             {/* Social Links */}
             <div className="flex items-center gap-4">

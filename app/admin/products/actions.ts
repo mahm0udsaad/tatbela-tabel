@@ -19,6 +19,8 @@ const productInputSchema = z.object({
   brand: z.string().min(1, "العلامة التجارية مطلوبة"),
   type: z.string().min(1, "نوع المنتج مطلوب"),
   price: z.number().nonnegative(),
+  price_per_kilo: z.number().nonnegative().optional().nullable(),
+  pricing_mode: z.enum(["unit", "per_kilo"]).default("unit"),
   original_price: z.number().nonnegative().optional().nullable(),
   stock: z.number().int().nonnegative(),
   category: z.string().min(1, "الفئة مطلوبة"),
@@ -50,6 +52,8 @@ export async function upsertProductAction(input: {
   brand: string
   type: string
   price: number
+  price_per_kilo?: number | null
+  pricing_mode?: "unit" | "per_kilo"
   original_price?: number | null
   stock: number
   category: string
@@ -70,6 +74,8 @@ export async function upsertProductAction(input: {
     brand: payload.brand,
     type: payload.type,
     price: payload.price,
+    price_per_kilo: payload.price_per_kilo ?? null,
+    pricing_mode: payload.pricing_mode ?? "unit",
     original_price: normalizedOriginalPrice,
     stock: payload.stock,
     category: payload.category,
@@ -260,6 +266,27 @@ export async function deleteProductImageAction(imageId: string) {
 
   if (deleteError) {
     return { success: false, error: deleteError.message }
+  }
+
+  revalidateCommercePaths()
+  return { success: true }
+}
+
+export async function updateProductsSortOrderAction(
+  updates: { id: string; sort_order: number }[]
+) {
+  const supabase = await createClient()
+  
+  // Use Promise.all to update all products in parallel
+  const results = await Promise.all(
+    updates.map(({ id, sort_order }) =>
+      supabase.from("products").update({ sort_order }).eq("id", id)
+    )
+  )
+
+  const hasError = results.some((r) => r.error)
+  if (hasError) {
+    return { success: false, error: "تعذر تحديث ترتيب المنتجات" }
   }
 
   revalidateCommercePaths()

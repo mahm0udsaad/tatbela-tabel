@@ -473,26 +473,9 @@ export default function AdminCarouselPage() {
               </div>
 
               {previewUrl && (
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-semibold text-[#2B2520]">معاينة السلايدر بالحجم الحقيقي</p>
-                      <p className="text-xs text-[#8B6F47]">
-                        تظهر الصورة بالارتفاع المستخدم في الصفحة الرئيسية للتأكد من كونها مناسبة تماماً
-                      </p>
-                    </div>
-                    <div className="relative h-[460px] md:h-[720px] rounded-[32px] overflow-hidden bg-[#1f1b16] border border-[#E8A835]/40">
-                      <img src={previewUrl} alt="معاينة السلايدر" className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/70" />
-                      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white/80 text-xs">
-                        <span>نسبة عرض {HERO_ASPECT_RATIO.toFixed(2)} : 1</span>
-                        <span>الارتفاع 720px (على الشاشات الكبيرة)</span>
-                      </div>
-                    </div>
-                  </div>
-
+                <div className="grid gap-6 md:grid-cols-2" id="image-preview-section">
                   {isLocalImage && cropSourceUrl && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 order-first">
                       <div>
                         <p className="text-sm font-semibold text-[#2B2520]">تحديد الجزء الظاهر من الصورة</p>
                         <p className="text-xs text-[#8B6F47]">
@@ -511,6 +494,8 @@ export default function AdminCarouselPage() {
                               if (!isCropInitialized) {
                                 initializeCropArea(event.currentTarget)
                               }
+                              // Scroll image into view when loaded
+                              event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })
                             }}
                           />
                         </ReactCrop>
@@ -525,6 +510,23 @@ export default function AdminCarouselPage() {
                       </div>
                     </div>
                   )}
+
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#2B2520]">معاينة السلايدر بالحجم الحقيقي</p>
+                      <p className="text-xs text-[#8B6F47]">
+                        تظهر الصورة بالارتفاع المستخدم في الصفحة الرئيسية للتأكد من كونها مناسبة تماماً
+                      </p>
+                    </div>
+                    <div className="relative h-[460px] md:h-[720px] rounded-[32px] overflow-hidden bg-[#1f1b16] border border-[#E8A835]/40">
+                      <img src={previewUrl} alt="معاينة السلايدر" className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/70" />
+                      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white/80 text-xs">
+                        <span>نسبة عرض {HERO_ASPECT_RATIO.toFixed(2)} : 1</span>
+                        <span>الارتفاع 720px (على الشاشات الكبيرة)</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

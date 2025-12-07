@@ -29,12 +29,12 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
       `,
       )
       .eq("is_archived", false) // Exclude archived products
-      .order("created_at", { ascending: false }),
+      .order("sort_order", { ascending: true }),
     supabase.from("categories").select("id, name_ar, parent_id, slug, sort_order").order("sort_order", { ascending: true }),
   ])
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-[#FAFAF8] bg-[url('/pattern-bg.svg')] bg-repeat bg-[length:400px_400px]">
       <section className="bg-[#F5F1E8] border-y border-[#E8E2D1]">
         <div className="max-w-7xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-start justify-between gap-6">

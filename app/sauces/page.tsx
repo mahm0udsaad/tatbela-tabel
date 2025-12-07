@@ -1,59 +1,49 @@
 import { createClient } from "@/lib/supabase/server"
-import { StoreClient } from "../store/store-client"
 
 export const dynamic = "force-dynamic"
 
-type CategoryRecord = {
-  id: string
-  name_ar: string
-  parent_id: string | null
-  slug: string
-  sort_order: number | null
+type SaucesSettings = {
+  is_active: boolean
+  payload: { message?: string } | null
 }
 
-export default async function SaucesPage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
+const DEFAULT_MESSAGE = "قريبا أقوى أنواع الصوصات"
+
+async function getSaucesSettings(): Promise<SaucesSettings | null> {
   const supabase = await createClient()
-  const params = await searchParams
+  const { data, error } = await supabase
+    .from("page_settings")
+    .select("is_active, payload")
+    .eq("key", "sauces_page")
+    .single()
 
-  const { data: categoriesData } = await supabase
-    .from("categories")
-    .select("id, name_ar, parent_id, slug, sort_order")
-    .order("sort_order", { ascending: true })
+  if (error) {
+    console.error("Failed to load sauces settings", error)
+    return null
+  }
+  return data as SaucesSettings
+}
 
-  const categories = categoriesData ?? []
-  const saucesCategoryIds = collectCategoryIds(categories, "sauces")
+export default async function SaucesPage() {
+  const settings = await getSaucesSettings()
+  const isComingSoon = settings ? settings.is_active : true
+  const message = settings?.payload?.message ?? DEFAULT_MESSAGE
 
-  const productsQuery = supabase
-    .from("products")
-    .select(
-      `
-        id,
-        name_ar,
-        description_ar,
-        brand,
-        type,
-        price,
-        original_price,
-        rating,
-        reviews_count,
-        stock,
-        category_id,
-        created_at,
-        is_featured,
-        product_images (image_url, is_primary),
-        product_variants (stock)
-      `,
+  if (!isComingSoon) {
+    return (
+      <main className="min-h-screen bg-[#FAFAF8] bg-[url('/pattern-bg.svg')] bg-repeat bg-[length:400px_400px]">
+        <section className="py-24 px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-4xl font-bold text-[#2B2520] mb-4">الصوصات</h1>
+            <p className="text-lg text-[#8B6F47]">تم إخفاء هذه الصفحة مؤقتاً لحين نشر المنتجات.</p>
+          </div>
+        </section>
+      </main>
     )
-    .eq("is_archived", false)
-    .order("created_at", { ascending: false })
-
-  const { data: productsData } =
-    saucesCategoryIds.length > 0 ? await productsQuery.in("category_id", saucesCategoryIds) : await productsQuery
-
-  const products = productsData ?? []
+  }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-[#FAFAF8] bg-[url('/pattern-bg.svg')] bg-repeat bg-[length:400px_400px]">
       <section className="bg-[#F5F1E8] border-y border-[#E8E2D1]">
         <div className="max-w-7xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-start justify-between gap-6">
@@ -61,49 +51,51 @@ export default async function SaucesPage({ searchParams }: { searchParams: Promi
               <p className="text-sm text-[#8B6F47] uppercase tracking-wider mb-2">Tatbeelah & Tabel</p>
               <h1 className="text-4xl font-bold text-[#2B2520] mb-4">الصوصات</h1>
               <p className="text-lg text-[#8B6F47] max-w-2xl">
-                استمتع بمجموعتنا المتنوعة من الصوصات اللذيذة، مصنوعة من مكونات طبيعية عالية الجودة لإضافة طعم مميز لأطباقك المفضلة.
+                {message}
               </p>
-            </div>
-            <div className="bg-white rounded-2xl shadow-md p-4 w-full md:w-auto flex items-center gap-4">
-              <div>
-                <p className="text-xs text-[#8B6F47] uppercase tracking-wider">عدد الصوصات</p>
-                <h2 className="text-3xl font-bold text-[#2B2520]">{products.length} صوص</h2>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <StoreClient initialProducts={products} categories={categories} initialSearch={params.search ?? ""} />
+      {/* Coming Soon Section */}
+      <section className="py-24 px-4">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-[#F5F1E8] to-[#E8E2D1] shadow-lg">
+              <span className="text-6xl">🍲</span>
+            </div>
+          </div>
+
+          <h2 className="text-4xl md:text-5xl font-bold text-[#2B2520] mb-6 leading-tight">
+            قريباً...
+          </h2>
+          <p className="text-2xl md:text-3xl font-bold text-[#C41E3A] mb-4">
+            {message}
+          </p>
+          <p className="text-lg text-[#8B6F47] mb-12 max-w-md mx-auto">
+            نعمل على تقديم تشكيلة مميزة من الصوصات الشهية التي ستضيف نكهة استثنائية لأطباقك
+          </p>
+
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <div className="w-16 h-0.5 bg-gradient-to-r from-transparent to-[#E8A835]"></div>
+            <span className="text-2xl">✨</span>
+            <div className="w-16 h-0.5 bg-gradient-to-l from-transparent to-[#E8A835]"></div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <span className="px-4 py-2 rounded-full bg-[#F5F1E8] text-[#8B6F47] text-sm font-medium">
+              مكونات طبيعية 100%
+            </span>
+            <span className="px-4 py-2 rounded-full bg-[#F5F1E8] text-[#8B6F47] text-sm font-medium">
+              وصفات أصلية
+            </span>
+            <span className="px-4 py-2 rounded-full bg-[#F5F1E8] text-[#8B6F47] text-sm font-medium">
+              جودة عالية
+            </span>
+          </div>
+        </div>
+      </section>
     </main>
   )
 }
-
-function collectCategoryIds(categories: CategoryRecord[], slug: string) {
-  const root = categories.find((category) => category.slug === slug)
-  if (!root) return []
-
-  const childrenMap = categories.reduce<Map<string, string[]>>((acc, category) => {
-    if (!category.parent_id) return acc
-    if (!acc.has(category.parent_id)) {
-      acc.set(category.parent_id, [])
-    }
-    acc.get(category.parent_id)!.push(category.id)
-    return acc
-  }, new Map())
-
-  const ids: string[] = [root.id]
-  const queue: string[] = [root.id]
-
-  while (queue.length > 0) {
-    const current = queue.shift()!
-    const children = childrenMap.get(current) ?? []
-    children.forEach((childId) => {
-      ids.push(childId)
-      queue.push(childId)
-    })
-  }
-
-  return ids
-}
-

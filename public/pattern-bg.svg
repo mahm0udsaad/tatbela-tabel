@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <pattern id="spice-pattern" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse">
+      <!-- Subtle decorative elements inspired by spice motifs -->
+      <circle cx="25" cy="25" r="1.5" fill="#E8A835" fill-opacity="0.06"/>
+      <circle cx="0" cy="0" r="1" fill="#8B6F47" fill-opacity="0.04"/>
+      <circle cx="50" cy="0" r="1" fill="#8B6F47" fill-opacity="0.04"/>
+      <circle cx="0" cy="50" r="1" fill="#8B6F47" fill-opacity="0.04"/>
+      <circle cx="50" cy="50" r="1" fill="#8B6F47" fill-opacity="0.04"/>
+      <!-- Small leaf shapes -->
+      <path d="M12 12 Q15 8 18 12 Q15 16 12 12" fill="#1A4D2E" fill-opacity="0.03"/>
+      <path d="M37 37 Q40 33 43 37 Q40 41 37 37" fill="#1A4D2E" fill-opacity="0.03"/>
+      <!-- Subtle dots -->
+      <circle cx="12" cy="37" r="0.8" fill="#C41E3A" fill-opacity="0.03"/>
+      <circle cx="37" cy="12" r="0.8" fill="#C41E3A" fill-opacity="0.03"/>
+    </pattern>
+  </defs>
+  <rect width="400" height="400" fill="url(#spice-pattern)"/>
+</svg>
+

@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 type CartContextType = {
   cart: Cart | null
   isLoading: boolean
-  addItem: (productId: string, quantity?: number) => Promise<void>
+  addItem: (productId: string, quantity?: number, productVariantId?: string | null) => Promise<void>
   removeItem: (itemId: string) => Promise<void>
   updateQuantity: (itemId: string, quantity: number) => Promise<void>
   refreshCart: () => Promise<void>
@@ -38,9 +38,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     refreshCart()
   }, [])
 
-  const addItem = async (productId: string, quantity: number = 1) => {
+  const addItem = async (productId: string, quantity: number = 1, productVariantId?: string | null) => {
     try {
-      await addToCart(productId, quantity)
+      await addToCart(productId, quantity, productVariantId)
       await refreshCart()
       toast({
         title: "تمت الإضافة للسلة",

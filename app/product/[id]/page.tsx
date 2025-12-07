@@ -18,6 +18,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         description_ar,
         brand,
         price,
+        price_per_kilo,
+        pricing_mode,
         original_price,
         rating,
         reviews_count,
@@ -74,7 +76,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   } = await supabase.auth.getUser()
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white w-[95%] mx-auto rounded-2xl">
       <ProductDetailClient
         product={product}
         reviews={reviews ?? []}

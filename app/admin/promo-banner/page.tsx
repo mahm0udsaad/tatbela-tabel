@@ -36,9 +36,9 @@ const DEFAULT_FORM_STATE: PromotionFormState = {
   description: "استمتع بأفضل التوابل المصرية الأصلية بسعر خاص. العرض محدود الوقت فقط!",
   cta_label: "اغتنم العرض الآن",
   cta_url: "/store",
-  background_from: "#0f2027",
-  background_via: "#203a43",
-  background_to: "#2c5364",
+  background_from: "#1A4D2E",
+  background_via: "#0F2F1F",
+  background_to: "#1A4D2E",
   is_active: true,
 }
 

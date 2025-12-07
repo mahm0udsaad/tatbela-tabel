@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { CheckCircle, Clock, Truck, Package, Eye, X } from "lucide-react"
+import { CheckCircle, Clock, Truck, Package, Eye } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -41,28 +41,85 @@ interface OrderItem {
   total: number
 }
 
+const PAGE_SIZE = 20
+
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
   const [itemsLoading, setItemsLoading] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<"all" | Order["status"]>("all")
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "online" | "cash">("all")
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const supabase = getSupabaseClient()
 
   useEffect(() => {
-    fetchOrders()
-  }, [])
+    fetchOrders(true)
+  }, [statusFilter, paymentFilter])
 
-  const fetchOrders = async () => {
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          fetchOrders()
+        }
+      },
+      { rootMargin: "200px" },
+    )
+
+    const target = loadMoreRef.current
+    if (target) observer.observe(target)
+
+    return () => {
+      if (target) observer.unobserve(target)
+    }
+  }, [hasMore, loading, loadingMore])
+
+  const fetchOrders = async (reset = false) => {
+    if (!reset && (loading || loadingMore)) return
+
+    if (reset) {
+      setLoading(true)
+      setHasMore(true)
+    } else {
+      setLoadingMore(true)
+    }
+
+    const from = reset ? 0 : orders.length
+    const to = from + PAGE_SIZE - 1
+
     try {
-      const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false })
+      let query = supabase
+        .from("orders")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to)
+
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter)
+      }
+
+      if (paymentFilter !== "all") {
+        query = query.eq("payment_method", paymentFilter)
+      }
+
+      const { data, error, count } = await query
 
       if (error) throw error
-      setOrders(data || [])
+      const received = data?.length ?? 0
+      const previousLength = reset ? 0 : orders.length
+      const totalLoaded = previousLength + received
+
+      setOrders((prev) => (reset ? data || [] : [...prev, ...(data || [])]))
+      setHasMore(count ? totalLoaded < count : received === PAGE_SIZE)
     } catch (error) {
       console.error("خطأ في جلب الطلبات:", error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
@@ -93,7 +150,8 @@ export default function AdminOrders() {
       const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId)
 
       if (error) throw error
-      fetchOrders()
+      setOrders((prev) => prev.map((order) => (order.id === orderId ? { ...order, status: newStatus as Order["status"] } : order)))
+      setSelectedOrder((prev) => (prev && prev.id === orderId ? { ...prev, status: newStatus as Order["status"] } : prev))
     } catch (error) {
       console.error("خطأ في تحديث حالة الطلب:", error)
     }
@@ -135,6 +193,36 @@ export default function AdminOrders() {
   return (
     <div className=" rounded-lg">
       <h1 className="text-3xl font-bold text-[#2B2520] mb-8">إدارة الطلبات</h1>
+
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col md:flex-row gap-4 md:items-center">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <label className="text-sm text-[#8B6F47] font-semibold">حالة الطلب</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as Order["status"] | "all")}
+            className="px-3 py-2 border border-[#D9D4C8] rounded-lg text-sm focus:outline-none focus:border-[#E8A835]"
+          >
+            <option value="all">الكل</option>
+            <option value="pending">قيد الانتظار</option>
+            <option value="processing">قيد المعالجة</option>
+            <option value="shipped">تم الشحن</option>
+            <option value="delivered">تم التسليم</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <label className="text-sm text-[#8B6F47] font-semibold">طريقة الدفع</label>
+          <select
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value as "all" | "online" | "cash")}
+            className="px-3 py-2 border border-[#D9D4C8] rounded-lg text-sm focus:outline-none focus:border-[#E8A835]"
+          >
+            <option value="all">الكل</option>
+            <option value="online">دفع إلكتروني</option>
+            <option value="cash">دفع عند الاستلام</option>
+          </select>
+        </div>
+      </div>
 
         {loading ? (
           <div className="text-center py-12">
@@ -308,8 +396,16 @@ export default function AdminOrders() {
                     </tr>
                   ))
                 )}
+                {!loading && loadingMore && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-[#8B6F47]">
+                      جاري تحميل المزيد...
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
+            <div ref={loadMoreRef} className="h-8" aria-hidden />
           </div>
         )}
     </div>

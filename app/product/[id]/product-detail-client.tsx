@@ -79,6 +79,7 @@ export function ProductDetailClient({
   const [isPending, startTransition] = useTransition()
   const { addItem, isLoading: isCartLoading } = useCart()
   const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [variantError, setVariantError] = useState<string | null>(null)
 
   // Embla Carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "center" })
@@ -115,11 +116,27 @@ export function ProductDetailClient({
     [emblaApi]
   )
 
-  const variants = product.product_variants || []
+  const variants = useMemo(() => {
+    const list = product.product_variants || []
+    return [...list].sort((a, b) => {
+      const aWeight = a.weight ?? 0
+      const bWeight = b.weight ?? 0
+      return aWeight - bWeight
+    })
+  }, [product.product_variants])
+
   const activeVariant = variants.find((variant) => variant.id === selectedVariant) || null
   const availableStock = activeVariant ? activeVariant.stock : product.stock
   const effectivePrice = activeVariant?.price ?? product.price
   const isOutOfStock = availableStock <= 0
+  const isPerKilo = product.pricing_mode === "per_kilo"
+
+  const formatWeight = (weight: number | null) => {
+    if (!weight) return ""
+    if (weight >= 1000) return `${(weight / 1000).toFixed(1)} كجم`
+    if (weight === 500) return "نصف كيلو"
+    return `${weight} جم`
+  }
 
   const handleSubmitReview = () => {
     if (!canReview) {
@@ -148,9 +165,14 @@ export function ProductDetailClient({
   }
 
   const handleAddToCart = async () => {
+    if (variants.length > 0 && !selectedVariant) {
+      setVariantError("يرجى اختيار الوزن قبل الإضافة للسلة")
+      return
+    }
     setIsAddingToCart(true)
     try {
-      await addItem(product.id, quantity)
+      setVariantError(null)
+      await addItem(product.id, quantity, selectedVariant)
     } finally {
       setIsAddingToCart(false)
     }
@@ -273,6 +295,11 @@ export function ProductDetailClient({
                 <span className="text-xl md:text-2xl text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
               )}
             </div>
+            {isPerKilo && (
+              <p className="mt-1 text-xs text-[#8B6F47]">
+                السعر لكل كيلو — اختر الوزن ليتم احتساب السعر النهائي تلقائياً.
+              </p>
+            )}
             {isOutOfStock ? (
               <p className="mt-2 text-xs md:text-sm text-red-600 font-semibold">نفدت الكمية وسيتم التوفير قريباً</p>
             ) : (
@@ -282,28 +309,32 @@ export function ProductDetailClient({
 
           {variants.length > 0 && (
             <div className="space-y-3">
-              <p className="font-semibold text-[#2B2520]">اختر المتغير</p>
+              <p className="font-semibold text-[#2B2520]">اختر الوزن</p>
               <div className="flex flex-wrap gap-3">
-                {variants.map((variant) => (
-                  <button
-                    key={variant.id}
-                    onClick={() => setSelectedVariant(variant.id)}
-                    className={`px-4 py-2 rounded-full border ${
-                      selectedVariant === variant.id ? "border-[#E8A835] bg-[#FFF8ED]" : "border-[#D9D4C8]"
-                    }`}
-                  >
-                    {variant.variant_type || variant.size || variant.weight ? (
-                      <>
-                        {variant.variant_type && <span>{variant.variant_type}</span>}
-                        {variant.size && <span> • {variant.size}</span>}
-                        {variant.weight && <span> • {variant.weight} جم</span>}
-                      </>
-                    ) : (
-                      "خيار أساسي"
-                    )}
-                  </button>
-                ))}
+                {variants.map((variant) => {
+                  const label = formatWeight(variant.weight) || variant.variant_type || variant.size || "خيار أساسي"
+                  return (
+                    <button
+                      key={variant.id}
+                      onClick={() => {
+                        setSelectedVariant(variant.id)
+                        setVariantError(null)
+                      }}
+                      className={`px-4 py-2 rounded-full border text-sm font-semibold ${
+                        selectedVariant === variant.id
+                          ? "border-[#C41E3A] bg-[#C41E3A] text-white shadow-md"
+                          : "border-[#E3DFD5] bg-[#F8F6F1] text-[#2B2520] hover:border-[#E8A835]"
+                      }`}
+                    >
+                      <div className="text-right space-y-1">
+                        <div>{label}</div>
+                        {variant.price !== null && <div className="text-xs">{variant.price.toFixed(2)} ج.م</div>}
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
+              {variantError && <p className="text-sm text-red-600">{variantError}</p>}
             </div>
           )}
 
@@ -513,7 +544,7 @@ function SimilarProductsRow({ products }: { products: SimilarProduct[] }) {
                     <img
                       src={primaryImage}
                       alt={product.name_ar}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 bg-white"
                     />
                     {discount > 0 && (
                       <span className="absolute top-2 left-2 bg-[#C41E3A] text-white px-2 py-1 rounded-full text-xs font-bold z-10">

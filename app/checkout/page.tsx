@@ -23,7 +23,16 @@ type ShippingFormData = {
   phone: string
   address: string
   city: string
+  governorate: string
   postalCode: string
+}
+
+type ShippingZone = {
+  id: string
+  governorate: string
+  base_rate: number
+  per_kg_rate: number
+  estimated_days: number
 }
 
 export default function CheckoutPage() {
@@ -37,6 +46,8 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState("")
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [shippingError, setShippingError] = useState<string | null>(null)
+  const [shippingZones, setShippingZones] = useState<ShippingZone[]>([])
+  const [shippingZoneId, setShippingZoneId] = useState<string | null>(null)
   const [formData, setFormData] = useState<ShippingFormData>({
     firstName: "",
     lastName: "",
@@ -44,6 +55,7 @@ export default function CheckoutPage() {
     phone: "",
     address: "",
     city: "",
+    governorate: "",
     postalCode: "",
   })
 
@@ -61,11 +73,31 @@ export default function CheckoutPage() {
       }
     }
     checkUser()
+    const loadZones = async () => {
+      const { data, error } = await supabase
+        .from("shipping_zones")
+        .select("id, governorate, base_rate, per_kg_rate, estimated_days, sort_order")
+        .order("sort_order", { ascending: true, nullsFirst: true })
+        .order("governorate", { ascending: true })
+      if (error) {
+        console.error("Failed to load shipping zones", error)
+        return
+      }
+      setShippingZones(data ?? [])
+      if ((data ?? []).length > 0) {
+        setShippingZoneId(data![0].id)
+        setFormData((prev) => ({ ...prev, governorate: data![0].governorate }))
+      }
+    }
+    loadZones()
   }, [supabase])
 
   const orderItems = cart?.items || []
   const subtotal = orderItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-  const shipping = 50
+  const shipping =
+    shippingZoneId && shippingZones.length
+      ? Number(shippingZones.find((z) => z.id === shippingZoneId)?.base_rate ?? 50)
+      : 50
   const tax = Math.round(subtotal * 0.14)
   const total = subtotal + shipping + tax
 
@@ -80,7 +112,8 @@ export default function CheckoutPage() {
     email: formData.email.trim(),
     phone: formData.phone.trim(),
     address: formData.address.trim(),
-    city: formData.city.trim(),
+    governorate: formData.governorate.trim(),
+    city: formData.governorate.trim() || formData.city.trim(),
     postalCode: formData.postalCode.trim(),
   })
 
@@ -90,7 +123,7 @@ export default function CheckoutPage() {
     email: data.email,
     phone: data.phone,
     address: data.address,
-    city: data.city,
+    city: data.city || data.governorate || "القاهرة",
     postalCode: data.postalCode || undefined,
   })
 
@@ -100,6 +133,13 @@ export default function CheckoutPage() {
       ...prev,
       [name]: value,
     }))
+    if (name === "governorate") {
+      const zone = shippingZones.find((z) => z.governorate === value)
+      if (zone) {
+        setShippingZoneId(zone.id)
+      }
+      setFormData((prev) => ({ ...prev, city: value }))
+    }
     if (shippingError) setShippingError(null)
     if (paymentError) setPaymentError(null)
   }
@@ -132,6 +172,7 @@ export default function CheckoutPage() {
           shipping_cost: shipping,
           tax_amount: tax,
           total_amount: total,
+          shipping_zone_id: shippingZoneId,
           customer_email: billingData.email,
           first_name: billingData.firstName,
           last_name: billingData.lastName,
@@ -461,26 +502,30 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-6 mb-8">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">المدينة*</label>
-                      <input
-                        type="text"
-                        name="city"
-                        value={formData.city}
+                    <div className="md:col-span-1">
+                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">المحافظة*</label>
+                      <select
+                        name="governorate"
+                        value={formData.governorate}
                         onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
-                        placeholder="المدينة"
-                      />
+                        className="w-full px-4 py-3 rounded-lg border border-[#D9D4C8] focus:border-[#E8A835] focus:outline-none"
+                        required={shippingZones.length > 0}
+                      >
+                        <option value="">اختر المحافظة</option>
+                        {shippingZones.map((zone) => (
+                          <option key={zone.id} value={zone.governorate}>
+                            {zone.governorate} • {Number(zone.base_rate).toFixed(0)} ج.م
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">الرمز البريدي*</label>
+                    <div className="md:col-span-1">
+                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">الرمز البريدي (اختياري)</label>
                       <input
                         type="text"
                         name="postalCode"
                         value={formData.postalCode}
                         onChange={handleChange}
-                        required
                         className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
                         placeholder="الرمز البريدي"
                       />
@@ -639,6 +684,9 @@ export default function CheckoutPage() {
                 <span className="text-lg font-bold text-[#2B2520]">الإجمالي</span>
                 <span className="text-3xl font-bold text-[#C41E3A]">{total} ج.م</span>
               </div>
+              <p className="text-xs text-[#8B6F47] mt-4 text-center">
+                لطلبات الجملة الإتصال بخدمة العملاء 000000000
+              </p>
             </div>
           </div>
         </div>

@@ -21,6 +21,7 @@ import {
   type ProductVariant,
   type ProductFormState,
   type VariantFormState,
+  type WeightUnit,
   emptyProductForm,
   emptyVariantForm,
   mapProductToForm,
@@ -32,6 +33,8 @@ export type UseProductManagerArgs = {
   categories: Category[]
 }
 
+type ViewFilter = "category" | "all" | "featured"
+
 export function useProductManager({ initialProducts, categories }: UseProductManagerArgs) {
   const router = useRouter()
   const pathname = usePathname()
@@ -41,12 +44,19 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   
   // New state for category selection
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [viewFilter, setViewFilter] = useState<ViewFilter>("category")
 
-  // Filter products based on selected category
+  // Filter products based on view filter
   const filteredProducts = useMemo(() => {
+    if (viewFilter === "featured") {
+      return products.filter((p) => p.is_featured)
+    }
+    if (viewFilter === "all") {
+      return products
+    }
     if (!selectedCategoryId) return []
     return products.filter((p) => p.category_id === selectedCategoryId)
-  }, [products, selectedCategoryId])
+  }, [products, selectedCategoryId, viewFilter])
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [productForm, setProductForm] = useState<ProductFormState>(emptyProductForm)
@@ -65,6 +75,25 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
   const resetHandledKey = useRef<string | null>(null)
 
+  const toGrams = (weight: string, unit: WeightUnit) => {
+    const numericWeight = Number(weight)
+    if (!Number.isFinite(numericWeight) || numericWeight <= 0) return null
+    return unit === "kg" ? numericWeight * 1000 : numericWeight
+  }
+
+  const cleanDecimal = (value: number) => {
+    return Number.parseFloat(value.toFixed(3)).toString()
+  }
+
+  const gramsToDisplayWeight = (grams: number | null): { weight: string; unit: WeightUnit } => {
+    if (!grams || grams <= 0) return { weight: "", unit: "g" }
+    if (grams >= 1000) {
+      const kiloValue = grams / 1000
+      return { weight: cleanDecimal(kiloValue), unit: "kg" }
+    }
+    return { weight: cleanDecimal(grams), unit: "g" }
+  }
+
   const selectedProduct = useMemo(() => products.find((product) => product.id === selectedProductId) ?? null, [products, selectedProductId])
 
   useEffect(() => {
@@ -76,6 +105,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   useEffect(() => {
     if (resetKey && resetKey !== resetHandledKey.current) {
       setSelectedCategoryId(null)
+      setViewFilter("category")
       setSelectedProductId(null)
       setIsCreatingNewProduct(false)
       resetHandledKey.current = resetKey
@@ -85,7 +115,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
 
   // When category changes, select the first product in that category or start new
   useEffect(() => {
-    if (!selectedCategoryId) {
+    if (!selectedCategoryId && viewFilter === "category") {
       setSelectedProductId(null)
       setIsCreatingNewProduct(false)
       return
@@ -93,6 +123,10 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
 
     // Don't auto-select a product if we're creating a new one
     if (isCreatingNewProduct) {
+      return
+    }
+
+    if (viewFilter !== "category") {
       return
     }
 
@@ -139,11 +173,13 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
 
   const selectCategory = (categoryId: string) => {
     setSelectedCategoryId(categoryId)
+    setViewFilter("category")
     // selection logic handled by useEffect
   }
 
   const clearCategorySelection = () => {
     setSelectedCategoryId(null)
+    setViewFilter("category")
   }
 
   const startNewProduct = () => {
@@ -172,7 +208,27 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   }
 
   const updateVariantField = (field: keyof VariantFormState, value: string) => {
-    setVariantForm((prev) => ({ ...prev, [field]: value }))
+    setVariantForm((prev) => {
+      let nextState: VariantFormState = { ...prev, [field]: value } as VariantFormState
+
+      if (field === "weight_unit") {
+        const grams = toGrams(prev.weight, prev.weight_unit)
+        if (grams) {
+          nextState.weight = value === "kg" ? cleanDecimal(grams / 1000) : cleanDecimal(grams)
+        }
+      }
+
+      if ((field === "weight" || field === "weight_unit") && productForm.pricing_mode === "per_kilo") {
+        const grams = toGrams(nextState.weight, nextState.weight_unit)
+        const kiloPrice = Number(productForm.price_per_kilo || productForm.price)
+        if (grams && Number.isFinite(kiloPrice) && kiloPrice > 0) {
+          const computedPrice = ((grams / 1000) * kiloPrice).toFixed(2)
+          nextState = { ...nextState, price: computedPrice }
+        }
+      }
+
+      return nextState
+    })
   }
 
   const submitProduct = () => {
@@ -202,13 +258,35 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       return
     }
 
+    const pricingMode = (productForm.pricing_mode as "unit" | "per_kilo") || "unit"
+    const pricePerKilo = productForm.price_per_kilo ? Number(productForm.price_per_kilo) : null
+
+    if (pricingMode === "per_kilo") {
+      if (!pricePerKilo || Number.isNaN(pricePerKilo) || pricePerKilo <= 0) {
+        setErrorMessage("يرجى إدخال سعر الكيلو")
+        return
+      }
+      const variantsCount = selectedProduct?.product_variants?.length ?? 0
+      if (!isCreatingNewProduct && variantsCount === 0) {
+        setErrorMessage("أضف متغيرات الأوزان المتاحة قبل الحفظ")
+        return
+      }
+    }
+    const fallbackPrice = Number(productForm.price) || 0
+    const priceValue =
+      pricingMode === "per_kilo"
+        ? (pricePerKilo ?? fallbackPrice)
+        : fallbackPrice
+
     const payload = {
       id: productForm.id,
       name_ar: productForm.name_ar.trim(),
       description_ar: productForm.description_ar.trim() || null,
       brand: productForm.brand.trim(),
       type: trimmedType,
-      price: Number(productForm.price) || 0,
+      price: priceValue,
+      price_per_kilo: pricePerKilo,
+      pricing_mode: pricingMode,
       original_price: productForm.original_price ? Number(productForm.original_price) : null,
       stock: Number(productForm.stock) || 0,
       category: selectedCategoryName,
@@ -289,11 +367,13 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       return
     }
 
+    const weightInGrams = toGrams(variantForm.weight, variantForm.weight_unit)
+
     const payload = {
       id: variantForm.id,
       product_id: variantProductId,
       sku: variantForm.sku || null,
-      weight: variantForm.weight ? Number(variantForm.weight) : null,
+      weight: weightInGrams,
       size: variantForm.size || null,
       variant_type: variantForm.variant_type || null,
       price: variantForm.price ? Number(variantForm.price) : null,
@@ -316,10 +396,12 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
 
   const editVariant = (variant: ProductVariant) => {
     setVariantProductId(selectedProduct?.id ?? null)
+    const { weight: displayWeight, unit } = gramsToDisplayWeight(variant.weight)
     setVariantForm({
       id: variant.id,
       sku: variant.sku ?? "",
-      weight: variant.weight?.toString() ?? "",
+      weight: displayWeight,
+      weight_unit: unit,
       size: variant.size ?? "",
       variant_type: variant.variant_type ?? "",
       price: variant.price?.toString() ?? "",
@@ -531,6 +613,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
     products: filteredProducts, // Return filtered products to view
     selectedCategoryId,
     selectedCategoryName,
+    viewFilter,
     selectedProduct,
     selectedProductId,
     productForm,
@@ -563,6 +646,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
     closeCropModal,
     confirmCrop,
     updateCrop,
+    setViewFilter,
     openAddCategoryModal: () => setShowAddCategoryModal(true),
     closeAddCategoryModal: () => setShowAddCategoryModal(false),
     pendingImages,

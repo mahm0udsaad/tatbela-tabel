@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
 import { Loader2 } from "lucide-react"
@@ -51,11 +51,22 @@ export function CropModal({
   imageRef 
 }: CropModalProps) {
   const [imgLoaded, setImgLoaded] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
 
   // Reset loaded state when cropFile changes
   useEffect(() => {
     setImgLoaded(false)
   }, [cropFile?.src])
+
+  // Scroll modal into view when it opens
+  useEffect(() => {
+    if (cropFile && modalRef.current) {
+      // Small delay to ensure DOM is ready
+      requestAnimationFrame(() => {
+        modalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+  }, [cropFile])
 
   // Handle image load - initialize default crop
   const handleImageReady = useCallback((img: HTMLImageElement) => {
@@ -83,8 +94,8 @@ export function CropModal({
   if (!cropFile) return null
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div ref={modalRef} className="fixed inset-0 bg-black/60 z-[100] flex items-start md:items-center justify-center p-4 md:p-6 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-4 md:p-6 space-y-4 my-4">
         <div className="space-y-2">
           <h3 className="text-xl font-bold text-[#2B2520]">قص الصورة</h3>
           <p className="text-sm text-[#8B6F47]">
