@@ -156,8 +156,8 @@ export default async function PaymentStatusPage({ searchParams }: PaymentStatusP
   const hasTotalAmount = typeof order?.total_amount === "number"
 
   return (
-    <main className="min-h-screen bg-white">
-      <section className="bg-[#F5F1E8] py-8">
+    <main className="min-h-screen">
+      <section className="py-8">
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-4xl font-bold text-[#2B2520]">تتبع الدفع</h1>
         </div>
@@ -178,7 +178,7 @@ export default async function PaymentStatusPage({ searchParams }: PaymentStatusP
               <p className="text-[#8B6F47]">{statusEntry.description}</p>
             </div>
 
-            <div className="mt-8 bg-white rounded-xl p-6 text-right space-y-4">
+            <div className="mt-8 bg-white/80 backdrop-blur-sm rounded-xl p-6 text-right space-y-4">
               <div className="flex justify-between text-[#2B2520]">
                 <span className="font-semibold">رقم الطلب</span>
                 <span>{order?.order_number || params.merchant_order_id || "غير متوفر"}</span>

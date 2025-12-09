@@ -17,6 +17,7 @@ export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const { cart } = useCart()
+  const isB2BRoute = pathname?.startsWith("/b2b")
 
   const cartCount = cart?.items.reduce((acc, item) => acc + item.quantity, 0) || 0
 
@@ -37,9 +38,11 @@ export function Navbar() {
   }, [supabase])
 
   const navLinks = [
+    { href: "/", label: "الرئيسية", icon: Home, shortLabel: "الرئيسية" },
     { href: "/store", label: "العطارة", icon: Store, shortLabel: "العطارة" },
     { href: "/blends", label: "الخلطات", icon: Blend, shortLabel: "الخلطات" },
     { href: "/sauces", label: "الصوصات", icon: Soup, shortLabel: "الصوصات" },
+    { href: "/b2b", label: "منتجات الجمله", icon: ShoppingCart, shortLabel: "جملة" },
     { href: "/offers", label: "العروض", icon: Tag, shortLabel: "العروض" },
     { href: "/contact", label: "تواصل معنا", icon: Phone, shortLabel: "اتصل" },
   ]
@@ -48,12 +51,14 @@ export function Navbar() {
     event?.preventDefault()
     const query = searchTerm.trim()
     if (!query) return
-    router.push(`/store?search=${encodeURIComponent(query)}`)
+    const targetPath = isB2BRoute ? "/b2b" : "/store"
+    router.push(`${targetPath}?search=${encodeURIComponent(query)}`)
     setMobileSearchOpen(false)
   }
 
   return (
-    <nav className="overflow-hidden bg-white border-b border-[#E8A835]/20 fixed top-0 left-0 right-0 z-50">
+   <>
+    <nav className="overflow-hidden bg-white/80 backdrop-blur-sm border-b border-[#E8A835]/20 fixed top-0 left-0 right-0 z-50">
       <div className="sm:mx-8 sm:px-4 px-1">
         <div className="flex items-center justify-between h-20">
           {/* Left Side - Desktop Menu + Mobile Search */}
@@ -108,7 +113,7 @@ export function Navbar() {
             </form>
 
             {/* Desktop Cart */}
-            <Link href="/cart" className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors hidden md:flex relative">
+            <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors hidden md:flex relative">
               <ShoppingCart size={24} className="text-[#2B2520]" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-[#C41E3A] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
@@ -159,7 +164,7 @@ export function Navbar() {
                   <User size={24} className="text-[#2B2520]" />
                 </Link>
               )}
-              <Link href="/cart" className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors relative">
+              <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors relative">
                 <ShoppingCart size={24} className="text-[#2B2520]" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-[#C41E3A] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
@@ -174,7 +179,7 @@ export function Navbar() {
 
       {/* Mobile search drawer */}
       {mobileSearchOpen && (
-        <div className="md:hidden px-4 pb-4 bg-white border-b border-[#E8A835]/20">
+        <div className="md:hidden px-4 pb-4 bg-white/80 backdrop-blur-sm border-b border-[#E8A835]/20">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-3 bg-[#F5F1E8] rounded-2xl px-4 py-3">
             <Search size={20} className="text-[#8B6F47]" />
             <input
@@ -200,7 +205,8 @@ export function Navbar() {
       )}
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 right-0 left-0 bg-white border-t border-[#E8A835]/20 pb-safe z-50">
+    </nav>
+      <div className="md:hidden fixed bottom-0 right-0 left-0 bg-white/80 backdrop-blur-sm border-t border-[#E8A835]/20 pb-safe z-50">
         <div className="flex items-center justify-around h-16 px-2">
           {navLinks.map((link) => {
             const Icon = link.icon
@@ -221,9 +227,9 @@ export function Navbar() {
             )
           })}
           <Link
-            href="/cart"
+            href={isB2BRoute ? "/b2b/cart" : "/cart"}
             className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all relative ${
-              pathname === '/cart'
+              pathname === '/cart' || pathname === '/b2b/cart'
                 ? 'text-[#E8A835] bg-[#E8A835]/10'
                 : 'text-[#2B2520] hover:text-[#E8A835] hover:bg-[#F5F1E8]'
             }`}
@@ -240,6 +246,6 @@ export function Navbar() {
           </Link>
         </div>
       </div>
-    </nav>
+   </>
   )
 }

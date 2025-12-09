@@ -1,22 +1,32 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { createCategoryAction } from "../../categories/actions"
 import { useRouter } from "next/navigation"
+import type { Category } from "../types"
 
 type AddCategoryModalProps = {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  categories?: Category[]
+  defaultParentId?: string | null
 }
 
-export function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCategoryModalProps) {
+export function AddCategoryModal({ isOpen, onClose, onSuccess, categories = [], defaultParentId = null }: AddCategoryModalProps) {
   const router = useRouter()
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
+  const [parentId, setParentId] = useState<string>(defaultParentId ?? "")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      setParentId(defaultParentId ?? "")
+    }
+  }, [defaultParentId, isOpen])
 
   if (!isOpen) return null
 
@@ -35,7 +45,7 @@ export function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCategoryModa
       const result = await createCategoryAction({
         name_ar: name.trim(),
         slug: slug.trim(),
-        parent_id: null,
+        parent_id: parentId || null,
       })
 
       if (!result.success) {
@@ -47,6 +57,7 @@ export function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCategoryModa
       // Reset form
       setName("")
       setSlug("")
+      setParentId(defaultParentId ?? "")
       setError(null)
       
       // Refresh to get new categories
@@ -128,6 +139,25 @@ export function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCategoryModa
             <p className="text-xs text-gray-500 mt-1">سيتم إنشاؤه تلقائياً من الاسم</p>
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-[#2B2520] mb-2">الفئة الرئيسية (اختياري)</label>
+            <select
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              className="w-full rounded-lg border border-[#D9D4C8] px-4 py-2 focus:border-[#E8A835] focus:outline-none"
+              disabled={isSubmitting}
+            >
+              <option value="">فئة رئيسية</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.parent_id ? "↳ " : ""}
+                  {category.name_ar}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">حدد الفئة الأم لإنشاء فئة فرعية</p>
+          </div>
+
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -150,6 +180,7 @@ export function AddCategoryModal({ isOpen, onClose, onSuccess }: AddCategoryModa
     </div>
   )
 }
+
 
 
 

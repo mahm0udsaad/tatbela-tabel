@@ -73,13 +73,7 @@ export function VariantsCard({
         <p className="text-sm text-[#8B6F47]">لا توجد متغيرات لهذا المنتج.</p>
       )}
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <input
-          placeholder="رمز SKU"
-          value={variantForm.sku}
-          onChange={(e) => onFieldChange("sku", e.target.value)}
-          className="rounded-lg border border-[#D9D4C8] px-3 py-2"
-        />
+      <div className="flex flex-wrap gap-4">
         <div className="flex gap-2">
           <input
             placeholder="الوزن"
@@ -99,18 +93,6 @@ export function VariantsCard({
             <option value="kg">كجم</option>
           </select>
         </div>
-        <input
-          placeholder="الحجم"
-          value={variantForm.size}
-          onChange={(e) => onFieldChange("size", e.target.value)}
-          className="rounded-lg border border-[#D9D4C8] px-3 py-2"
-        />
-        <input
-          placeholder="النوع"
-          value={variantForm.variant_type}
-          onChange={(e) => onFieldChange("variant_type", e.target.value)}
-          className="rounded-lg border border-[#D9D4C8] px-3 py-2"
-        />
         <input
           placeholder={isPerKilo ? "يُحسب تلقائياً" : "سعر خاص"}
           type="number"

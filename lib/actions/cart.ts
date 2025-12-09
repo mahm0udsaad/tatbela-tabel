@@ -32,6 +32,7 @@ export type CartItem = {
     image_url: string | null
     brand: string
     category: string
+    is_b2b?: boolean
     product_images: CartProductImage[] | null
   }
 }
@@ -40,16 +41,38 @@ export type Cart = {
   id: string
   items: CartItem[]
   subtotal: number
+  channel: CartChannel
+  freeShipping?: {
+    eligible: boolean
+    threshold: number | null
+    expiresAt: string | null
+  } | null
 }
 
-export async function getCart(): Promise<Cart | null> {
+export type CartChannel = 'b2c' | 'b2b'
+
+const CART_COOKIE_BY_CHANNEL: Record<CartChannel, string> = {
+  b2c: 'cartId',
+  b2b: 'b2bCartId',
+}
+
+const isRuleActive = (rule: any | null) => {
+  if (!rule) return false
+  if (!rule.is_active) return false
+  if (rule.expires_at && new Date(rule.expires_at).getTime() <= Date.now()) return false
+  return true
+}
+
+export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null> {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const cartId = cookieStore.get('cartId')?.value
+  const cartCookieKey = CART_COOKIE_BY_CHANNEL[channel]
+  const cartId = cookieStore.get(cartCookieKey)?.value
   const { data: { user } } = await supabase.auth.getUser()
 
   let query = supabase.from('carts').select(`
     id,
+    channel,
     cart_items (
       id,
       product_id,
@@ -71,6 +94,7 @@ export async function getCart(): Promise<Cart | null> {
         image_url,
         brand,
         category,
+        is_b2b,
         product_images (
           image_url,
           is_primary,
@@ -81,9 +105,9 @@ export async function getCart(): Promise<Cart | null> {
   `)
 
   if (user) {
-    query = query.eq('user_id', user.id).eq('status', 'active')
+    query = query.eq('user_id', user.id).eq('status', 'active').eq('channel', channel)
   } else if (cartId) {
-    query = query.eq('id', cartId).eq('status', 'active')
+    query = query.eq('id', cartId).eq('status', 'active').eq('channel', channel)
   } else {
     return null
   }
@@ -95,7 +119,12 @@ export async function getCart(): Promise<Cart | null> {
   }
 
   const items = data.cart_items
-    .filter((item: any) => Boolean(item.products))
+    .filter((item: any) => {
+      if (!item.products) return false
+      if (channel === 'b2c' && item.products.is_b2b) return false
+      if (channel === 'b2b' && item.products.is_b2b === false) return false
+      return true
+    })
     .map((item: any) => ({
       id: item.id,
       product_id: item.product_id,
@@ -114,17 +143,45 @@ export async function getCart(): Promise<Cart | null> {
     return sum + priceToUse * item.quantity
   }, 0)
 
+  let freeShipping: Cart['freeShipping'] = null
+  if (channel === 'b2c') {
+    const { data: rule } = await supabase
+      .from('free_shipping_rules')
+      .select('threshold_amount, expires_at, is_active')
+      .in('applies_to', ['b2c', 'all'])
+      .order('applies_to', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const active = isRuleActive(rule)
+    freeShipping = active
+      ? {
+          eligible: subtotal >= Number(rule?.threshold_amount ?? 0),
+          threshold: Number(rule?.threshold_amount ?? 0),
+          expiresAt: rule?.expires_at ?? null,
+        }
+      : null
+  }
+
   return {
     id: data.id,
     items,
-    subtotal
+    subtotal,
+    channel,
+    freeShipping,
   }
 }
 
-export async function addToCart(productId: string, quantity: number = 1, productVariantId?: string | null) {
+export async function addToCart(
+  productId: string,
+  quantity: number = 1,
+  productVariantId?: string | null,
+  channel: CartChannel = 'b2c'
+) {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  let cartId = cookieStore.get('cartId')?.value
+  const cartCookieKey = CART_COOKIE_BY_CHANNEL[channel]
+  let cartId = cookieStore.get(cartCookieKey)?.value
   const { data: { user } } = await supabase.auth.getUser()
 
   // If no cart, create one
@@ -134,7 +191,7 @@ export async function addToCart(productId: string, quantity: number = 1, product
     // Create new guest cart
     const { data: newCart, error: createError } = await supabase
       .from('carts')
-      .insert([{ status: 'active' }])
+      .insert([{ status: 'active', channel }])
       .select('id')
       .single()
     
@@ -142,7 +199,7 @@ export async function addToCart(productId: string, quantity: number = 1, product
     cartIdToUse = newCart.id
     
     // Set cookie
-    cookieStore.set('cartId', cartIdToUse, { 
+    cookieStore.set(cartCookieKey, cartIdToUse, { 
       path: '/',
       httpOnly: true,
       maxAge: 60 * 60 * 24 * 30 // 30 days
@@ -154,6 +211,7 @@ export async function addToCart(productId: string, quantity: number = 1, product
       .select('id')
       .eq('user_id', user.id)
       .eq('status', 'active')
+      .eq('channel', channel)
       .single()
     
     if (userCart) {
@@ -162,7 +220,7 @@ export async function addToCart(productId: string, quantity: number = 1, product
       // Create user cart
       const { data: newCart, error: createError } = await supabase
         .from('carts')
-        .insert([{ user_id: user.id, status: 'active' }])
+        .insert([{ user_id: user.id, status: 'active', channel }])
         .select('id')
         .single()
       
@@ -174,12 +232,24 @@ export async function addToCart(productId: string, quantity: number = 1, product
   // Fetch product and optional variant to snapshot price and validate stock
   const { data: product } = await supabase
     .from('products')
-    .select('id, price, stock')
+    .select('id, price, stock, is_b2b, b2b_price_hidden')
     .eq('id', productId)
     .single()
 
   if (!product) {
     throw new Error('المنتج غير متوفر')
+  }
+
+  if (channel === 'b2c' && product.is_b2b) {
+    throw new Error('هذا المنتج مخصص لمنتجات الجملة')
+  }
+
+  if (channel === 'b2b' && !product.is_b2b) {
+    throw new Error('هذا المنتج متاح للقطاع الفردي فقط')
+  }
+
+  if (channel === 'b2b' && product.b2b_price_hidden) {
+    throw new Error('يرجى التواصل مع المبيعات لإتمام هذا الطلب')
   }
 
   let variantData: { id: string; price: number | null; stock: number | null } | null = null
@@ -267,10 +337,11 @@ export async function removeItemFromCart(itemId: string) {
   return { success: true }
 }
 
-export async function clearCart() {
+export async function clearCart(channel: CartChannel = 'b2c') {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const cartIdCookie = cookieStore.get('cartId')?.value
+  const cartCookieKey = CART_COOKIE_BY_CHANNEL[channel]
+  const cartIdCookie = cookieStore.get(cartCookieKey)?.value
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -283,6 +354,7 @@ export async function clearCart() {
       .select('id')
       .eq('user_id', user.id)
       .eq('status', 'active')
+      .eq('channel', channel)
       .maybeSingle()
 
     if (error) throw error
@@ -293,7 +365,7 @@ export async function clearCart() {
 
   if (!cartIdToClear) {
     if (cartIdCookie) {
-      cookieStore.delete('cartId')
+      cookieStore.delete(cartCookieKey)
     }
     return { success: true }
   }
@@ -304,7 +376,7 @@ export async function clearCart() {
   await supabase.from('carts').update({ updated_at: new Date().toISOString() }).eq('id', cartIdToClear)
 
   if (!user && cartIdCookie) {
-    cookieStore.delete('cartId')
+    cookieStore.delete(cartCookieKey)
   }
 
   return { success: true }

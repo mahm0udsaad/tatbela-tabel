@@ -53,10 +53,10 @@ export default function RecipesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
 
       {/* Recipe Details Section */}
-      <section className="py-16 bg-[#F5F1E8]">
+      <section className="py-16">
         <div className="max-w-4xl mx-auto px-4">
           <div className="mb-12">
             <Link
@@ -69,7 +69,7 @@ export default function RecipesPage() {
           </div>
 
           {recipeDetails.map((recipe) => (
-            <div key={recipe.id} className="bg-white rounded-xl overflow-hidden shadow-lg">
+            <div key={recipe.id} className="bg-white/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg">
               <img src={recipe.image || "/placeholder.svg"} alt={recipe.title} className="w-full h-96 object-cover" />
 
               <div className="p-8">
@@ -124,7 +124,7 @@ export default function RecipesPage() {
         </div>
       </section>
 
-      <section className="py-20 bg-white">
+      <section className="py-20">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-[#2B2520] mb-4">تواصل معنا</h2>

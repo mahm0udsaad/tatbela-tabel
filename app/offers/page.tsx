@@ -35,8 +35,8 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
   ])
 
   return (
-    <main className="min-h-screen bg-white">
-      <section className="bg-[#F5F1E8] border-y border-[#E8E2D1]">
+    <main className="min-h-screen">
+      <section className="border-y border-[#E8E2D1]">
         <div className="max-w-7xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-start justify-between gap-6">
             <div>
@@ -46,7 +46,7 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
                 استفد من أفضل العروض والخصومات الحصرية على منتجاتنا المميزة. تسوق الآن واحصل على أفضل الأسعار!
               </p>
             </div>
-            <div className="bg-white rounded-2xl shadow-md p-4 w-full md:w-auto flex items-center gap-4">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md p-4 w-full md:w-auto flex items-center gap-4">
               <div>
                 <p className="text-xs text-[#8B6F47] uppercase tracking-wider">عدد العروض</p>
                 <h2 className="text-3xl font-bold text-[#2B2520]">{products?.length ?? 0} منتج</h2>

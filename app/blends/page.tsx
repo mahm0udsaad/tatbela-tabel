@@ -22,6 +22,7 @@ export default async function BlendsPage({ searchParams }: { searchParams: Promi
 
   const categories = categoriesData ?? []
   const blendsCategoryIds = collectCategoryIds(categories, "blends")
+  const blendsCategory = categories.find((cat) => cat.slug === "blends")
 
   const productsQuery = supabase
     .from("products")
@@ -53,18 +54,18 @@ export default async function BlendsPage({ searchParams }: { searchParams: Promi
   const products = productsData ?? []
 
   return (
-    <main className="min-h-screen bg-[#FAFAF8] bg-[url('/pattern-bg.svg')] bg-repeat bg-[length:400px_400px]">
-      <section className="bg-[#F5F1E8] border-y border-[#E8E2D1]">
+    <main className="min-h-screen">
+      <section className="border-y border-[#E8E2D1]">
         <div className="max-w-7xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-start justify-between gap-6">
             <div>
               <p className="text-sm text-[#8B6F47] uppercase tracking-wider mb-2">Tatbeelah & Tabel</p>
-              <h1 className="text-4xl font-bold text-[#2B2520] mb-4">استكشف مجموعتنا الكاملة</h1>
+              <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{blendsCategory?.name_ar ?? "الخلطات"}</h1>
               <p className="text-lg text-[#8B6F47] max-w-2xl">
                 اكتشف مجموعتنا المميزة من الخلطات المصرية والأعشاب الأصيلة، مصنوعة بعناية من أفضل التوابل الطبيعية لتضيف نكهة فريدة لأطباقك.
               </p>
             </div>
-            <div className="bg-white rounded-2xl shadow-md p-4 w-full md:w-auto flex items-center gap-4">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md p-4 w-full md:w-auto flex items-center gap-4">
               <div>
                 <p className="text-xs text-[#8B6F47] uppercase tracking-wider">عدد الخلطات</p>
                 <h2 className="text-3xl font-bold text-[#2B2520]">{products.length} خلطة</h2>

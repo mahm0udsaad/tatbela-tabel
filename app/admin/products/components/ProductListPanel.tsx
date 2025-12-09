@@ -1,32 +1,16 @@
 "use client"
 
-import { useState } from "react"
 import { Edit, Trash2, GripVertical } from "lucide-react"
 import { formatCurrency, type Product } from "../types"
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { updateProductsSortOrderAction } from "../actions"
 
 type ProductListPanelProps = {
   products: Product[]
   selectedProductId: string | null
   onSelectProduct: (product: Product) => void
   onDeleteProduct: (productId: string) => void
+  isSavingOrder?: boolean
 }
 
 function SortableProductCard({
@@ -47,7 +31,7 @@ function SortableProductCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: product.id })
+  } = useSortable({ id: product.id, data: { type: "product" } })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -113,84 +97,28 @@ function SortableProductCard({
   )
 }
 
-export function ProductListPanel({ products, selectedProductId, onSelectProduct, onDeleteProduct }: ProductListPanelProps) {
-  const [items, setItems] = useState(products)
-  const [isSaving, setIsSaving] = useState(false)
-
-  // Update items when products prop changes
-  if (JSON.stringify(products.map(p => p.id)) !== JSON.stringify(items.map(p => p.id))) {
-    setItems(products)
-  }
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-
-    if (over && active.id !== over.id) {
-      const oldIndex = items.findIndex((item) => item.id === active.id)
-      const newIndex = items.findIndex((item) => item.id === over.id)
-      const newItems = arrayMove(items, oldIndex, newIndex)
-
-      // Update local state immediately for responsiveness
-      setItems(newItems)
-
-      // Prepare updates with new sort orders
-      const updates = newItems.map((item, index) => ({
-        id: item.id,
-        sort_order: index,
-      }))
-
-      // Persist to database
-      setIsSaving(true)
-      try {
-        await updateProductsSortOrderAction(updates)
-      } catch (error) {
-        console.error("Failed to update sort order:", error)
-        // Revert on failure
-        setItems(products)
-      } finally {
-        setIsSaving(false)
-      }
-    }
-  }
-
+export function ProductListPanel({ products, selectedProductId, onSelectProduct, onDeleteProduct, isSavingOrder }: ProductListPanelProps) {
   return (
     <div className="lg:col-span-2 space-y-4 max-h-[720px] overflow-y-auto pr-2">
-      {isSaving && (
+      {isSavingOrder && (
         <div className="text-xs text-[#8B6F47] text-center py-2">جاري حفظ الترتيب...</div>
       )}
-      {items.length === 0 ? (
+      {products.length === 0 ? (
         <div className="p-6 bg-white rounded-xl text-center text-[#8B6F47] border border-dashed border-[#D9D4C8]">
           لا توجد منتجات بعد. ابدأ بإضافة منتج جديد.
         </div>
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={items} strategy={verticalListSortingStrategy}>
-            {items.map((product) => (
-              <SortableProductCard
-                key={product.id}
-                product={product}
-                isSelected={selectedProductId === product.id}
-                onSelectProduct={onSelectProduct}
-                onDeleteProduct={onDeleteProduct}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+        <SortableContext items={products} strategy={verticalListSortingStrategy}>
+          {products.map((product) => (
+            <SortableProductCard
+              key={product.id}
+              product={product}
+              isSelected={selectedProductId === product.id}
+              onSelectProduct={onSelectProduct}
+              onDeleteProduct={onDeleteProduct}
+            />
+          ))}
+        </SortableContext>
       )}
     </div>
   )

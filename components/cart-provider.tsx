@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useTransition } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { addToCart, getCart, removeItemFromCart, updateCartItemQuantity, clearCart as clearCartAction, type Cart } from '@/lib/actions/cart'
+import { addToCart, getCart, removeItemFromCart, updateCartItemQuantity, clearCart as clearCartAction, type Cart, type CartChannel } from '@/lib/actions/cart'
 import { useRouter } from 'next/navigation'
 
 type CartContextType = {
@@ -17,7 +17,7 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+export function CartProvider({ children, channel = 'b2c' }: { children: React.ReactNode; channel?: CartChannel }) {
   const [cart, setCart] = useState<Cart | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
@@ -25,7 +25,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCart = async () => {
     try {
-      const data = await getCart()
+      const data = await getCart(channel)
       setCart(data)
     } catch (error) {
       console.error('Failed to fetch cart', error)
@@ -40,7 +40,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = async (productId: string, quantity: number = 1, productVariantId?: string | null) => {
     try {
-      await addToCart(productId, quantity, productVariantId)
+      await addToCart(productId, quantity, productVariantId, channel)
       await refreshCart()
       toast({
         title: "تمت الإضافة للسلة",
@@ -97,7 +97,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = async () => {
     try {
-      await clearCartAction()
+      await clearCartAction(channel)
       await refreshCart()
     } catch (error) {
       console.error('Failed to clear cart', error)

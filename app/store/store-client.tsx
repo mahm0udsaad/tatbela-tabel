@@ -1,11 +1,16 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Star, ChevronDown } from "lucide-react"
+import { Star, ChevronDown, Filter, Search, X } from "lucide-react"
 
 import { AddToCartButton } from "@/components/add-to-cart-button"
+import { getSupabaseClient } from "@/lib/supabase"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 type ProductImage = {
   image_url: string
@@ -30,6 +35,8 @@ type ProductRecord = {
   category_id: string | null
   created_at?: string | null
   is_featured?: boolean | null
+  is_b2b?: boolean | null
+  b2b_price_hidden?: boolean | null
   product_images: ProductImage[] | null
   product_variants: ProductVariant[] | null
 }
@@ -48,80 +55,210 @@ interface StoreClientProps {
   initialProducts: ProductRecord[]
   categories: CategoryRecord[]
   initialSearch?: string
+  initialTotal?: number
+  priceBounds?: { min: number; max: number }
+  brands?: string[]
+  pageSize?: number
+  mode?: "b2c" | "b2b"
+  priceHidden?: boolean
+  contactLabel?: string
+  contactUrl?: string
 }
 
-export function StoreClient({ initialProducts, categories, initialSearch = "" }: StoreClientProps) {
+export function StoreClient({
+  initialProducts,
+  categories,
+  initialSearch = "",
+  initialTotal,
+  priceBounds,
+  brands,
+  pageSize = 12,
+  mode = "b2c",
+  priceHidden = false,
+  contactLabel = "تواصل مع المبيعات",
+  contactUrl = "/contact",
+}: StoreClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const supabase = useMemo(() => getSupabaseClient(), [])
+  const isB2B = mode === "b2b"
+  const isMobile = useIsMobile()
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  
+  // Calculate defaults from initialProducts if not provided
+  const calculatedPriceBounds = useMemo(() => {
+    if (priceBounds) return priceBounds
+    if (initialProducts.length === 0) return { min: 0, max: 1000 }
+    const prices = initialProducts.map(p => p.price)
+    return {
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+    }
+  }, [priceBounds, initialProducts])
+
+  const calculatedBrands = useMemo(() => {
+    if (brands) return brands
+    return Array.from(new Set(initialProducts.map(p => p.brand).filter(Boolean)))
+  }, [brands, initialProducts])
+
+  const calculatedInitialTotal = initialTotal ?? initialProducts.length
+
+  const [products, setProducts] = useState<ProductRecord[]>(initialProducts)
+  const [totalCount, setTotalCount] = useState(calculatedInitialTotal)
   const [search, setSearch] = useState(initialSearch)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState<[number, number]>(() => {
-    const minPrice = Math.min(...initialProducts.map((product) => Number(product.price) || 0), 0)
-    const maxPrice = Math.max(...initialProducts.map((product) => Number(product.price) || 0), 100)
-    return [minPrice, maxPrice]
+    const min = Number.isFinite(calculatedPriceBounds.min) ? calculatedPriceBounds.min : 0
+    const maxCandidate = Number.isFinite(calculatedPriceBounds.max) ? calculatedPriceBounds.max : min
+    const max = maxCandidate >= min ? maxCandidate : min
+    return [min, max]
   })
   const [sortBy, setSortBy] = useState("popularity")
+  const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(initialProducts.length < calculatedInitialTotal)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const filtersInitializedRef = useRef(false)
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories])
   const categoryDescendants = useMemo(() => buildDescendantMap(categoryTree), [categoryTree])
 
-  const brandOptions = useMemo(() => {
-    const set = new Set(initialProducts.map((product) => product.brand).filter(Boolean))
-    return Array.from(set)
-  }, [initialProducts])
+  const brandOptions = useMemo(() => Array.from(new Set(calculatedBrands)), [calculatedBrands])
 
-  const priceBounds = useMemo(() => {
-    const min = Math.min(...initialProducts.map((product) => Number(product.price) || 0), 0)
-    const max = Math.max(...initialProducts.map((product) => Number(product.price) || 0), 100)
-    return { min, max }
-  }, [initialProducts])
+  const allowedCategoryIds = useMemo(() => {
+    const allowed = new Set<string>()
+    selectedCategories.forEach((categoryId) => {
+      allowed.add(categoryId)
+      categoryDescendants.get(categoryId)?.forEach((childId) => allowed.add(childId))
+    })
+    return Array.from(allowed)
+  }, [selectedCategories, categoryDescendants])
 
-  const filteredProducts = useMemo(() => {
-    let result = [...initialProducts]
+  const buildQuery = () => {
+    let query = supabase
+      .from("products")
+      .select(
+        `
+        id,
+        name_ar,
+        description_ar,
+        brand,
+        type,
+        price,
+        original_price,
+        rating,
+        reviews_count,
+        stock,
+        category_id,
+        created_at,
+        is_featured,
+        is_b2b,
+        b2b_price_hidden,
+        product_images (image_url, is_primary),
+        product_variants (stock)
+      `,
+        { count: "exact" },
+      )
+      .eq("is_archived", false)
+      .eq("is_b2b", isB2B)
 
-    const query = search.trim().toLowerCase()
-    if (query) {
-      result = result.filter((product) => {
-        const name = product.name_ar?.toLowerCase() || ""
-        const brand = product.brand?.toLowerCase() || ""
-        const description = product.description_ar?.toLowerCase() || ""
-        return name.includes(query) || brand.includes(query) || description.includes(query)
-      })
+    const trimmed = search.trim()
+    if (trimmed) {
+      const term = trimmed.replace(/%/g, "")
+      query = query.or(`name_ar.ilike.%${term}%,description_ar.ilike.%${term}%,brand.ilike.%${term}%`)
     }
 
-    if (selectedCategories.length > 0) {
-      const allowed = new Set<string>()
-      selectedCategories.forEach((categoryId) => {
-        allowed.add(categoryId)
-        categoryDescendants.get(categoryId)?.forEach((childId) => allowed.add(childId))
-      })
-      result = result.filter((product) => (product.category_id ? allowed.has(product.category_id) : false))
+    if (allowedCategoryIds.length > 0) {
+      query = query.in("category_id", allowedCategoryIds)
     }
 
     if (selectedBrands.length > 0) {
-      result = result.filter((product) => selectedBrands.includes(product.brand))
+      query = query.in("brand", selectedBrands)
     }
 
-    result = result.filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1])
+    query = query.gte("price", priceRange[0]).lte("price", priceRange[1])
 
     switch (sortBy) {
       case "price-low":
-        result.sort((a, b) => a.price - b.price)
+        query = query.order("price", { ascending: true }).order("created_at", { ascending: false, nullsLast: true })
         break
       case "price-high":
-        result.sort((a, b) => b.price - a.price)
+        query = query.order("price", { ascending: false }).order("created_at", { ascending: false, nullsLast: true })
         break
       case "newest":
-        result.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
+        query = query.order("created_at", { ascending: false, nullsLast: true })
         break
       default:
-        result.sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0))
+        query = query.order("reviews_count", { ascending: false, nullsLast: true }).order("sort_order", { ascending: true })
         break
     }
 
-    return result
-  }, [initialProducts, search, selectedCategories, selectedBrands, priceRange, sortBy, categoryDescendants])
+    return query
+  }
+
+  const fetchProducts = async (reset = false) => {
+    if (!reset && (loading || loadingMore)) return
+
+    if (reset) {
+      setLoading(true)
+      setHasMore(true)
+    } else {
+      setLoadingMore(true)
+    }
+
+    const from = reset ? 0 : products.length
+    const to = from + pageSize - 1
+
+    try {
+      const { data, error, count } = await buildQuery().range(from, to)
+
+      if (error) throw error
+      const received = data?.length ?? 0
+      const previousLength = reset ? 0 : products.length
+      const totalLoaded = previousLength + received
+
+      setProducts((prev) => (reset ? data || [] : [...prev, ...(data || [])]))
+      if (typeof count === "number") {
+        setTotalCount(count)
+        setHasMore(totalLoaded < count)
+      } else {
+        setHasMore(received === pageSize)
+      }
+    } catch (error) {
+      console.error("خطأ في جلب المنتجات:", error)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!filtersInitializedRef.current) {
+      filtersInitializedRef.current = true
+      return
+    }
+    const timer = setTimeout(() => fetchProducts(true), 300)
+    return () => clearTimeout(timer)
+  }, [sortBy, selectedCategories, selectedBrands, priceRange])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          fetchProducts()
+        }
+      },
+      { rootMargin: "200px" },
+    )
+
+    const target = loadMoreRef.current
+    if (target) observer.observe(target)
+
+    return () => {
+      if (target) observer.unobserve(target)
+    }
+  }, [hasMore, loading, loadingMore])
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategories((prev) =>
@@ -142,26 +279,139 @@ export function StoreClient({ initialProducts, categories, initialSearch = "" }:
       params.delete("search")
     }
     router.replace(`/store?${params.toString()}`)
+    fetchProducts(true)
   }
 
+  const FiltersContent = () => (
+    <div className="space-y-4">
+      <form onSubmit={handleSearchSubmit} className="lg:hidden">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow p-4 space-y-3">
+          <h2 className="text-lg font-bold text-[#2B2520]">البحث</h2>
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 size-5 text-[#8B6F47]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ابحث عن منتج..."
+              className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 pr-10 focus:border-[#E8A835] focus:outline-none text-base"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full px-4 py-3 rounded-lg bg-[#E8A835] text-white font-semibold hover:bg-[#D9941E] active:scale-[0.98] transition-transform"
+          >
+            بحث
+          </button>
+        </div>
+      </form>
+
+      <Accordion type="multiple" defaultValue={["categories", "brands", "price"]} className="w-full">
+        <AccordionItem value="categories" className="border-none">
+          <FilterSection title="الفئات" accordion>
+            <CategoryFilter tree={categoryTree} selected={selectedCategories} onToggle={handleCategoryToggle} />
+          </FilterSection>
+        </AccordionItem>
+
+        <AccordionItem value="brands" className="border-none">
+          <FilterSection title="العلامات" accordion>
+            <div className="space-y-3">
+              {brandOptions.map((brand) => (
+                <label
+                  key={brand}
+                  className="flex items-center gap-3 text-sm text-[#2B2520] cursor-pointer py-2 min-h-[44px]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedBrands.includes(brand)}
+                    onChange={() => handleBrandToggle(brand)}
+                    className="accent-[#E8A835] size-5 cursor-pointer"
+                  />
+                  <span className="flex-1">{brand}</span>
+                </label>
+              ))}
+            </div>
+          </FilterSection>
+        </AccordionItem>
+
+        <AccordionItem value="price" className="border-none">
+          <FilterSection title="السعر" accordion>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47] px-1">
+                <span>{calculatedPriceBounds.min.toFixed(0)} ج.م</span>
+                <ChevronDown size={16} className="text-[#E8A835]" />
+                <span>{calculatedPriceBounds.max.toFixed(0)} ج.م</span>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs text-[#8B6F47] mb-2">من</label>
+                  <input
+                    type="number"
+                    value={priceRange[0]}
+                    min={calculatedPriceBounds.min}
+                    max={priceRange[1]}
+                    onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                    className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-[#8B6F47] mb-2">إلى</label>
+                  <input
+                    type="number"
+                    value={priceRange[1]}
+                    min={priceRange[0]}
+                    max={calculatedPriceBounds.max}
+                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                    className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </FilterSection>
+        </AccordionItem>
+      </Accordion>
+    </div>
+  )
+
+  const activeFiltersCount = selectedCategories.length + selectedBrands.length + 
+    (priceRange[0] !== calculatedPriceBounds.min || priceRange[1] !== calculatedPriceBounds.max ? 1 : 0)
+
   return (
-    <section className="py-12">
+    <section className="py-6 md:py-12">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex flex-col lg:flex-row gap-10">
-          <aside className="lg:w-72 flex-shrink-0 space-y-6">
+        {/* Mobile Search Bar */}
+        <form onSubmit={handleSearchSubmit} className="lg:hidden mb-6">
+          <div className="relative">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 size-5 text-[#8B6F47]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ابحث عن منتج..."
+              className="w-full rounded-xl border-2 border-[#D9D4C8] px-4 py-4 pr-12 focus:border-[#E8A835] focus:outline-none text-base bg-white shadow-sm"
+            />
+          </div>
+        </form>
+
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:block lg:w-72 flex-shrink-0 space-y-6">
             <form onSubmit={handleSearchSubmit}>
-              <div className="bg-white rounded-2xl shadow p-4 space-y-3">
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow p-4 space-y-3">
                 <h2 className="text-lg font-bold text-[#2B2520]">البحث</h2>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="ابحث عن منتج..."
-                  className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835] focus:outline-none"
-                />
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[#8B6F47]" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="ابحث عن منتج..."
+                    className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 pr-9 focus:border-[#E8A835] focus:outline-none"
+                  />
+                </div>
                 <button
                   type="submit"
-                  className="w-full px-4 py-2 rounded-lg bg-[#E8A835] text-white font-semibold hover:bg-[#D9941E]"
+                  className="w-full px-4 py-2 rounded-lg bg-[#E8A835] text-white font-semibold hover:bg-[#D9941E] transition-colors"
                 >
                   بحث
                 </button>
@@ -175,12 +425,12 @@ export function StoreClient({ initialProducts, categories, initialSearch = "" }:
             <FilterSection title="العلامات">
               <div className="space-y-2">
                 {brandOptions.map((brand) => (
-                  <label key={brand} className="flex items-center gap-2 text-sm text-[#2B2520]">
+                  <label key={brand} className="flex items-center gap-2 text-sm text-[#2B2520] cursor-pointer py-1">
                     <input
                       type="checkbox"
                       checked={selectedBrands.includes(brand)}
                       onChange={() => handleBrandToggle(brand)}
-                      className="accent-[#E8A835]"
+                      className="accent-[#E8A835] cursor-pointer"
                     />
                     {brand}
                   </label>
@@ -190,75 +440,168 @@ export function StoreClient({ initialProducts, categories, initialSearch = "" }:
 
             <FilterSection title="السعر">
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-[#8B6F47]">
-                  <span>{priceBounds.min.toFixed(0)} ج.م</span>
+                <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47]">
+                  <span>{calculatedPriceBounds.min.toFixed(0)} ج.م</span>
                   <ChevronDown size={16} className="text-[#E8A835]" />
-                  <span>{priceBounds.max.toFixed(0)} ج.م</span>
+                  <span>{calculatedPriceBounds.max.toFixed(0)} ج.م</span>
                 </div>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     value={priceRange[0]}
-                    min={priceBounds.min}
+                    min={calculatedPriceBounds.min}
                     max={priceRange[1]}
                     onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                    className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm"
+                    className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
                   />
                   <input
                     type="number"
                     value={priceRange[1]}
                     min={priceRange[0]}
-                    max={priceBounds.max}
+                    max={calculatedPriceBounds.max}
                     onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                    className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm"
+                    className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
                   />
                 </div>
               </div>
             </FilterSection>
           </aside>
 
-          <div className="flex-1 space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <p className="text-sm text-[#8B6F47]">عدد النتائج: {filteredProducts.length}</p>
-                <h2 className="text-2xl font-bold text-[#2B2520]">اكتشف منتجاتنا</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-[#8B6F47]">ترتيب حسب</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835]"
+          <div className="flex-1 space-y-6 md:space-y-8">
+            {/* Header with Filters Button and Sort */}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <h2 className="text-xl md:text-2xl font-bold text-[#2B2520] mb-1">اكتشف منتجاتنا</h2>
+                  <p className="text-sm text-[#8B6F47]">
+                    {totalCount} {totalCount === 1 ? "منتج" : "منتج"}
+                    {loading && <span className="text-xs"> (يتم التحديث...)</span>}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setFiltersOpen(true)}
+                  className="lg:hidden relative border-2 border-[#E8A835] text-[#2B2520] hover:bg-[#E8A835]/10 min-h-[44px] px-4"
                 >
-                  <option value="popularity">الأكثر شهرة</option>
-                  <option value="price-low">السعر (تصاعدي)</option>
-                  <option value="price-high">السعر (تنازلي)</option>
-                  <option value="newest">الأحدث</option>
-                </select>
+                  <Filter className="size-5" />
+                  <span className="hidden sm:inline">فلاتر</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-[#C41E3A] text-white text-xs rounded-full size-5 flex items-center justify-center font-bold">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1" />
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <span className="text-sm text-[#8B6F47] whitespace-nowrap">ترتيب حسب</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="flex-1 lg:flex-none rounded-lg border-2 border-[#D9D4C8] px-3 py-2.5 text-sm focus:border-[#E8A835] focus:outline-none bg-white min-h-[44px]"
+                  >
+                    <option value="popularity">الأكثر شهرة</option>
+                    <option value="price-low">السعر (تصاعدي)</option>
+                    <option value="price-high">السعر (تنازلي)</option>
+                    <option value="newest">الأحدث</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+            <div className="rounded-2xl md:rounded-3xl bg-[#F5F1E8] p-4 md:p-6 lg:p-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    mode={mode}
+                    priceHidden={mode === "b2b" ? priceHidden : false}
+                    contactLabel={contactLabel}
+                    contactUrl={contactUrl}
+                  />
+                ))}
+              </div>
             </div>
 
-            {filteredProducts.length === 0 && (
+            {loading && products.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-[#D9D4C8] p-12 text-center text-[#8B6F47]">
+                جاري تحميل المنتجات...
+              </div>
+            )}
+
+            {!loading && products.length === 0 && (
               <div className="rounded-2xl border border-dashed border-[#D9D4C8] p-12 text-center text-[#8B6F47]">
                 لا توجد منتجات مطابقة حالياً.
               </div>
             )}
+
+            {loadingMore && (
+              <div className="text-center text-[#8B6F47] py-4">جاري تحميل المزيد...</div>
+            )}
+
+            <div ref={loadMoreRef} className="h-10" aria-hidden />
           </div>
+
+          {/* Mobile Filters Drawer */}
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetContent 
+              side="bottom" 
+              className="max-h-[85vh] bg-white rounded-t-3xl border-t-2 border-[#E8A835] [&>button]:hidden" 
+              dir="rtl"
+            >
+              <SheetHeader className="text-right border-b border-[#D9D4C8] pb-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <SheetTitle className="text-xl font-bold text-[#2B2520]">الفلاتر</SheetTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setFiltersOpen(false)}
+                    className="h-9 w-9 -mr-2"
+                  >
+                    <X className="size-5" />
+                  </Button>
+                </div>
+                {activeFiltersCount > 0 && (
+                  <p className="text-sm text-[#8B6F47] mt-2">
+                    {activeFiltersCount} {activeFiltersCount === 1 ? "فلتر نشط" : "فلاتر نشطة"}
+                  </p>
+                )}
+              </SheetHeader>
+              <div className="px-4 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+                <FiltersContent />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </section>
   )
 }
 
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FilterSection({
+  title,
+  children,
+  accordion,
+}: {
+  title: string
+  children: React.ReactNode
+  accordion?: boolean
+}) {
+  if (accordion) {
+    return (
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow p-4">
+        <AccordionTrigger className="text-lg font-bold text-[#2B2520] hover:no-underline py-2">
+          {title}
+        </AccordionTrigger>
+        <AccordionContent className="pt-3">{children}</AccordionContent>
+      </div>
+    )
+  }
+
   return (
-    <div className="bg-white rounded-2xl shadow p-4 space-y-3">
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow p-4 space-y-3">
       <h3 className="text-lg font-bold text-[#2B2520]">{title}</h3>
       {children}
     </div>
@@ -296,14 +639,14 @@ function CategoryNodeItem({
 }) {
   return (
     <div className="space-y-1" style={{ marginInlineStart: depth * 16 }}>
-      <label className="flex items-center gap-2 text-sm text-[#2B2520]">
+      <label className="flex items-center gap-3 text-sm text-[#2B2520] cursor-pointer py-2 min-h-[44px]">
         <input
           type="checkbox"
           checked={selected.includes(node.id)}
           onChange={() => onToggle(node.id)}
-          className="accent-[#E8A835]"
+          className="accent-[#E8A835] size-5 cursor-pointer"
         />
-        {node.name_ar}
+        <span className="flex-1">{node.name_ar}</span>
       </label>
       {node.children.length > 0 && (
         <div className="space-y-1">
@@ -316,7 +659,19 @@ function CategoryNodeItem({
   )
 }
 
-function ProductCard({ product }: { product: ProductRecord }) {
+function ProductCard({
+  product,
+  mode = "b2c",
+  priceHidden = false,
+  contactLabel = "تواصل مع المبيعات",
+  contactUrl = "/contact",
+}: {
+  product: ProductRecord
+  mode?: "b2c" | "b2b"
+  priceHidden?: boolean
+  contactLabel?: string
+  contactUrl?: string
+}) {
   const primaryImage =
     product.product_images?.find((image) => image.is_primary)?.image_url ||
     product.product_images?.[0]?.image_url ||
@@ -333,9 +688,12 @@ function ProductCard({ product }: { product: ProductRecord }) {
       ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
       : 0
 
+  const hidePrices = mode === "b2b" && (priceHidden || product.b2b_price_hidden)
+  const productLink = mode === "b2b" ? `/b2b/product/${product.id}` : `/product/${product.id}`
+
   return (
     <Link
-      href={`/product/${product.id}`}
+      href={productLink}
       className="bg-white rounded-2xl overflow-hidden shadow hover:shadow-lg transition border border-[#E8E2D1] flex flex-col group"
     >
       <div className="relative h-64 bg-[#F5F1E8] overflow-hidden">
@@ -360,7 +718,11 @@ function ProductCard({ product }: { product: ProductRecord }) {
         )}
       </div>
       <div className="p-4 flex flex-col flex-1">
-        {product.is_featured ? (
+        {mode === "b2b" ? (
+          <span className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full bg-[#2B2520]/5 text-[#2B2520] text-xs font-bold">
+            منتجات الجمله
+          </span>
+        ) : product.is_featured ? (
           <span className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full bg-[#E8A835]/10 text-[#E8A835] text-xs font-bold">
             ⭐ منتج مميز
           </span>
@@ -385,18 +747,33 @@ function ProductCard({ product }: { product: ProductRecord }) {
           <span className="text-xs text-[#8B6F47]">({product.reviews_count || 0})</span>
         </div>
         <div className="flex items-baseline gap-2 mb-4">
-          <span className="text-2xl font-bold text-[#C41E3A]">{product.price.toFixed(2)} ج.م</span>
-          {product.original_price && product.original_price > product.price && (
-            <span className="text-sm text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
+          {hidePrices ? (
+            <span className="text-base font-semibold text-[#E8A835]">{contactLabel}</span>
+          ) : (
+            <>
+              <span className="text-2xl font-bold text-[#C41E3A]">{product.price.toFixed(2)} ج.م</span>
+              {product.original_price && product.original_price > product.price && (
+                <span className="text-sm text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
+              )}
+            </>
           )}
         </div>
-        <AddToCartButton 
-          productId={product.id} 
-          disabled={isOutOfStock}
-          className="mt-auto"
-        >
-          {isOutOfStock ? "سيعود قريباً" : "أضف إلى السلة"}
-        </AddToCartButton>
+        {hidePrices ? (
+          <Link
+            href={contactUrl}
+            className="mt-auto inline-flex items-center justify-center px-4 py-2 rounded-lg border border-[#E8A835] text-[#E8A835] font-semibold hover:bg-[#FFF8ED]"
+          >
+            {contactLabel}
+          </Link>
+        ) : (
+          <AddToCartButton 
+            productId={product.id} 
+            disabled={isOutOfStock}
+            className="mt-auto"
+          >
+            {isOutOfStock ? "سيعود قريباً" : "أضف إلى السلة"}
+          </AddToCartButton>
+        )}
       </div>
     </Link>
   )

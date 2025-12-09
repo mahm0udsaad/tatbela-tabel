@@ -308,17 +308,17 @@ export default async function Home() {
   const shouldRenderPromotion = promotion ? promotion.is_active : true
   const promoContent = activePromotion ?? fallbackPromotion
   return (
-    <main className="min-h-screen bg-[#FAFAF8] bg-[url('/pattern-bg.svg')] bg-repeat bg-[length:400px_400px]">
+    <main className="min-h-screen">
 
       {/* Hero Section */}
-      <section className="relative pb-0 overflow-hidden bg-gradient-to-b from-[#F5F1E8] to-white min-h-[calc(100vh-80px)] md:min-h-[calc(100vh-96px)]">
+      <section className="relative pb-0 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-10 right-20 w-72 h-72 bg-[#E8A835]/5 rounded-full blur-3xl"></div>
           <div className="absolute bottom-10 left-10 w-96 h-96 bg-[#C41E3A]/5 rounded-full blur-3xl"></div>
         </div>
 
         <div className="max-w-8xl mx-auto px-4 relative z-10">
-          <Carousel className="relative h-[72vh] md:h-[80vh] lg:h-[85vh] xl:h-[90vh] min-h-[520px]" opts={{ loop: true, direction: "rtl" }}>
+          <Carousel className="relative md:h-[80vh] lg:h-[85vh] xl:h-[90vh]" opts={{ loop: true, direction: "rtl" }}>
             <CarouselContent>
               {heroSlides.map((slide) => (
                 <CarouselItem key={slide.id} className="h-full">
@@ -357,7 +357,7 @@ export default async function Home() {
       </section>
       {featuredProducts.length > 0 && (
         <section className="relative z-10 -mt-12 md:-mt-20 mb-16 px-4">
-          <div className="max-w-7xl mx-auto rounded-[32px] border border-[#E8E2D1] bg-[#FAF9F6] p-6 md:p-10 shadow-2xl">
+          <div className="max-w-7xl mx-auto rounded-[32px] border border-[#E8E2D1] bg-[#F5F1E8] p-6 md:p-10 shadow-2xl">
             <div className="mb-10 flex flex-col items-center text-center">
               <p className="mb-2 text-sm uppercase tracking-[0.3em] text-[#8B6F47]">Featured • مختار بعناية</p>
               <h3 className="text-3xl font-bold text-[#2B2520] md:text-4xl">أبرز منتجات Tatbeelah & Tabel</h3>
@@ -430,7 +430,7 @@ export default async function Home() {
       )}
 
       {/* Categories Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-[#2B2520] mb-4">تسوق حسب الفئة</h2>
@@ -442,7 +442,7 @@ export default async function Home() {
               <Link
                 key={category.id}
                 href={category.href}
-                className="group p-8 rounded-2xl bg-gradient-to-br from-[#F5F1E8] to-[#F5F1E8]/50 border border-[#E8A835]/20 hover:border-[#E8A835] hover:shadow-lg transition-all cursor-pointer"
+                className="group p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-[#E8A835]/20 hover:border-[#E8A835] hover:shadow-lg transition-all cursor-pointer"
               >
                 <div className="text-5xl mb-4">{category.icon}</div>
                 <h3 className="text-xl font-bold text-[#2B2520] mb-2 group-hover:text-[#E8A835] transition-colors">
@@ -489,7 +489,7 @@ export default async function Home() {
       )}
 
       {/* Testimonials Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-[#2B2520] mb-4">تقييمات عملائنا</h2>
@@ -498,7 +498,7 @@ export default async function Home() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="p-8 bg-[#F5F1E8] rounded-xl border border-[#E8A835]/20">
+              <div key={index} className="p-8 bg-white/60 backdrop-blur-sm rounded-xl border border-[#E8A835]/20">
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: testimonial.rating }).map((_, i) => (
                     <Star key={i} size={18} className="fill-[#E8A835] text-[#E8A835]" />

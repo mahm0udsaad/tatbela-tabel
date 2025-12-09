@@ -92,11 +92,11 @@ function SignInContent() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
 
       <section className="py-12">
         <div className="max-w-md mx-auto px-4">
-          <div className="bg-white rounded-xl shadow-md p-8 border border-[#E8E2D1]">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8 border border-[#E8E2D1]">
             <h1 className="text-3xl font-bold text-[#2B2520] mb-2">تسجيل الدخول</h1>
             <p className="text-[#8B6F47] mb-8">ادخل بيانات حسابك للمتابعة</p>
 
@@ -193,10 +193,10 @@ function SignInContent() {
 export default function SignInPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen">
         <section className="py-12">
           <div className="max-w-md mx-auto px-4">
-            <div className="bg-white rounded-xl shadow-md p-8 border border-[#E8E2D1]">
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8 border border-[#E8E2D1]">
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E8A835]"></div>
               </div>

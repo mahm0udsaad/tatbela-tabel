@@ -9,6 +9,7 @@ import { CartProvider } from "@/components/cart-provider"
 export function WebsiteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith("/admin")
+  const isB2BRoute = pathname?.startsWith("/b2b")
 
   // For admin routes, just render children without website layout
   if (isAdminRoute) {
@@ -17,7 +18,7 @@ export function WebsiteLayout({ children }: { children: React.ReactNode }) {
 
   // For website routes, wrap with Navbar and Footer
   return (
-    <CartProvider>
+    <CartProvider channel={isB2BRoute ? "b2b" : "b2c"}>
       <div className="pt-22 md:pt-22">
         <Navbar />
         {children}

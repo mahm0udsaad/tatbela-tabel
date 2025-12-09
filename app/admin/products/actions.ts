@@ -26,6 +26,8 @@ const productInputSchema = z.object({
   category: z.string().min(1, "الفئة مطلوبة"),
   category_id: z.string().uuid().optional().nullable(),
   is_featured: z.boolean().default(false),
+  is_b2b: z.boolean().default(false),
+  b2b_price_hidden: z.boolean().optional(),
 })
 
 const variantInputSchema = z.object({
@@ -43,7 +45,14 @@ function revalidateCommercePaths() {
   revalidatePath("/admin/products")
   revalidatePath("/store")
   revalidatePath("/product")
+  revalidatePath("/b2b")
+  revalidatePath("/b2b/product")
 }
+
+const moveProductSchema = z.object({
+  productId: z.string().uuid(),
+  categoryId: z.string().uuid(),
+})
 
 export async function upsertProductAction(input: {
   id?: string
@@ -59,6 +68,8 @@ export async function upsertProductAction(input: {
   category: string
   category_id?: string | null
   is_featured?: boolean
+  is_b2b?: boolean
+  b2b_price_hidden?: boolean
 }) {
   const supabase = await createClient()
   const payload = productInputSchema.parse(input)
@@ -82,6 +93,8 @@ export async function upsertProductAction(input: {
     category_id: payload.category_id,
     name: payload.name_ar,
     is_featured: payload.is_featured ?? false,
+    is_b2b: payload.is_b2b ?? false,
+    b2b_price_hidden: payload.b2b_price_hidden ?? false,
     updated_at: new Date().toISOString(),
   }
 
@@ -291,5 +304,36 @@ export async function updateProductsSortOrderAction(
 
   revalidateCommercePaths()
   return { success: true }
+}
+
+export async function moveProductToCategoryAction(input: { productId: string; categoryId: string }) {
+  const supabase = await createClient()
+  const payload = moveProductSchema.parse(input)
+
+  const { data: category, error: categoryError } = await supabase
+    .from("categories")
+    .select("id, name_ar")
+    .eq("id", payload.categoryId)
+    .single()
+
+  if (categoryError || !category) {
+    return { success: false, error: categoryError?.message ?? "لم يتم العثور على الفئة" }
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update({
+      category_id: category.id,
+      category: category.name_ar,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", payload.productId)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidateCommercePaths()
+  return { success: true, categoryName: category.name_ar }
 }
 

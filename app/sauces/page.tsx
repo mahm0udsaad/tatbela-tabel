@@ -25,16 +25,26 @@ async function getSaucesSettings(): Promise<SaucesSettings | null> {
 }
 
 export default async function SaucesPage() {
+  const supabase = await createClient()
   const settings = await getSaucesSettings()
   const isComingSoon = settings ? settings.is_active : true
   const message = settings?.payload?.message ?? DEFAULT_MESSAGE
 
+  // Get category name from database
+  const { data: saucesCategory } = await supabase
+    .from("categories")
+    .select("name_ar")
+    .eq("slug", "sauces")
+    .single()
+
+  const categoryTitle = saucesCategory?.name_ar ?? "الصوصات"
+
   if (!isComingSoon) {
     return (
-      <main className="min-h-screen bg-[#FAFAF8] bg-[url('/pattern-bg.svg')] bg-repeat bg-[length:400px_400px]">
+      <main className="min-h-screen">
         <section className="py-24 px-4">
           <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-4xl font-bold text-[#2B2520] mb-4">الصوصات</h1>
+            <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{categoryTitle}</h1>
             <p className="text-lg text-[#8B6F47]">تم إخفاء هذه الصفحة مؤقتاً لحين نشر المنتجات.</p>
           </div>
         </section>
@@ -43,13 +53,13 @@ export default async function SaucesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FAFAF8] bg-[url('/pattern-bg.svg')] bg-repeat bg-[length:400px_400px]">
-      <section className="bg-[#F5F1E8] border-y border-[#E8E2D1]">
+    <main className="min-h-screen">
+      <section className="border-y border-[#E8E2D1]">
         <div className="max-w-7xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-start justify-between gap-6">
             <div>
               <p className="text-sm text-[#8B6F47] uppercase tracking-wider mb-2">Tatbeelah & Tabel</p>
-              <h1 className="text-4xl font-bold text-[#2B2520] mb-4">الصوصات</h1>
+              <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{categoryTitle}</h1>
               <p className="text-lg text-[#8B6F47] max-w-2xl">
                 {message}
               </p>

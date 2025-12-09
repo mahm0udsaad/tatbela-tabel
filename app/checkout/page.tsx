@@ -35,10 +35,11 @@ type ShippingZone = {
   estimated_days: number
 }
 
-export default function CheckoutPage() {
+export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   const router = useRouter()
   const supabase = getSupabaseClient()
   const { cart, isLoading: isCartLoading, clearCart } = useCart()
+  const isB2B = mode === "b2b"
   const [currentStep, setCurrentStep] = useState<"auth" | "shipping" | "payment" | "confirmation">("auth")
   const [isLoading, setIsLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online")
@@ -58,6 +59,7 @@ export default function CheckoutPage() {
     governorate: "",
     postalCode: "",
   })
+  const pageTitle = isB2B ? "الدفع للجملة" : "الدفع"
 
   useEffect(() => {
     const checkUser = async () => {
@@ -93,11 +95,16 @@ export default function CheckoutPage() {
   }, [supabase])
 
   const orderItems = cart?.items || []
-  const subtotal = orderItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-  const shipping =
+  const subtotal = orderItems.reduce(
+    (sum, item) => sum + (item.unit_price ?? item.product.price) * item.quantity,
+    0,
+  )
+  const baseShipping =
     shippingZoneId && shippingZones.length
       ? Number(shippingZones.find((z) => z.id === shippingZoneId)?.base_rate ?? 50)
       : 50
+  const isFreeShipping = !isB2B && Boolean(cart?.freeShipping?.eligible)
+  const shipping = isFreeShipping ? 0 : baseShipping
   const tax = Math.round(subtotal * 0.14)
   const total = subtotal + shipping + tax
 
@@ -172,6 +179,7 @@ export default function CheckoutPage() {
           shipping_cost: shipping,
           tax_amount: tax,
           total_amount: total,
+        channel: mode,
           shipping_zone_id: shippingZoneId,
           customer_email: billingData.email,
           first_name: billingData.firstName,
@@ -194,15 +202,18 @@ export default function CheckoutPage() {
       throw new Error("لم نتمكن من إنشاء الطلب في قاعدة البيانات")
     }
 
-    const itemsToInsert = orderItems.map((item) => ({
-      order_id: newOrderId,
-      product_id: item.product.id,
-      product_name: item.product.name,
-      product_brand: item.product.brand,
-      price: item.product.price,
-      quantity: item.quantity,
-      total: item.product.price * item.quantity,
-    }))
+    const itemsToInsert = orderItems.map((item) => {
+      const priceToUse = item.unit_price ?? item.product.price
+      return {
+        order_id: newOrderId,
+        product_id: item.product.id,
+        product_name: item.product.name,
+        product_brand: item.product.brand,
+        price: priceToUse,
+        quantity: item.quantity,
+        total: priceToUse * item.quantity,
+      }
+    })
 
     if (itemsToInsert.length > 0) {
       const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert)
@@ -246,7 +257,7 @@ export default function CheckoutPage() {
       const paymobItemsPayload: PaymobRequestPayload["items"] = [
         ...orderItems.map((item) => ({
           name: item.product.name,
-          price: Number(item.product.price),
+          price: Number(item.unit_price ?? item.product.price),
           quantity: item.quantity,
           description: item.product.brand,
         })),
@@ -335,7 +346,7 @@ export default function CheckoutPage() {
 
   if (isCartLoading) {
     return (
-      <div className="min-h-screen bg-white py-20 text-center">
+      <div className="min-h-screen py-20 text-center">
         <p className="text-[#8B6F47]">جاري تحميل السلة...</p>
       </div>
     )
@@ -343,17 +354,17 @@ export default function CheckoutPage() {
 
   if (currentStep === "auth" && !user) {
     return (
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen">
 
-        <section className="bg-[#F5F1E8] py-8">
+        <section className="py-8">
           <div className="max-w-7xl mx-auto px-4">
-            <h1 className="text-4xl font-bold text-[#2B2520]">الدفع</h1>
+            <h1 className="text-4xl font-bold text-[#2B2520]">{pageTitle}</h1>
           </div>
         </section>
 
         <section className="py-12">
           <div className="max-w-md mx-auto px-4">
-            <div className="bg-white rounded-xl shadow-md p-8 border border-[#E8E2D1] text-center">
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8 border border-[#E8E2D1] text-center">
               <h2 className="text-2xl font-bold text-[#2B2520] mb-4">يجب تسجيل الدخول أولاً</h2>
               <p className="text-[#8B6F47] mb-8">يرجى تسجيل الدخول أو إنشاء حساب جديد لإكمال عملية الشراء</p>
 
@@ -385,12 +396,12 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
 
       {/* Header */}
-      <section className="bg-[#F5F1E8] py-8">
+      <section className="py-8">
         <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-4xl font-bold text-[#2B2520]">الدفع</h1>
+          <h1 className="text-4xl font-bold text-[#2B2520]">{pageTitle}</h1>
         </div>
       </section>
 
@@ -431,7 +442,7 @@ export default function CheckoutPage() {
             <div className="lg:col-span-2">
               {/* Shipping Form */}
               {currentStep === "shipping" && (
-                <form onSubmit={handleShippingSubmit} className="bg-white rounded-xl shadow-md p-8">
+                <form onSubmit={handleShippingSubmit} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8">
                   <h2 className="text-2xl font-bold text-[#2B2520] mb-6">بيانات التوصيل</h2>
 
                   <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -545,7 +556,7 @@ export default function CheckoutPage() {
 
               {/* Payment Form */}
               {currentStep === "payment" && (
-                <form onSubmit={handlePaymentSubmit} className="bg-white rounded-xl shadow-md p-8">
+                <form onSubmit={handlePaymentSubmit} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8">
                   <h2 className="text-2xl font-bold text-[#2B2520] mb-6">تفاصيل الدفع</h2>
 
                   <div className="grid grid-cols-2 gap-4 mb-8">
@@ -653,16 +664,19 @@ export default function CheckoutPage() {
               <h3 className="text-xl font-bold text-[#2B2520] mb-6">ملخص الطلب</h3>
 
               <div className="space-y-4 mb-6 pb-6 border-b border-[#D9D4C8]">
-                {orderItems.map((item) => (
-                  <div key={item.id} className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-[#2B2520]">{item.product.name}</p>
-                      <p className="text-sm text-[#8B6F47]">{item.product.brand}</p>
-                      <p className="text-xs text-[#8B6F47] mt-1">الكمية: {item.quantity}</p>
+                {orderItems.map((item) => {
+                  const linePrice = (item.unit_price ?? item.product.price) * item.quantity
+                  return (
+                    <div key={item.id} className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold text-[#2B2520]">{item.product.name}</p>
+                        <p className="text-sm text-[#8B6F47]">{item.product.brand}</p>
+                        <p className="text-xs text-[#8B6F47] mt-1">الكمية: {item.quantity}</p>
+                      </div>
+                      <p className="font-bold text-[#C41E3A]">{linePrice} ج.م</p>
                     </div>
-                    <p className="font-bold text-[#C41E3A]">{item.product.price * item.quantity} ج.م</p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="space-y-3 mb-6 pb-6 border-b border-[#D9D4C8]">
@@ -672,8 +686,11 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-[#8B6F47]">
                   <span>الشحن</span>
-                  <span>{shipping} ج.م</span>
+                  <span>{shipping === 0 ? "مجاني" : `${shipping} ج.م`}</span>
                 </div>
+                {isFreeShipping && (
+                  <p className="text-xs text-green-700 text-right">تم تفعيل الشحن المجاني على هذا الطلب</p>
+                )}
                 <div className="flex justify-between text-[#8B6F47]">
                   <span>الضريبة (14%)</span>
                   <span>{tax} ج.م</span>
@@ -684,13 +701,19 @@ export default function CheckoutPage() {
                 <span className="text-lg font-bold text-[#2B2520]">الإجمالي</span>
                 <span className="text-3xl font-bold text-[#C41E3A]">{total} ج.م</span>
               </div>
-              <p className="text-xs text-[#8B6F47] mt-4 text-center">
-                لطلبات الجملة الإتصال بخدمة العملاء 000000000
-              </p>
+              {isB2B && (
+                <p className="text-xs text-[#8B6F47] mt-4 text-center">
+                  لطلبات الجملة الإتصال بخدمة العملاء 000000000
+                </p>
+              )}
             </div>
           </div>
         </div>
       </section>
     </main>
   )
+}
+
+export default function CheckoutPage() {
+  return <CheckoutView />
 }

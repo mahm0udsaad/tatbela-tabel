@@ -107,7 +107,7 @@ export default function OrderDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white py-20 text-center">
+      <div className="min-h-screen py-20 text-center">
         <p className="text-[#8B6F47]">جاري تحميل تفاصيل الطلب...</p>
       </div>
     )
@@ -115,7 +115,7 @@ export default function OrderDetailsPage() {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-white py-20 text-center">
+      <div className="min-h-screen py-20 text-center">
         <p className="text-red-500 mb-4">لم يتم العثور على الطلب</p>
         <Link href="/user/orders" className="text-[#E8A835] hover:underline">
           العودة للطلبات
@@ -125,9 +125,9 @@ export default function OrderDetailsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F5F1E8] pb-12">
+    <main className="min-h-screen pb-12">
       {/* Header */}
-      <div className="bg-white shadow-sm">
+      <div className="bg-white/80 backdrop-blur-sm shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-4">
           <Link 
             href="/user/orders" 
@@ -154,13 +154,13 @@ export default function OrderDetailsPage() {
               })}
             </div>
           </div>
-          <div className="bg-white px-4 py-2 rounded-full border border-[#E8E2D1] text-[#E8A835] font-semibold text-sm">
+          <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-[#E8E2D1] text-[#E8A835] font-semibold text-sm">
             {getStatusLabel(order.status)}
           </div>
         </div>
 
         {/* Order Items */}
-        <div className="bg-white rounded-xl shadow-sm border border-[#E8E2D1] overflow-hidden mb-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-[#E8E2D1] overflow-hidden mb-6">
           <div className="p-4 border-b border-[#F5F1E8] bg-[#FAF9F6]">
             <h2 className="font-bold text-[#2B2520] flex items-center gap-2">
               <ShoppingBag size={20} className="text-[#E8A835]" />
@@ -196,7 +196,7 @@ export default function OrderDetailsPage() {
         {/* Order Summary & Info */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Financial Summary */}
-          <div className="bg-white rounded-xl shadow-sm border border-[#E8E2D1] overflow-hidden h-fit">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-[#E8E2D1] overflow-hidden h-fit">
             <div className="p-4 border-b border-[#F5F1E8] bg-[#FAF9F6]">
               <h2 className="font-bold text-[#2B2520] flex items-center gap-2">
                 <CreditCard size={20} className="text-[#E8A835]" />
@@ -228,7 +228,7 @@ export default function OrderDetailsPage() {
           </div>
 
           {/* Shipping Info */}
-          <div className="bg-white rounded-xl shadow-sm border border-[#E8E2D1] overflow-hidden h-fit">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-[#E8E2D1] overflow-hidden h-fit">
             <div className="p-4 border-b border-[#F5F1E8] bg-[#FAF9F6]">
               <h2 className="font-bold text-[#2B2520] flex items-center gap-2">
                 <MapPin size={20} className="text-[#E8A835]" />

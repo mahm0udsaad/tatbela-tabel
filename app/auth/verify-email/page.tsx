@@ -5,11 +5,11 @@ import { Mail, ArrowRight } from "lucide-react"
 
 export default function VerifyEmailPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
 
       <section className="py-12">
         <div className="max-w-md mx-auto px-4">
-          <div className="bg-white rounded-xl shadow-md p-8 border border-[#E8E2D1] text-center">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8 border border-[#E8E2D1] text-center">
             <div className="w-16 h-16 bg-[#F5F1E8] rounded-full flex items-center justify-center mx-auto mb-6">
               <Mail size={32} className="text-[#E8A835]" />
             </div>

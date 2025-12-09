@@ -4,11 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
 import { Loader2 } from "lucide-react"
-
-type CropFileState = {
-  file: File
-  src: string
-}
+import type { CropFileState } from "../types"
 
 type CropModalProps = {
   cropFile: CropFileState

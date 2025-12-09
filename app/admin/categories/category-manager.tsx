@@ -61,18 +61,17 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
       return
     }
 
-    const payload = {
-      id: formState.id || undefined,
-      name_ar: formState.name_ar.trim(),
-      slug: formState.slug.trim(),
-      parent_id: formState.parent_id || null,
-    }
-
-    const action = formState.id ? updateCategoryAction : createCategoryAction
     startTransition(async () => {
       setStatus(null)
       setError(null)
-      const result = await action(payload)
+      const basePayload = {
+        name_ar: formState.name_ar.trim(),
+        slug: formState.slug.trim(),
+        parent_id: formState.parent_id || null,
+      }
+      const result = formState.id
+        ? await updateCategoryAction({ ...basePayload, id: formState.id })
+        : await createCategoryAction(basePayload)
       if (!result.success) {
         setError(result.error ?? "تعذر حفظ الفئة")
         return
@@ -192,6 +191,14 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                   onDragStart={setDraggingId}
                   onDragEnd={() => setDraggingId(null)}
                   dragging={draggingId}
+                  onAddChild={(category) =>
+                    setFormState({
+                      id: "",
+                      name_ar: "",
+                      slug: "",
+                      parent_id: category.id,
+                    })
+                  }
                 />
                 <DropZone active={!!draggingId} parentId={null} position={index + 1} onDrop={handleDrop} depth={0} />
               </div>
@@ -268,6 +275,7 @@ function CategoryItem({
   onDragStart,
   onDragEnd,
   dragging,
+  onAddChild,
 }: {
   node: CategoryNode
   depth: number
@@ -277,6 +285,7 @@ function CategoryItem({
   onDragStart: (id: string) => void
   onDragEnd: () => void
   dragging: string | null
+  onAddChild: (parent: Category) => void
 }) {
   return (
     <div className="space-y-1">
@@ -298,6 +307,20 @@ function CategoryItem({
         </div>
         <div className="flex items-center gap-2">
           {node.children.length > 0 && <span className="text-xs text-[#8B6F47]">({node.children.length}) فرعي</span>}
+          <button
+            className="p-2 rounded-lg border border-[#E8A835]/60 text-[#E8A835]"
+            onClick={() =>
+              onAddChild({
+                id: node.id,
+                name_ar: node.name_ar,
+                slug: node.slug,
+                parent_id: node.parent_id,
+                sort_order: node.sort_order,
+              })
+            }
+          >
+            <PlusCircle size={16} />
+          </button>
           <button
             className="p-2 rounded-lg border border-[#E8A835] text-[#E8A835]"
             onClick={() => onEdit(node)}
@@ -321,6 +344,7 @@ function CategoryItem({
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             dragging={dragging}
+            onAddChild={onAddChild}
           />
           <DropZone active={!!dragging} parentId={node.id} position={index + 1} onDrop={onDrop} depth={depth + 1} />
         </div>

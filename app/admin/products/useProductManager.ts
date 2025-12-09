@@ -12,6 +12,7 @@ import {
   uploadProductImageAction,
   upsertProductAction,
   upsertVariantAction,
+  moveProductToCategoryAction,
 } from "./actions"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -155,15 +156,16 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
         setVariantForm(emptyVariantForm)
       }
     } else if (isCreatingNewProduct) {
-      // Keep form empty but preserve category if selected
+      // Keep form empty but always use selectedCategoryId if available
       setProductForm(prev => {
-        // If we're already in create mode for this category, don't reset the form
-        if (!prev.id && prev.category_id === selectedCategoryId) {
+        // If we're already in create mode and category matches, don't reset the form
+        if (!prev.id && selectedCategoryId && prev.category_id === selectedCategoryId) {
           return prev
         }
+        // Always use selectedCategoryId if it exists, otherwise keep previous or empty
         return {
           ...emptyProductForm,
-          category_id: selectedCategoryId ?? prev.category_id
+          category_id: selectedCategoryId ?? prev.category_id ?? ""
         }
       })
       setVariantProductId(null)
@@ -171,7 +173,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
     }
   }, [selectedProduct, isCreatingNewProduct, selectedCategoryId, productForm.id])
 
-  const selectCategory = (categoryId: string) => {
+  const selectCategory = (categoryId: string | null) => {
     setSelectedCategoryId(categoryId)
     setViewFilter("category")
     // selection logic handled by useEffect
@@ -292,6 +294,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       category: selectedCategoryName,
       category_id: productForm.category_id || null,
       is_featured: productForm.is_featured,
+      is_b2b: Boolean(productForm.is_b2b),
     }
 
     startTransition(async () => {
@@ -357,6 +360,38 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
         setIsCreatingNewProduct(false) 
         // Logic in useEffect will pick next product if available
       }
+      router.refresh()
+    })
+  }
+
+  const moveProductToCategory = (productId: string, categoryId: string) => {
+    startTransition(async () => {
+      setStatusMessage(null)
+      setErrorMessage(null)
+
+      const result = await moveProductToCategoryAction({ productId, categoryId })
+      if (!result.success) {
+        const message = result.error ?? "تعذر نقل المنتج"
+        setErrorMessage(message)
+        toast({ title: "خطأ", description: message, variant: "destructive" })
+        return
+      }
+
+      const categoryName = result.categoryName ?? categories.find((cat) => cat.id === categoryId)?.name_ar ?? ""
+
+      setProducts((prev) =>
+        prev.map((product) =>
+          product.id === productId ? { ...product, category_id: categoryId, category: categoryName } : product,
+        ),
+      )
+
+      if (selectedCategoryId && selectedCategoryId !== categoryId && selectedProductId === productId && viewFilter === "category") {
+        setSelectedProductId(null)
+        setIsCreatingNewProduct(false)
+      }
+
+      setStatusMessage(`تم نقل المنتج إلى ${categoryName}`)
+      toast({ title: "تم النقل", description: `تم نقل المنتج إلى ${categoryName}` })
       router.refresh()
     })
   }
@@ -618,6 +653,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
     selectedProductId,
     productForm,
     variantForm,
+    variantProductId,
     categoryOptions,
     statusMessage,
     errorMessage,
@@ -639,6 +675,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
     submitVariant,
     editVariant,
     deleteVariant,
+    moveProductToCategory,
     triggerUpload,
     handleFileChange,
     handleSetPrimaryImage,

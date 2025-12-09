@@ -41,6 +41,7 @@ type ProductRecord = {
   rating: number | null
   reviews_count: number | null
   stock: number
+  b2b_price_hidden?: boolean | null
   product_images: ProductImage[] | null
   product_variants: ProductVariant[] | null
 }
@@ -55,6 +56,7 @@ type SimilarProduct = {
   rating: number | null
   reviews_count: number | null
   stock: number
+  b2b_price_hidden?: boolean | null
   product_images: ProductImage[] | null
   product_variants: ProductVariant[] | null
 }
@@ -64,11 +66,19 @@ export function ProductDetailClient({
   reviews,
   canReview,
   similarProducts,
+  mode = "b2c",
+  priceHidden = false,
+  contactLabel = "تواصل مع المبيعات",
+  contactUrl = "/contact",
 }: {
   product: ProductRecord
   reviews: Review[]
   canReview: boolean
   similarProducts: SimilarProduct[]
+  mode?: "b2c" | "b2b"
+  priceHidden?: boolean
+  contactLabel?: string
+  contactUrl?: string
 }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null)
@@ -79,7 +89,6 @@ export function ProductDetailClient({
   const [isPending, startTransition] = useTransition()
   const { addItem, isLoading: isCartLoading } = useCart()
   const [isAddingToCart, setIsAddingToCart] = useState(false)
-  const [variantError, setVariantError] = useState<string | null>(null)
 
   // Embla Carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "center" })
@@ -116,27 +125,12 @@ export function ProductDetailClient({
     [emblaApi]
   )
 
-  const variants = useMemo(() => {
-    const list = product.product_variants || []
-    return [...list].sort((a, b) => {
-      const aWeight = a.weight ?? 0
-      const bWeight = b.weight ?? 0
-      return aWeight - bWeight
-    })
-  }, [product.product_variants])
-
+  const variants = product.product_variants || []
   const activeVariant = variants.find((variant) => variant.id === selectedVariant) || null
   const availableStock = activeVariant ? activeVariant.stock : product.stock
   const effectivePrice = activeVariant?.price ?? product.price
   const isOutOfStock = availableStock <= 0
-  const isPerKilo = product.pricing_mode === "per_kilo"
-
-  const formatWeight = (weight: number | null) => {
-    if (!weight) return ""
-    if (weight >= 1000) return `${(weight / 1000).toFixed(1)} كجم`
-    if (weight === 500) return "نصف كيلو"
-    return `${weight} جم`
-  }
+  const hidePrices = mode === "b2b" && (priceHidden || Boolean(product.b2b_price_hidden))
 
   const handleSubmitReview = () => {
     if (!canReview) {
@@ -165,14 +159,12 @@ export function ProductDetailClient({
   }
 
   const handleAddToCart = async () => {
-    if (variants.length > 0 && !selectedVariant) {
-      setVariantError("يرجى اختيار الوزن قبل الإضافة للسلة")
+    if (hidePrices) {
       return
     }
     setIsAddingToCart(true)
     try {
-      setVariantError(null)
-      await addItem(product.id, quantity, selectedVariant)
+      await addItem(product.id, quantity)
     } finally {
       setIsAddingToCart(false)
     }
@@ -290,16 +282,17 @@ export function ProductDetailClient({
 
           <div>
             <div className="flex items-baseline gap-3 md:gap-4">
-              <span className="text-3xl md:text-5xl font-bold text-[#C41E3A]">{effectivePrice.toFixed(2)} ج.م</span>
-              {product.original_price && product.original_price > effectivePrice && (
-                <span className="text-xl md:text-2xl text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
+              {hidePrices ? (
+                <span className="text-lg md:text-xl font-semibold text-[#E8A835]">{contactLabel}</span>
+              ) : (
+                <>
+                  <span className="text-3xl md:text-5xl font-bold text-[#C41E3A]">{effectivePrice.toFixed(2)} ج.م</span>
+                  {product.original_price && product.original_price > effectivePrice && (
+                    <span className="text-xl md:text-2xl text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
+                  )}
+                </>
               )}
             </div>
-            {isPerKilo && (
-              <p className="mt-1 text-xs text-[#8B6F47]">
-                السعر لكل كيلو — اختر الوزن ليتم احتساب السعر النهائي تلقائياً.
-              </p>
-            )}
             {isOutOfStock ? (
               <p className="mt-2 text-xs md:text-sm text-red-600 font-semibold">نفدت الكمية وسيتم التوفير قريباً</p>
             ) : (
@@ -309,32 +302,28 @@ export function ProductDetailClient({
 
           {variants.length > 0 && (
             <div className="space-y-3">
-              <p className="font-semibold text-[#2B2520]">اختر الوزن</p>
+              <p className="font-semibold text-[#2B2520]">اختر المتغير</p>
               <div className="flex flex-wrap gap-3">
-                {variants.map((variant) => {
-                  const label = formatWeight(variant.weight) || variant.variant_type || variant.size || "خيار أساسي"
-                  return (
-                    <button
-                      key={variant.id}
-                      onClick={() => {
-                        setSelectedVariant(variant.id)
-                        setVariantError(null)
-                      }}
-                      className={`px-4 py-2 rounded-full border text-sm font-semibold ${
-                        selectedVariant === variant.id
-                          ? "border-[#C41E3A] bg-[#C41E3A] text-white shadow-md"
-                          : "border-[#E3DFD5] bg-[#F8F6F1] text-[#2B2520] hover:border-[#E8A835]"
-                      }`}
-                    >
-                      <div className="text-right space-y-1">
-                        <div>{label}</div>
-                        {variant.price !== null && <div className="text-xs">{variant.price.toFixed(2)} ج.م</div>}
-                      </div>
-                    </button>
-                  )
-                })}
+                {variants.map((variant) => (
+                  <button
+                    key={variant.id}
+                    onClick={() => setSelectedVariant(variant.id)}
+                    className={`px-4 py-2 rounded-full border ${
+                      selectedVariant === variant.id ? "border-[#E8A835] bg-[#FFF8ED]" : "border-[#D9D4C8]"
+                    }`}
+                  >
+                    {variant.variant_type || variant.size || variant.weight ? (
+                      <>
+                        {variant.variant_type && <span>{variant.variant_type}</span>}
+                        {variant.size && <span> • {variant.size}</span>}
+                        {variant.weight && <span> • {variant.weight} جم</span>}
+                      </>
+                    ) : (
+                      "خيار أساسي"
+                    )}
+                  </button>
+                ))}
               </div>
-              {variantError && <p className="text-sm text-red-600">{variantError}</p>}
             </div>
           )}
 
@@ -357,24 +346,33 @@ export function ProductDetailClient({
                   +
                 </button>
               </div>
-              <button
-                onClick={handleAddToCart}
-                className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base ${
-                  isOutOfStock || isCartLoading || isAddingToCart
-                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    : "bg-[#E8A835] text-white hover:bg-[#D9941E]"
-                }`}
-                disabled={isOutOfStock || isCartLoading || isAddingToCart}
-              >
-                {isAddingToCart ? (
-                  <Loader2 size={18} className="animate-spin md:w-5 md:h-5" />
-                ) : (
-                  <>
-                    <ShoppingCart size={18} className="md:w-5 md:h-5" />
-                    {isOutOfStock ? "سيعود قريباً" : "أضف إلى السلة"}
-                  </>
-                )}
-              </button>
+              {hidePrices ? (
+                <Link
+                  href={contactUrl}
+                  className="flex-1 py-3 rounded-lg border-2 border-[#E8A835] text-[#E8A835] font-bold flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base hover:bg-[#FFF8ED]"
+                >
+                  {contactLabel}
+                </Link>
+              ) : (
+                <button
+                  onClick={handleAddToCart}
+                  className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base ${
+                    isOutOfStock || isCartLoading || isAddingToCart
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-[#E8A835] text-white hover:bg-[#D9941E]"
+                  }`}
+                  disabled={isOutOfStock || isCartLoading || isAddingToCart}
+                >
+                  {isAddingToCart ? (
+                    <Loader2 size={18} className="animate-spin md:w-5 md:h-5" />
+                  ) : (
+                    <>
+                      <ShoppingCart size={18} className="md:w-5 md:h-5" />
+                      {isOutOfStock ? "سيعود قريباً" : "أضف إلى السلة"}
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => setIsFavorite(!isFavorite)}
                 className={`p-2 md:p-3 rounded-lg border ${
@@ -394,7 +392,7 @@ export function ProductDetailClient({
       </div>
 
       <section className="mt-8 md:mt-16 grid lg:grid-cols-2 gap-6 md:gap-10">
-        <div className="bg-white rounded-xl md:rounded-2xl shadow p-4 md:p-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl shadow p-4 md:p-6">
           <h3 className="text-xl md:text-2xl font-bold text-[#2B2520] mb-4">تقييمات العملاء</h3>
           {reviews.length === 0 ? (
             <p className="text-sm text-[#8B6F47]">كن أول من يقيّم هذا المنتج.</p>
@@ -422,7 +420,7 @@ export function ProductDetailClient({
           )}
         </div>
 
-        <div className="bg-white rounded-xl md:rounded-2xl shadow p-4 md:p-6 space-y-3 md:space-y-4">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl shadow p-4 md:p-6 space-y-3 md:space-y-4">
           <h3 className="text-xl md:text-2xl font-bold text-[#2B2520]">اكتب تقييمك</h3>
           <div className="space-y-3">
             <label className="text-sm font-semibold text-[#2B2520]">التقييم</label>
@@ -485,14 +483,32 @@ export function ProductDetailClient({
             <h2 className="text-2xl md:text-3xl font-bold text-[#2B2520] mb-2">منتجات مشابهة</h2>
             <p className="text-sm md:text-base text-[#8B6F47]">من نفس الفئة</p>
           </div>
-          <SimilarProductsRow products={similarProducts} />
+          <SimilarProductsRow
+            products={similarProducts}
+            mode={mode}
+            priceHidden={priceHidden}
+            contactLabel={contactLabel}
+            contactUrl={contactUrl}
+          />
         </section>
       )}
     </section>
   )
 }
 
-function SimilarProductsRow({ products }: { products: SimilarProduct[] }) {
+function SimilarProductsRow({
+  products,
+  mode = "b2c",
+  priceHidden = false,
+  contactLabel = "تواصل مع المبيعات",
+  contactUrl = "/contact",
+}: {
+  products: SimilarProduct[]
+  mode?: "b2c" | "b2b"
+  priceHidden?: boolean
+  contactLabel?: string
+  contactUrl?: string
+}) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     slidesToScroll: 1,
@@ -512,6 +528,7 @@ function SimilarProductsRow({ products }: { products: SimilarProduct[] }) {
 
   return (
     <div className="relative">
+      <div className="rounded-3xl bg-[#F5F1E8] p-6 md:p-8">
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex gap-4 md:gap-6">
           {products.map((product) => {
@@ -530,6 +547,8 @@ function SimilarProductsRow({ products }: { products: SimilarProduct[] }) {
               product.original_price && product.original_price > product.price
                 ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
                 : 0
+            const hidePrice = mode === "b2b" && (priceHidden || Boolean(product.b2b_price_hidden))
+            const productLink = mode === "b2b" ? `/b2b/product/${product.id}` : `/product/${product.id}`
 
             return (
               <div
@@ -537,7 +556,7 @@ function SimilarProductsRow({ products }: { products: SimilarProduct[] }) {
                 className="flex-[0_0_85%] sm:flex-[0_0_45%] lg:flex-[0_0_30%] min-w-0"
               >
                 <Link
-                  href={`/product/${product.id}`}
+                  href={productLink}
                   className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all border border-[#E8E2D1] flex flex-col group h-full"
                 >
                   <div className="relative h-48 bg-[#F5F1E8] overflow-hidden">
@@ -579,13 +598,19 @@ function SimilarProductsRow({ products }: { products: SimilarProduct[] }) {
                       <span className="text-xs text-[#8B6F47]">({product.reviews_count || 0})</span>
                     </div>
                     <div className="flex items-baseline gap-2 mb-3">
-                      <span className="text-xl md:text-2xl font-bold text-[#C41E3A]">
-                        {product.price.toFixed(2)} ج.م
-                      </span>
-                      {product.original_price && product.original_price > product.price && (
-                        <span className="text-xs md:text-sm text-gray-400 line-through">
-                          {product.original_price.toFixed(2)} ج.م
-                        </span>
+                      {hidePrice ? (
+                        <span className="text-sm font-semibold text-[#E8A835]">{contactLabel}</span>
+                      ) : (
+                        <>
+                          <span className="text-xl md:text-2xl font-bold text-[#C41E3A]">
+                            {product.price.toFixed(2)} ج.م
+                          </span>
+                          {product.original_price && product.original_price > product.price && (
+                            <span className="text-xs md:text-sm text-gray-400 line-through">
+                              {product.original_price.toFixed(2)} ج.م
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -593,6 +618,7 @@ function SimilarProductsRow({ products }: { products: SimilarProduct[] }) {
               </div>
             )
           })}
+          </div>
         </div>
       </div>
 

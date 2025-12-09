@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { ProductDetailClient } from "./product-detail-client"
+import { ProductDetailClient } from "@/app/product/[id]/product-detail-client"
 
 export const dynamic = "force-dynamic"
 
-export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function B2BProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: product, error }, { data: reviews }] = await Promise.all([
+  const [{ data: product, error }, { data: b2bSettings }, { data: reviews }] = await Promise.all([
     supabase
       .from("products")
       .select(
@@ -26,15 +26,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         stock,
         category_id,
         is_featured,
-        is_b2b,
         b2b_price_hidden,
         product_images (id, image_url, is_primary),
         product_variants (id, sku, size, weight, variant_type, price, stock)
       `,
       )
       .eq("id", id)
-      .eq("is_b2b", false)
+      .eq("is_b2b", true)
       .single(),
+    supabase.from("b2b_settings").select("price_hidden, contact_label, contact_url").maybeSingle(),
     supabase
       .from("product_reviews")
       .select("id, rating, title, content, created_at")
@@ -43,7 +43,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       .order("created_at", { ascending: false }),
   ])
 
-  // Fetch similar products after we have the product's category_id
   const { data: similarProducts } = product?.category_id
     ? await supabase
         .from("products")
@@ -59,13 +58,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           reviews_count,
           stock,
           is_featured,
+          b2b_price_hidden,
           product_images (id, image_url, is_primary),
           product_variants (id, sku, size, weight, variant_type, price, stock)
         `,
         )
         .eq("category_id", product.category_id)
         .eq("is_archived", false)
-        .eq("is_b2b", false)
+        .eq("is_b2b", true)
         .neq("id", id)
         .limit(8)
         .order("created_at", { ascending: false })
@@ -79,6 +79,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     data: { user },
   } = await supabase.auth.getUser()
 
+  const priceHidden = (b2bSettings?.price_hidden ?? false) || Boolean(product.b2b_price_hidden)
+  const contactLabel = b2bSettings?.contact_label ?? "تواصل مع المبيعات"
+  const contactUrl = b2bSettings?.contact_url ?? "/contact"
+
   return (
     <main className="min-h-screen bg-white w-[95%] mx-auto rounded-2xl">
       <ProductDetailClient
@@ -86,7 +90,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         reviews={reviews ?? []}
         canReview={Boolean(user)}
         similarProducts={similarProducts ?? []}
+        mode="b2b"
+        priceHidden={priceHidden}
+        contactLabel={contactLabel}
+        contactUrl={contactUrl}
       />
     </main>
   )
 }
+

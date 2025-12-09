@@ -88,9 +88,9 @@ export default function OrdersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
 
-      <section className="bg-[#F5F1E8] py-8">
+      <section className="py-8">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-[#2B2520]">طلباتي</h1>
@@ -129,7 +129,7 @@ export default function OrdersPage() {
               {orders.map((order) => (
                 <div
                   key={order.id}
-                  className="bg-white border border-[#E8E2D1] rounded-xl p-6 hover:shadow-lg transition-shadow"
+                  className="bg-white/80 backdrop-blur-sm border border-[#E8E2D1] rounded-xl p-6 hover:shadow-lg transition-shadow"
                 >
                   <div className="grid md:grid-cols-5 gap-4 items-center">
                     <div>

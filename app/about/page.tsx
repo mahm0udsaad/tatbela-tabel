@@ -113,9 +113,9 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
 
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#F5F1E8] via-white to-white py-20">
+      <section className="relative overflow-hidden py-20">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-10 right-16 h-64 w-64 rounded-full bg-[#E8A835]/20 blur-3xl" />
           <div className="absolute bottom-0 left-10 h-80 w-80 rounded-full bg-[#C41E3A]/10 blur-3xl" />
@@ -148,7 +148,7 @@ export default function AboutPage() {
                 </Link>
               </div>
             </div>
-            <div className="bg-white border border-[#E8E2D1] rounded-3xl p-8 shadow-2xl">
+            <div className="bg-white/80 backdrop-blur-sm border border-[#E8E2D1] rounded-3xl p-8 shadow-2xl">
               <div className="flex items-center gap-3 mb-6 text-[#8B6F47]">
                 <Award className="text-[#E8A835]" />
                 <span className="font-semibold">حرفية معتمدة في تصنيع التوابل</span>
@@ -182,13 +182,13 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-16 bg-[#FDFBF7]">
+      <section className="py-16">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-2xl border border-[#E8E2D1] bg-white p-6 text-center shadow-sm hover:shadow-md transition-shadow"
+                className="rounded-2xl border border-[#E8E2D1] bg-white/80 backdrop-blur-sm p-6 text-center shadow-sm hover:shadow-md transition-shadow"
               >
                 <p className="text-4xl font-extrabold text-[#C41E3A] mb-2">{stat.value}</p>
                 <p className="text-lg font-bold text-[#2B2520] mb-2">{stat.label}</p>
@@ -199,7 +199,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-20 bg-white">
+      <section className="py-20">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
             <p className="text-sm uppercase tracking-[0.4em] text-[#8B6F47] mb-2">Journey</p>
@@ -212,7 +212,7 @@ export default function AboutPage() {
             {milestones.map((milestone, index) => (
               <div
                 key={milestone.year}
-                className="relative rounded-3xl border border-[#E8E2D1] bg-[#FDFBF7] p-8 shadow-sm"
+                className="relative rounded-3xl border border-[#E8E2D1] bg-white/60 backdrop-blur-sm p-8 shadow-sm"
               >
                 <div className="flex flex-wrap gap-6 items-start">
                   <div className="text-3xl font-black text-[#E8A835]">{milestone.year}</div>
@@ -230,7 +230,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-20 bg-[#F5F1E8]">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-14">
             <p className="text-sm uppercase tracking-[0.4em] text-[#8B6F47] mb-2">Values</p>
@@ -238,7 +238,7 @@ export default function AboutPage() {
           </div>
           <div className="grid gap-8 md:grid-cols-2">
             {values.map((value) => (
-              <div key={value.title} className="relative rounded-3xl border border-[#E8E2D1] bg-white p-8 overflow-hidden">
+              <div key={value.title} className="relative rounded-3xl border border-[#E8E2D1] bg-white/80 backdrop-blur-sm p-8 overflow-hidden">
                 <div className={`absolute inset-0 pointer-events-none bg-gradient-to-br ${value.accent}`} />
                 <div className="relative z-10 flex items-start gap-4">
                   <div className="h-14 w-14 rounded-2xl bg-[#2B2520] flex items-center justify-center">
@@ -255,7 +255,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-20 bg-white">
+      <section className="py-20">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-[#2B2520] mb-4">شبكة التوريد المسؤولة</h2>
@@ -265,7 +265,7 @@ export default function AboutPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {sourcingHighlights.map((item) => (
-              <div key={item.region} className="rounded-2xl border border-[#E8E2D1] bg-[#F5F1E8] p-6">
+              <div key={item.region} className="rounded-2xl border border-[#E8E2D1] bg-white/60 backdrop-blur-sm p-6">
                 <p className="text-sm font-semibold text-[#8B6F47] mb-2">{item.region}</p>
                 <h3 className="text-xl font-bold text-[#2B2520] mb-3">{item.crop}</h3>
                 <p className="text-[#5C5347]">{item.note}</p>
@@ -275,7 +275,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-20 bg-[#FDFBF7]">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-[#2B2520] mb-4">وجوه وراء النكهة</h2>
@@ -283,7 +283,7 @@ export default function AboutPage() {
           </div>
           <div className="grid gap-8 md:grid-cols-3">
             {team.map((member) => (
-              <div key={member.name} className="rounded-3xl border border-[#E8E2D1] bg-white p-8 shadow-sm">
+              <div key={member.name} className="rounded-3xl border border-[#E8E2D1] bg-white/80 backdrop-blur-sm p-8 shadow-sm">
                 <div className="h-16 w-16 rounded-2xl bg-[#2B2520] text-white text-2xl font-bold flex items-center justify-center mb-4">
                   {member.name.slice(0, 1)}
                 </div>

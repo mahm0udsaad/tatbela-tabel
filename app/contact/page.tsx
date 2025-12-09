@@ -33,10 +33,10 @@ export default function ContactPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
 
       {/* Header */}
-      <section className="bg-[#F5F1E8] py-12">
+      <section className="py-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <h1 className="text-4xl font-bold text-[#2B2520] mb-4">تواصل معنا</h1>
           <p className="text-lg text-[#8B6F47]">نحن هنا للإجابة على جميع أسئلتك واستفساراتك</p>
