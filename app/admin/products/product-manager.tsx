@@ -33,7 +33,6 @@ export function ProductManager({
   categories: Category[]
 }) {
   const manager = useProductManager({ initialProducts, categories })
-  const productTypeOptions = ["صوصات", "عطارة", "خلطات"]
   const [sortableProducts, setSortableProducts] = useState(manager.products)
   const [isSavingOrder, setIsSavingOrder] = useState(false)
   const [draggingProductId, setDraggingProductId] = useState<string | null>(null)
@@ -250,9 +249,9 @@ export function ProductManager({
               productForm={manager.productForm}
               onFieldChange={manager.updateProductFormField}
               categoryOptions={manager.categoryOptions}
-              productTypeOptions={productTypeOptions}
               onAddCategory={() => openAddCategory(manager.selectedCategoryId)}
-              lockCategory={manager.isCreatingNewProduct && Boolean(manager.selectedCategoryId)}
+              lockCategory={Boolean(manager.selectedCategoryId || manager.productForm.id)}
+              selectedCategoryName={manager.selectedCategoryName ?? manager.selectedProduct?.category ?? null}
             />
 
             <ProductImagesCard
@@ -297,22 +296,12 @@ export function ProductManager({
       />
 
       <button
-        className="fixed bottom-4 right-4 z-40 px-4 py-3 rounded-full bg-[#E8A835] text-white font-bold shadow-lg hover:bg-[#D9941E] disabled:opacity-60 transition-colors"
+        className="fixed bottom-4 right-64 z-40 px-4 py-3 rounded-full bg-[#E8A835] text-white font-bold shadow-lg hover:bg-[#D9941E] disabled:opacity-60 transition-colors"
         onClick={manager.submitProduct}
         disabled={manager.isPending}
       >
         حفظ التغييرات
       </button>
-
-      {manager.selectedProduct && (
-        <button
-          className="fixed bottom-4 left-4 z-40 px-4 py-3 rounded-full bg-[#2B2520] text-white font-bold shadow-lg hover:bg-[#473e36] disabled:opacity-60 transition-colors"
-          onClick={manager.submitVariant}
-          disabled={manager.isPending || !manager.variantProductId}
-        >
-          حفظ المتغيرات
-        </button>
-      )}
     </div>
   )
 }

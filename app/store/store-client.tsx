@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useIsMobile } from "@/hooks/use-mobile"
+import type { CategoryRecord } from "./category-helpers"
 
 type ProductImage = {
   image_url: string
@@ -39,14 +40,6 @@ type ProductRecord = {
   b2b_price_hidden?: boolean | null
   product_images: ProductImage[] | null
   product_variants: ProductVariant[] | null
-}
-
-type CategoryRecord = {
-  id: string
-  name_ar: string
-  parent_id: string | null
-  slug: string
-  sort_order: number | null
 }
 
 type CategoryNode = CategoryRecord & { children: CategoryNode[] }
@@ -378,7 +371,7 @@ export function StoreClient({
 
   return (
     <section className="py-6 md:py-12">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-[95%] mx-auto px-4">
         {/* Mobile Search Bar */}
         <form onSubmit={handleSearchSubmit} className="lg:hidden mb-6">
           <div className="relative">
@@ -511,7 +504,7 @@ export function StoreClient({
             </div>
 
             <div className="rounded-2xl md:rounded-3xl bg-[#F5F1E8] p-4 md:p-6 lg:p-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}

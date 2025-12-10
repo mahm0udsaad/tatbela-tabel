@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { Edit2, Plus, Star, Building2, Package, Tag, DollarSign, Box } from "lucide-react"
 import type { CategoryOption, ProductFormState } from "../types"
 
@@ -7,19 +8,38 @@ type ProductDetailsCardProps = {
   productForm: ProductFormState
   onFieldChange: (field: keyof ProductFormState, value: string | boolean) => void
   categoryOptions: CategoryOption[]
-  productTypeOptions: string[]
   onAddCategory?: () => void
   lockCategory?: boolean
+  selectedCategoryName?: string | null
 }
 
 export function ProductDetailsCard({
   productForm,
   onFieldChange,
   categoryOptions,
-  productTypeOptions,
   onAddCategory,
   lockCategory = false,
+  selectedCategoryName = null,
 }: ProductDetailsCardProps) {
+  const getCategoryLabel = (categoryId: string | null) =>
+    categoryOptions.find((option) => option.value === categoryId)?.label?.replace(/^↳\s*/, "") ?? ""
+
+  const handleCategoryChange = (categoryId: string) => {
+    const cleanLabel = getCategoryLabel(categoryId)
+    onFieldChange("category_id", categoryId)
+    onFieldChange("type", cleanLabel || "")
+  }
+
+  const lockedCategoryLabel =
+    selectedCategoryName || getCategoryLabel(productForm.category_id) || ""
+
+  useEffect(() => {
+    if (!lockedCategoryLabel) return
+    if (productForm.type !== lockedCategoryLabel) {
+      onFieldChange("type", lockedCategoryLabel)
+    }
+  }, [lockedCategoryLabel, onFieldChange, productForm.type])
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-[#E8E2D1] overflow-hidden">
       {/* Header */}
@@ -59,16 +79,17 @@ export function ProductDetailsCard({
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-[#2B2520]">نوع المنتج *</label>
+              <label className="block text-sm font-semibold text-[#2B2520]">فئة المنتج *</label>
               <select
-                value={productForm.type}
-                onChange={(e) => onFieldChange("type", e.target.value)}
+                disabled={lockCategory}
+                value={productForm.category_id}
+                onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full rounded-lg border border-[#D9D4C8] px-4 py-2.5 text-sm bg-white transition-all focus:border-[#E8A835] focus:ring-2 focus:ring-[#E8A835]/20 focus:outline-none hover:border-[#E8A835]/50 cursor-pointer"
               >
-                <option value="">اختر نوع المنتج</option>
-                {productTypeOptions.map((typeOption) => (
-                  <option key={typeOption} value={typeOption}>
-                    {typeOption}
+                <option value="">اختر الفئة</option>
+                {categoryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -106,15 +127,28 @@ export function ProductDetailsCard({
           </h3>
           <div className="flex gap-2">
             {lockCategory ? (
-              <div className="flex-1 rounded-lg border-2 border-[#E8A835] bg-[#FFF8ED] px-4 py-3 text-sm text-[#2B2520] flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#E8A835]" />
-                سيتم حفظ المنتج ضمن الفئة المختارة
+              <div className="flex-1 rounded-lg border-2 border-[#E8A835] bg-[#FFF8ED] px-4 py-3 text-sm text-[#2B2520] flex flex-col gap-2">
+                <div className="flex items-start gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#E8A835] mt-1" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-[#2B2520]">الفئة المحددة</p>
+                    <p className="text-sm text-[#8B6F47]">
+                      سيتم حفظ المنتج ضمن {lockedCategoryLabel ? `فئة "${lockedCategoryLabel}"` : "الفئة المختارة"}.
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-[#2B2520] whitespace-nowrap">
+                    {lockedCategoryLabel || "—"}
+                  </span>
+                </div>
+                <p className="text-xs text-[#8B6F47]">
+                  لتغيير الفئة، استخدم شجرة الفئات في العمود الأيسر أو قم بسحب المنتج إلى فئة أخرى.
+                </p>
               </div>
             ) : (
               <>
                 <select
                   value={productForm.category_id}
-                  onChange={(e) => onFieldChange("category_id", e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className="flex-1 rounded-lg border border-[#D9D4C8] px-4 py-2.5 text-sm bg-white transition-all focus:border-[#E8A835] focus:ring-2 focus:ring-[#E8A835]/20 focus:outline-none hover:border-[#E8A835]/50 cursor-pointer"
                 >
                   <option value="">اختر الفئة</option>

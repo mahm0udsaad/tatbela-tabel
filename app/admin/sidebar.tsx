@@ -3,7 +3,7 @@
 import type { MouseEvent } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { ShoppingBag, Package, BarChart3, Users, LogOut, Images, Layers, Megaphone, ListOrdered, Store, Tag } from "lucide-react"
+import { ShoppingBag, Package, BarChart3, Users, LogOut, Images, Layers, Megaphone, ListOrdered, Store, Tag, Star, MessageSquare } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
 
 export function AdminSidebar() {
@@ -21,6 +21,8 @@ export function AdminSidebar() {
     { href: "/admin/orders", label: "الطلبات", icon: ShoppingBag },
     { href: "/admin/products", label: "المنتجات", icon: Package },  
     { href: "/admin/products/order", label: "ترتيب المنتجات", icon: ListOrdered },
+    { href: "/admin/featured-products/order", label: "ترتيب أبرز المنتجات", icon: Star },
+    { href: "/admin/reviews", label: "التقييمات", icon: MessageSquare },
     { href: "/admin/categories", label: "الفئات", icon: Layers },
     { href: "/admin/abandoned-carts", label: "السلات المتروكة", icon: ShoppingBag },
     { href: "/admin/carousel", label: "صور السلايدر", icon: Images },

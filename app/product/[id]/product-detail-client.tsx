@@ -1,11 +1,13 @@
 "use client"
 
-import { useMemo, useState, useTransition, useCallback } from "react"
+import { useEffect, useMemo, useState, useTransition, useCallback } from "react"
 import Link from "next/link"
-import { Star, ShoppingCart, Heart, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { Star, ShoppingCart, Heart, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react"
 import { submitReviewAction } from "./actions"
 import useEmblaCarousel from "embla-carousel-react"
 import { useCart } from "@/components/cart-provider"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 type ProductImage = {
   id: string
@@ -84,8 +86,11 @@ export function ProductDetailClient({
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [reviewList, setReviewList] = useState(reviews)
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: "", content: "" })
   const [reviewStatus, setReviewStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
+  const [isReviewOpen, setIsReviewOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const [isPending, startTransition] = useTransition()
   const { addItem, isLoading: isCartLoading } = useCart()
   const [isAddingToCart, setIsAddingToCart] = useState(false)
@@ -132,30 +137,54 @@ export function ProductDetailClient({
   const isOutOfStock = availableStock <= 0
   const hidePrices = mode === "b2b" && (priceHidden || Boolean(product.b2b_price_hidden))
 
+  useEffect(() => {
+    const updateDeviceMode = () => {
+      setIsMobile(typeof window !== "undefined" ? window.innerWidth < 768 : false)
+    }
+
+    updateDeviceMode()
+    window.addEventListener("resize", updateDeviceMode)
+    return () => window.removeEventListener("resize", updateDeviceMode)
+  }, [])
+
   const handleSubmitReview = () => {
     if (!canReview) {
       setReviewStatus({ type: "error", message: "يجب تسجيل الدخول لكتابة تقييم" })
       return
     }
-    if (!reviewForm.content.trim()) {
-      setReviewStatus({ type: "error", message: "يرجى كتابة تفاصيل التقييم" })
-      return
-    }
+    const trimmedContent = reviewForm.content.trim()
+
     startTransition(async () => {
       setReviewStatus(null)
       const result = await submitReviewAction({
         productId: product.id,
         rating: reviewForm.rating,
         title: reviewForm.title,
-        content: reviewForm.content,
+        content: trimmedContent.length > 0 ? trimmedContent : undefined,
       })
       if (!result.success) {
         setReviewStatus({ type: "error", message: result.error ?? "تعذر إرسال التقييم" })
         return
       }
+      if (result.review) {
+        const newReview: Review = {
+          id: result.review.id,
+          rating: result.review.rating,
+          title: result.review.title ?? null,
+          content: result.review.content ?? null,
+          created_at: result.review.created_at ?? new Date().toISOString(),
+        }
+        setReviewList((prev) => [newReview, ...prev])
+      }
       setReviewForm({ rating: 5, title: "", content: "" })
       setReviewStatus({ type: "success", message: "تم إرسال تقييمك للمراجعة" })
+      setIsReviewOpen(false)
     })
+  }
+
+  const openReviewForm = () => {
+    setReviewStatus(null)
+    setIsReviewOpen(true)
   }
 
   const handleAddToCart = async () => {
@@ -169,6 +198,77 @@ export function ProductDetailClient({
       setIsAddingToCart(false)
     }
   }
+
+  const reviewFormContent = (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-[#2B2520]">التقييم</p>
+        <div className="flex items-center gap-2" role="radiogroup" aria-label="تحديد التقييم">
+          {Array.from({ length: 5 }).map((_, index) => {
+            const value = index + 1
+            const isActive = value <= reviewForm.rating
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setReviewForm((prev) => ({ ...prev, rating: value }))}
+                className={`p-2 rounded-full border transition ${
+                  isActive ? "bg-[#FFF8ED] border-[#E8A835]" : "border-transparent hover:border-[#E8E2D1]"
+                }`}
+                aria-label={`${value} نجوم`}
+              >
+                <Star size={20} className={isActive ? "text-[#E8A835] fill-[#E8A835]" : "text-gray-300"} />
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-semibold text-[#2B2520]">اسمك (اختياري)</label>
+        <input
+          type="text"
+          value={reviewForm.title}
+          onChange={(e) => setReviewForm((prev) => ({ ...prev, title: e.target.value }))}
+          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835]"
+          placeholder="أدخل اسمك ليظهر مع التقييم"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-semibold text-[#2B2520]">تعليقك (اختياري)</label>
+        <textarea
+          value={reviewForm.content}
+          onChange={(e) => setReviewForm((prev) => ({ ...prev, content: e.target.value }))}
+          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 h-32 focus:border-[#E8A835]"
+          placeholder="اكتب تجربتك أو ملاحظاتك إن وجدت..."
+        />
+      </div>
+
+      {reviewStatus && (
+        <div
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+            reviewStatus.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+          }`}
+        >
+          {reviewStatus.type === "success" ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+          {reviewStatus.message}
+        </div>
+      )}
+
+      <button
+        onClick={handleSubmitReview}
+        disabled={isPending}
+        className="w-full py-3 rounded-lg bg-[#E8A835] text-white font-bold hover:bg-[#D9941E] disabled:opacity-60"
+      >
+        {isPending ? "جاري الإرسال..." : "إرسال التقييم"}
+      </button>
+
+      {!canReview && (
+        <p className="text-xs text-[#C41E3A] font-semibold text-center">سجّل الدخول لكتابة تقييمك.</p>
+      )}
+    </div>
+  )
 
   return (
     <section className="max-w-7xl mx-auto px-4 py-6 md:py-12">
@@ -391,90 +491,110 @@ export function ProductDetailClient({
         </div>
       </div>
 
-      <section className="mt-8 md:mt-16 grid lg:grid-cols-2 gap-6 md:gap-10">
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl shadow p-4 md:p-6">
-          <h3 className="text-xl md:text-2xl font-bold text-[#2B2520] mb-4">تقييمات العملاء</h3>
-          {reviews.length === 0 ? (
-            <p className="text-sm text-[#8B6F47]">كن أول من يقيّم هذا المنتج.</p>
-          ) : (
-            <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2">
-              {reviews.map((review) => (
-                <div key={review.id} className="border border-[#E8E2D1] rounded-xl p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <Star
-                        key={index}
-                        size={16}
-                        className={index < review.rating ? "text-[#E8A835] fill-[#E8A835]" : "text-gray-300"}
-                      />
-                    ))}
-                    <span className="text-xs text-[#8B6F47]">
-                      {new Date(review.created_at).toLocaleDateString("ar-EG")}
-                    </span>
-                  </div>
-                  {review.title && <p className="font-semibold text-[#2B2520]">{review.title}</p>}
-                  <p className="text-sm text-[#8B6F47]">{review.content}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl shadow p-4 md:p-6 space-y-3 md:space-y-4">
-          <h3 className="text-xl md:text-2xl font-bold text-[#2B2520]">اكتب تقييمك</h3>
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-[#2B2520]">التقييم</label>
-            <select
-              value={reviewForm.rating}
-              onChange={(e) => setReviewForm((prev) => ({ ...prev, rating: Number(e.target.value) }))}
-              className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835]"
-            >
-              {[5, 4, 3, 2, 1].map((value) => (
-                <option key={value} value={value}>
-                  {value} نجوم
-                </option>
-              ))}
-            </select>
-          </div>
+      <section className="mt-8 md:mt-16 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <label className="text-sm font-semibold text-[#2B2520]">العنوان (اختياري)</label>
-            <input
-              type="text"
-              value={reviewForm.title}
-              onChange={(e) => setReviewForm((prev) => ({ ...prev, title: e.target.value }))}
-              className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835]"
-            />
+            <h3 className="text-xl md:text-2xl font-bold text-[#2B2520]">تقييمات العملاء</h3>
+            <p className="text-sm text-[#8B6F47]">اطّلع على آراء المتسوقين وأضف تجربتك.</p>
           </div>
-          <div>
-            <label className="text-sm font-semibold text-[#2B2520]">تفاصيل تجربتك</label>
-            <textarea
-              value={reviewForm.content}
-              onChange={(e) => setReviewForm((prev) => ({ ...prev, content: e.target.value }))}
-              className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 h-32 focus:border-[#E8A835]"
-              placeholder="شارك تجربتك مع المنتج..."
-            />
-          </div>
-          {reviewStatus && (
-            <div
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                reviewStatus.type === "success"
-                  ? "bg-green-50 text-green-700"
-                  : "bg-red-50 text-red-700"
-              }`}
-            >
-              {reviewStatus.type === "success" ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
-              {reviewStatus.message}
-            </div>
-          )}
           <button
-            onClick={handleSubmitReview}
-            disabled={isPending}
-            className="w-full py-3 rounded-lg bg-[#E8A835] text-white font-bold hover:bg-[#D9941E] disabled:opacity-60"
+            onClick={openReviewForm}
+            className="self-start inline-flex items-center gap-2 rounded-lg bg-[#E8A835] px-4 py-2 text-white text-sm font-bold hover:bg-[#D9941E] transition"
           >
-            {isPending ? "جاري الإرسال..." : "إرسال التقييم"}
+            <Plus size={16} />
+            <span>اكتب تقييمك</span>
           </button>
         </div>
+
+        <div className="grid lg:grid-cols-2 gap-6 md:gap-10">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl shadow p-4 md:p-6">
+            <h4 className="text-lg md:text-xl font-bold text-[#2B2520] mb-4 flex items-center gap-2">
+              <Star size={18} className="text-[#E8A835] fill-[#E8A835]" />
+              آراء العملاء
+            </h4>
+            {reviewList.length === 0 ? (
+              <p className="text-sm text-[#8B6F47]">كن أول من يقيّم هذا المنتج.</p>
+            ) : (
+              <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2">
+                {reviewList.map((review) => (
+                  <div key={review.id} className="border border-[#E8E2D1] rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <Star
+                          key={index}
+                          size={16}
+                          className={index < review.rating ? "text-[#E8A835] fill-[#E8A835]" : "text-gray-300"}
+                        />
+                      ))}
+                      <span className="text-xs text-[#8B6F47]">
+                        {new Date(review.created_at).toLocaleDateString("ar-EG")}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-[#2B2520]">
+                      {review.title?.trim() ? review.title : "عميل المتجر"}
+                    </p>
+                    {review.content && <p className="text-sm text-[#8B6F47]">{review.content}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl shadow p-4 md:p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-lg md:text-xl font-bold text-[#2B2520]">شاركنا تجربتك</h4>
+                <p className="text-sm text-[#8B6F47]">حدد التقييم واكتب تعليقاً إذا رغبت.</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg bg-[#FFF8ED] px-3 py-2">
+                <Star size={18} className="text-[#E8A835] fill-[#E8A835]" />
+                <span className="text-sm font-semibold text-[#2B2520]">
+                  {product.rating ? product.rating.toFixed(1) : "جديد"}
+                </span>
+                <span className="text-xs text-[#8B6F47]">({product.reviews_count || 0})</span>
+              </div>
+            </div>
+            <div className="rounded-xl border border-dashed border-[#E8E2D1] bg-[#F5F1E8]/60 p-4 space-y-2">
+              <p className="text-sm text-[#2B2520] font-semibold">كيف كانت تجربتك مع {product.name_ar}؟</p>
+              <p className="text-sm text-[#8B6F47] leading-relaxed">
+                نستخدم التقييمات لتحسين المنتجات وخدمة ما بعد البيع. مشاركة رأيك تساعد الآخرين أيضاً في اختيار المنتج المناسب.
+              </p>
+            </div>
+            <button
+              onClick={openReviewForm}
+              className="w-full py-3 rounded-lg bg-[#E8A835] text-white font-bold hover:bg-[#D9941E] transition"
+            >
+              إضافة تقييم جديد
+            </button>
+          </div>
+        </div>
       </section>
+
+      {isMobile ? (
+        <Sheet open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+          <SheetContent side="bottom" className="h-[85vh] overflow-y-auto px-4">
+            <SheetHeader className="space-y-2 text-right">
+              <SheetTitle className="text-xl font-bold text-[#2B2520]">اكتب تقييمك</SheetTitle>
+              <SheetDescription className="text-sm text-[#8B6F47]">
+                اختر عدد النجوم، أدخل اسمك لعرضه مع التقييم، ثم أضف تعليقاً عند الحاجة.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="py-4">{reviewFormContent}</div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader className="space-y-2 text-right">
+              <DialogTitle className="text-2xl font-bold text-[#2B2520]">اكتب تقييمك</DialogTitle>
+              <DialogDescription className="text-sm text-[#8B6F47]">
+                اختر عدد النجوم، أدخل اسمك لعرضه مع التقييم، ثم أضف تعليقاً عند الحاجة.
+              </DialogDescription>
+            </DialogHeader>
+            {reviewFormContent}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Similar Products Section */}
       {similarProducts.length > 0 && (
@@ -501,7 +621,6 @@ function SimilarProductsRow({
   mode = "b2c",
   priceHidden = false,
   contactLabel = "تواصل مع المبيعات",
-  contactUrl = "/contact",
 }: {
   products: SimilarProduct[]
   mode?: "b2c" | "b2b"
@@ -527,7 +646,7 @@ function SimilarProductsRow({
   }, [emblaApi])
 
   return (
-    <div className="relative">
+    <div dir="ltr" className="relative">
       <div className="rounded-3xl bg-[#F5F1E8] p-6 md:p-8">
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex gap-4 md:gap-6">
@@ -626,14 +745,14 @@ function SimilarProductsRow({
       {products.length > 3 && (
         <>
           <button
-            onClick={scrollPrev}
+            onClick={scrollNext}
             className="absolute right-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white shadow-lg p-2 rounded-full hover:bg-gray-50 transition-all z-10 hidden md:flex items-center justify-center"
             aria-label="السابق"
           >
             <ChevronRight size={20} className="text-[#2B2520]" />
           </button>
           <button
-            onClick={scrollNext}
+            onClick={scrollPrev}
             className="absolute left-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white shadow-lg p-2 rounded-full hover:bg-gray-50 transition-all z-10 hidden md:flex items-center justify-center"
             aria-label="التالي"
           >

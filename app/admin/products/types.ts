@@ -109,7 +109,7 @@ export function mapProductToForm(product: Product): ProductFormState {
     name_ar: product.name_ar ?? "",
     description_ar: product.description_ar ?? "",
     brand: product.brand ?? "",
-    type: product.type ?? "",
+    type: product.category ?? product.type ?? "",
     price: product.price?.toString() ?? "",
     price_per_kilo: product.price_per_kilo?.toString() ?? "",
     pricing_mode: (product.pricing_mode as "unit" | "per_kilo") ?? "unit",

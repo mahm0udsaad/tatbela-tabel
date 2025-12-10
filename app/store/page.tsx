@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
 import { StoreClient } from "./store-client"
+import { getCategoryBranch } from "./category-helpers"
 
 export const dynamic = "force-dynamic"
 
 export default async function StorePage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
   const supabase = await createClient()
   const params = await searchParams
-  const [{ data: products }, { data: categories }, { data: storeCategory }] = await Promise.all([
+  const [{ data: products }, { data: categoriesData }] = await Promise.all([
     supabase
       .from("products")
       .select(
@@ -34,10 +35,10 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
       .eq("is_b2b", false)
       .order("sort_order", { ascending: true }),
     supabase.from("categories").select("id, name_ar, parent_id, slug, sort_order").order("sort_order", { ascending: true }),
-    supabase.from("categories").select("name_ar").eq("slug", "store").single(),
   ])
 
-  const categoryTitle = storeCategory?.name_ar ?? "استكشف مجموعتنا الكاملة"
+  const { categories, rootCategory } = getCategoryBranch(categoriesData ?? [], "store")
+  const categoryTitle = rootCategory?.name_ar ?? "استكشف مجموعتنا الكاملة"
 
   return (
     <main className="min-h-screen">

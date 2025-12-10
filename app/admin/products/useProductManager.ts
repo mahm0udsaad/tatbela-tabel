@@ -97,6 +97,11 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
 
   const selectedProduct = useMemo(() => products.find((product) => product.id === selectedProductId) ?? null, [products, selectedProductId])
 
+  const getCategoryNameById = (categoryId: string | null) => {
+    if (!categoryId) return ""
+    return categories.find((category) => category.id === categoryId)?.name_ar ?? ""
+  }
+
   useEffect(() => {
     setProducts(initialProducts ?? [])
   }, [initialProducts])
@@ -158,14 +163,19 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
     } else if (isCreatingNewProduct) {
       // Keep form empty but always use selectedCategoryId if available
       setProductForm(prev => {
+        const targetCategoryId = selectedCategoryId ?? prev.category_id ?? ""
+        const targetCategoryName = getCategoryNameById(targetCategoryId)
+
         // If we're already in create mode and category matches, don't reset the form
-        if (!prev.id && selectedCategoryId && prev.category_id === selectedCategoryId) {
+        if (!prev.id && targetCategoryId && prev.category_id === targetCategoryId && prev.type === targetCategoryName) {
           return prev
         }
+
         // Always use selectedCategoryId if it exists, otherwise keep previous or empty
         return {
           ...emptyProductForm,
-          category_id: selectedCategoryId ?? prev.category_id ?? ""
+          category_id: targetCategoryId,
+          type: targetCategoryName,
         }
       })
       setVariantProductId(null)
@@ -187,9 +197,12 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   const startNewProduct = () => {
     setIsCreatingNewProduct(true)
     setSelectedProductId(null)
+    const defaultCategoryId = selectedCategoryId ?? ""
+    const defaultCategoryName = getCategoryNameById(defaultCategoryId)
     setProductForm({
       ...emptyProductForm,
-      category_id: selectedCategoryId ?? ""
+      category_id: defaultCategoryId,
+      type: defaultCategoryName,
     })
     setVariantForm(emptyVariantForm)
     setVariantProductId(null)
@@ -206,6 +219,11 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
   }
 
   const updateProductFormField = (field: keyof ProductFormState, value: string | boolean) => {
+    if (field === "category_id") {
+      const categoryName = getCategoryNameById(value as string)
+      setProductForm((prev) => ({ ...prev, category_id: value as string, type: categoryName }))
+      return
+    }
     setProductForm((prev) => ({ ...prev, [field]: value }))
   }
 

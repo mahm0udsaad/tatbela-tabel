@@ -45,6 +45,10 @@ type SortableProduct = Pick<
 
 type ProductSortBoardProps = {
   initialProducts: SortableProduct[]
+  title?: string
+  description?: string
+  emptyStateLabel?: string
+  badgeLabel?: string
 }
 
 function SortableProductRow({ product, index }: { product: SortableProduct; index: number }) {
@@ -155,7 +159,13 @@ function SortableProductRow({ product, index }: { product: SortableProduct; inde
   )
 }
 
-export function ProductSortBoard({ initialProducts }: ProductSortBoardProps) {
+export function ProductSortBoard({
+  initialProducts,
+  title,
+  description,
+  emptyStateLabel,
+  badgeLabel,
+}: ProductSortBoardProps) {
   const { toast } = useToast()
   const [items, setItems] = useState<SortableProduct[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -223,17 +233,21 @@ export function ProductSortBoard({ initialProducts }: ProductSortBoardProps) {
     })
   }
 
+  const headingTitle = title ?? "ترتيب المنتجات"
+  const headingDescription =
+    description ?? "اسحب وأفلت لتحديد ترتيب ظهور المنتجات في جميع صفحات المتجر."
+  const noItemsLabel = emptyStateLabel ?? "لا توجد منتجات لعرضها حالياً."
+  const badgeText = badgeLabel ?? "عدد المنتجات:"
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-xl font-bold text-[#2B2520]">ترتيب المنتجات</h2>
-          <p className="text-sm text-[#8B6F47]">
-            اسحب وأفلت لتحديد ترتيب ظهور المنتجات في جميع صفحات المتجر.
-          </p>
+          <h2 className="text-xl font-bold text-[#2B2520]">{headingTitle}</h2>
+          <p className="text-sm text-[#8B6F47]">{headingDescription}</p>
         </div>
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-full bg-white border border-[#E8A835]/40 text-[#8B6F47]">
-          <span className="font-semibold text-[#2B2520]">عدد المنتجات:</span>
+          <span className="font-semibold text-[#2B2520]">{badgeText}</span>
           <span className="text-[#C41E3A] font-bold">{items.length}</span>
         </div>
       </div>
@@ -246,7 +260,7 @@ export function ProductSortBoard({ initialProducts }: ProductSortBoardProps) {
 
       {items.length === 0 ? (
         <div className="p-8 bg-white rounded-xl text-center text-[#8B6F47] border border-dashed border-[#D9D4C8]">
-          لا توجد منتجات لعرضها حالياً.
+          {noItemsLabel}
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

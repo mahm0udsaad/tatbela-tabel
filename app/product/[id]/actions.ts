@@ -8,14 +8,23 @@ const reviewSchema = z.object({
   productId: z.string().uuid(),
   rating: z.number().min(1).max(5),
   title: z.string().trim().max(120).optional(),
-  content: z.string().trim().min(10).max(800),
+  content: z
+    .string()
+    .max(800)
+    .optional()
+    .nullable()
+    .transform((value) => {
+      if (typeof value !== "string") return null
+      const trimmed = value.trim()
+      return trimmed.length > 0 ? trimmed : null
+    }),
 })
 
 export async function submitReviewAction(input: {
   productId: string
   rating: number
   title?: string
-  content: string
+  content?: string | null
 }) {
   const supabase = await createClient()
   const {
@@ -27,6 +36,7 @@ export async function submitReviewAction(input: {
   }
 
   const payload = reviewSchema.parse(input)
+  const content = payload.content ?? null
 
   const { data: existing } = await supabase
     .from("product_reviews")
@@ -39,20 +49,24 @@ export async function submitReviewAction(input: {
     return { success: false, error: "لقد قمت بكتابة تقييم لهذا المنتج بالفعل" }
   }
 
-  const { error } = await supabase.from("product_reviews").insert({
-    product_id: payload.productId,
-    user_id: user.id,
-    rating: payload.rating,
-    title: payload.title || null,
-    content: payload.content,
-    status: "pending",
-  })
+  const { data: inserted, error } = await supabase
+    .from("product_reviews")
+    .insert({
+      product_id: payload.productId,
+      user_id: user.id,
+      rating: payload.rating,
+      title: payload.title || null,
+      content,
+      status: "approved",
+    })
+    .select("id, rating, title, content, created_at")
+    .single()
 
   if (error) {
     return { success: false, error: error.message }
   }
 
   revalidatePath(`/product/${payload.productId}`)
-  return { success: true }
+  return { success: true, review: inserted }
 }
 
