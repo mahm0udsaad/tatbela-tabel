@@ -7,7 +7,11 @@ import { createClient } from "@/lib/supabase/server"
 const categorySchema = z.object({
   id: z.string().uuid().optional(),
   name_ar: z.string().min(2, "اسم الفئة مطلوب"),
-  slug: z.string().min(2, "المسار مطلوب").regex(/^[a-z0-9-]+$/, "استخدم حروفاً لاتينية وأرقاماً وشرطات"),
+  // قبول حروف عربية/لاتينية، أرقام، وشرطات
+  slug: z
+    .string()
+    .min(2, "المسار مطلوب")
+    .regex(/^[\p{L}\p{N}-]+$/u, "استخدم حروفاً وأرقاماً وشرطات فقط"),
   parent_id: z.string().uuid().optional().nullable(),
 })
 
@@ -36,30 +40,36 @@ export async function createCategoryAction(input: {
   slug: string
   parent_id?: string | null
 }) {
-  const supabase = await createClient()
-  const payload = categorySchema.parse(input)
+  try {
+    const supabase = await createClient()
+    const payload = categorySchema.parse(input)
 
-  const maxOrderQuery = applyParentFilter(
-    supabase.from("categories").select("sort_order").order("sort_order", { ascending: false }).limit(1),
-    payload.parent_id ?? null,
-  )
-  const { data: maxRow } = await maxOrderQuery
-  const nextOrder = ((maxRow?.[0]?.sort_order as number | undefined) ?? 0) + 100
+    const maxOrderQuery = applyParentFilter(
+      supabase.from("categories").select("sort_order").order("sort_order", { ascending: false }).limit(1),
+      payload.parent_id ?? null,
+    )
+    const { data: maxRow } = await maxOrderQuery
+    const nextOrder = ((maxRow?.[0]?.sort_order as number | undefined) ?? 0) + 100
 
-  const { error } = await supabase.from("categories").insert({
-    name_ar: payload.name_ar,
-    name: payload.name_ar,
-    slug: payload.slug,
-    parent_id: payload.parent_id ?? null,
-    sort_order: nextOrder,
-  })
+    const { error } = await supabase.from("categories").insert({
+      name_ar: payload.name_ar,
+      name: payload.name_ar,
+      slug: payload.slug,
+      parent_id: payload.parent_id ?? null,
+      sort_order: nextOrder,
+    })
 
-  if (error) {
-    return { success: false, error: error.message }
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    revalidateCategoryPaths()
+    return { success: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "حدث خطأ غير متوقع"
+    console.error("createCategoryAction failed", err)
+    return { success: false, error: message }
   }
-
-  revalidateCategoryPaths()
-  return { success: true }
 }
 
 export async function updateCategoryAction(input: {
@@ -68,111 +78,133 @@ export async function updateCategoryAction(input: {
   slug: string
   parent_id?: string | null
 }) {
-  const supabase = await createClient()
-  const payload = categorySchema.parse(input)
+  try {
+    const supabase = await createClient()
+    const payload = categorySchema.parse(input)
 
-  const { error } = await supabase
-    .from("categories")
-    .update({
-      name_ar: payload.name_ar,
-      name: payload.name_ar,
-      slug: payload.slug,
-      parent_id: payload.parent_id ?? null,
-    })
-    .eq("id", payload.id)
+    const { error } = await supabase
+      .from("categories")
+      .update({
+        name_ar: payload.name_ar,
+        name: payload.name_ar,
+        slug: payload.slug,
+        parent_id: payload.parent_id ?? null,
+      })
+      .eq("id", payload.id)
 
-  if (error) {
-    return { success: false, error: error.message }
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    revalidateCategoryPaths()
+    return { success: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "حدث خطأ غير متوقع"
+    console.error("updateCategoryAction failed", err)
+    return { success: false, error: message }
   }
-
-  revalidateCategoryPaths()
-  return { success: true }
 }
 
 export async function deleteCategoryAction(categoryId: string) {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  await supabase
-    .from("categories")
-    .update({ parent_id: null })
-    .eq("parent_id", categoryId)
+    await supabase
+      .from("categories")
+      .update({ parent_id: null })
+      .eq("parent_id", categoryId)
 
-  const { error } = await supabase.from("categories").delete().eq("id", categoryId)
+    const { error } = await supabase.from("categories").delete().eq("id", categoryId)
 
-  if (error) {
-    return { success: false, error: error.message }
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    revalidateCategoryPaths()
+    return { success: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "حدث خطأ غير متوقع"
+    console.error("deleteCategoryAction failed", err)
+    return { success: false, error: message }
   }
-
-  revalidateCategoryPaths()
-  return { success: true }
 }
 
 export async function reorderCategoriesAction(payload: { id: string; parentId: string | null; position: number }) {
-  const supabase = await createClient()
-  const { id, parentId, position } = reorderSchema.parse(payload)
+  try {
+    const supabase = await createClient()
+    const { id, parentId, position } = reorderSchema.parse(payload)
 
-  const { data: currentCategory, error: currentError } = await supabase
-    .from("categories")
-    .select("parent_id")
-    .eq("id", id)
-    .single()
+    const { data: currentCategory, error: currentError } = await supabase
+      .from("categories")
+      .select("parent_id")
+      .eq("id", id)
+      .single()
 
-  if (currentError) {
-    return { success: false, error: currentError.message }
-  }
+    if (currentError) {
+      return { success: false, error: currentError.message }
+    }
 
-  const oldParentId = currentCategory?.parent_id ?? null
+    const oldParentId = currentCategory?.parent_id ?? null
 
-  const siblingsQuery = applyParentFilter(
-    supabase.from("categories").select("id, sort_order").order("sort_order", { ascending: true }),
-    parentId ?? null,
+    const siblingsQuery = applyParentFilter(
+      supabase.from("categories").select("id, sort_order").order("sort_order", { ascending: true }),
+      parentId ?? null,
+    )
+
+    const { data: siblings, error: siblingsError } = await siblingsQuery
+
+    if (siblingsError) {
+      return { success: false, error: siblingsError.message }
+    }
+
+    const filtered = (siblings ?? []).filter(
+      (sibling: { id: string; sort_order: number | null }) => sibling.id !== id,
+    ) as { id: string; sort_order: number | null }[]
+    const clampedPosition = Math.min(Math.max(position, 0), filtered.length)
+    filtered.splice(clampedPosition, 0, { id, sort_order: clampedPosition * 100 })
+
+  const updates = filtered.map(
+    (sibling: { id: string; sort_order: number | null }, index: number): { id: string; sort_order: number } => ({
+      id: sibling.id,
+      sort_order: index * 100,
+    }),
   )
 
-  const { data: siblings, error: siblingsError } = await siblingsQuery
-
-  if (siblingsError) {
-    return { success: false, error: siblingsError.message }
-  }
-
-  const filtered = (siblings ?? []).filter((sibling) => sibling.id !== id)
-  const clampedPosition = Math.min(Math.max(position, 0), filtered.length)
-  filtered.splice(clampedPosition, 0, { id, sort_order: clampedPosition * 100 })
-
-  const updates = filtered.map((sibling, index) => ({
-    id: sibling.id,
-    sort_order: index * 100,
-  }))
-
-  const { error: updateError } = await supabase.from("categories").upsert(updates)
-  if (updateError) {
-    return { success: false, error: updateError.message }
-  }
-
-  const { error: parentError } = await supabase
-    .from("categories")
-    .update({ parent_id: parentId ?? null })
-    .eq("id", id)
-
-  if (parentError) {
-    return { success: false, error: parentError.message }
-  }
-
-  if (oldParentId !== parentId) {
-    const oldQuery = applyParentFilter(
-      supabase.from("categories").select("id").order("sort_order", { ascending: true }),
-      oldParentId,
-    )
-    const { data: oldSiblings } = await oldQuery
-    if (oldSiblings) {
-      const oldUpdates = oldSiblings.map((sibling, index) => ({
-        id: sibling.id,
-        sort_order: index * 100,
-      }))
-      await supabase.from("categories").upsert(oldUpdates)
+    const { error: updateError } = await supabase.from("categories").upsert(updates)
+    if (updateError) {
+      return { success: false, error: updateError.message }
     }
-  }
 
-  revalidateCategoryPaths()
-  return { success: true }
+    const { error: parentError } = await supabase
+      .from("categories")
+      .update({ parent_id: parentId ?? null })
+      .eq("id", id)
+
+    if (parentError) {
+      return { success: false, error: parentError.message }
+    }
+
+    if (oldParentId !== parentId) {
+      const oldQuery = applyParentFilter(
+        supabase.from("categories").select("id").order("sort_order", { ascending: true }),
+        oldParentId,
+      )
+      const { data: oldSiblings } = await oldQuery
+      if (oldSiblings) {
+      const oldUpdates = oldSiblings.map((sibling: { id: string }, index: number) => ({
+          id: sibling.id,
+          sort_order: index * 100,
+        }))
+        await supabase.from("categories").upsert(oldUpdates)
+      }
+    }
+
+    revalidateCategoryPaths()
+    return { success: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "حدث خطأ غير متوقع"
+    console.error("reorderCategoriesAction failed", err)
+    return { success: false, error: message }
+  }
 }
 

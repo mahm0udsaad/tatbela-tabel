@@ -32,7 +32,10 @@ function slugify(value: string) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
+    // السماح بحروف عربية/لاتينية وأرقام والشرطات
+    .replace(/[^\p{L}\p{N}-]+/gu, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
 }
 
 export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) {
