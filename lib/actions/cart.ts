@@ -270,33 +270,37 @@ export async function addToCart(
   const snapshotPrice = variantData?.price ?? product.price
 
   // Now add item to cart
-  // Check if item exists (same product + same variant)
+  // The DB has a unique constraint on (cart_id, product_id) so we ignore variant in the lookup
   const { data: existingItem } = await supabase
     .from('cart_items')
-    .select('id, quantity')
+    .select('id, quantity, product_variant_id')
     .eq('cart_id', cartIdToUse)
     .eq('product_id', productId)
-    .eq('product_variant_id', productVariantId ?? null)
-    .single()
+    .maybeSingle()
 
   if (existingItem) {
-    const { error } = await supabase
-      .from('cart_items')
-      .update({ quantity: existingItem.quantity + quantity, updated_at: new Date().toISOString(), unit_price: snapshotPrice })
-      .eq('id', existingItem.id)
-    
+    const updates: Record<string, any> = {
+      quantity: existingItem.quantity + quantity,
+      updated_at: new Date().toISOString(),
+      unit_price: snapshotPrice,
+    }
+
+    // If a variant is provided, persist it (overwrites previous variant to comply with unique constraint)
+    if (productVariantId !== undefined) {
+      updates.product_variant_id = productVariantId ?? null
+    }
+
+    const { error } = await supabase.from('cart_items').update(updates).eq('id', existingItem.id)
     if (error) throw error
   } else {
-    const { error } = await supabase
-      .from('cart_items')
-      .insert({
-        cart_id: cartIdToUse,
-        product_id: productId,
-        product_variant_id: productVariantId ?? null,
-        unit_price: snapshotPrice,
-        quantity: quantity
-      })
-    
+    const { error } = await supabase.from('cart_items').insert({
+      cart_id: cartIdToUse,
+      product_id: productId,
+      product_variant_id: productVariantId ?? null,
+      unit_price: snapshotPrice,
+      quantity: quantity,
+    })
+
     if (error) throw error
   }
 

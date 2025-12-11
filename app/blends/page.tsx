@@ -46,10 +46,11 @@ export default async function BlendsPage({ searchParams }: { searchParams: Promi
       `,
     )
     .eq("is_archived", false)
+    .eq("is_b2b", false)
     .order("sort_order", { ascending: true })
 
   const { data: productsData } =
-    blendsCategoryIds.length > 0 ? await productsQuery.in("category_id", blendsCategoryIds) : await productsQuery
+    blendsCategoryIds.length > 0 ? await productsQuery.in("category_id", blendsCategoryIds) : { data: [] }
 
   const products = productsData ?? []
 
@@ -75,7 +76,12 @@ export default async function BlendsPage({ searchParams }: { searchParams: Promi
         </div>
       </section>
 
-      <StoreClient initialProducts={products} categories={categories} initialSearch={params.search ?? ""} />
+      <StoreClient
+        initialProducts={products}
+        categories={categories}
+        initialSearch={params.search ?? ""}
+        categoryScopeIds={blendsCategoryIds}
+      />
     </main>
   )
 }

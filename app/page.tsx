@@ -157,7 +157,16 @@ const categories = [
     icon: "🎁",
     href: "/offers",
   },
-]
+  {
+    id: 5,
+    name: "منتجات الجمله",
+    arabicName: "منتجات الجمله",
+    description: "أفضل الأسعار لتجار الجملة والكميات الكبيرة",
+    icon: "📦",
+    href: "/wholesale",
+  }
+];
+
 
 type FeaturedProductImage = {
   image_url: string
@@ -431,13 +440,13 @@ export default async function Home() {
 
       {/* Categories Section */}
       <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-8xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-[#2B2520] mb-4">تسوق حسب الفئة</h2>
             <p className="text-lg text-[#8B6F47]">اختر من بين مجموعتنا الواسعة من التوابل والخلطات</p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
             {categories.map((category) => (
               <Link
                 key={category.id}

@@ -49,6 +49,8 @@ interface StoreClientProps {
   categories: CategoryRecord[]
   initialSearch?: string
   initialTotal?: number
+  categoryScopeIds?: string[]
+  initialSelectedCategories?: string[]
   priceBounds?: { min: number; max: number }
   brands?: string[]
   pageSize?: number
@@ -65,6 +67,8 @@ export function StoreClient({
   initialTotal,
   priceBounds,
   brands,
+  categoryScopeIds = [],
+  initialSelectedCategories = [],
   pageSize = 12,
   mode = "b2c",
   priceHidden = false,
@@ -99,7 +103,7 @@ export function StoreClient({
   const [products, setProducts] = useState<ProductRecord[]>(initialProducts)
   const [totalCount, setTotalCount] = useState(calculatedInitialTotal)
   const [search, setSearch] = useState(initialSearch)
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialSelectedCategories)
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState<[number, number]>(() => {
     const min = Number.isFinite(calculatedPriceBounds.min) ? calculatedPriceBounds.min : 0
@@ -119,7 +123,7 @@ export function StoreClient({
 
   const brandOptions = useMemo(() => Array.from(new Set(calculatedBrands)), [calculatedBrands])
 
-  const allowedCategoryIds = useMemo(() => {
+  const selectedCategoryIds = useMemo(() => {
     const allowed = new Set<string>()
     selectedCategories.forEach((categoryId) => {
       allowed.add(categoryId)
@@ -127,6 +131,12 @@ export function StoreClient({
     })
     return Array.from(allowed)
   }, [selectedCategories, categoryDescendants])
+
+  const categoryFilterIds = useMemo(() => {
+    if (selectedCategoryIds.length > 0) return selectedCategoryIds
+    if (categoryScopeIds.length > 0) return categoryScopeIds
+    return []
+  }, [selectedCategoryIds, categoryScopeIds])
 
   const buildQuery = () => {
     let query = supabase
@@ -162,8 +172,8 @@ export function StoreClient({
       query = query.or(`name_ar.ilike.%${term}%,description_ar.ilike.%${term}%,brand.ilike.%${term}%`)
     }
 
-    if (allowedCategoryIds.length > 0) {
-      query = query.in("category_id", allowedCategoryIds)
+    if (categoryFilterIds.length > 0) {
+      query = query.in("category_id", categoryFilterIds)
     }
 
     if (selectedBrands.length > 0) {
@@ -262,6 +272,18 @@ export function StoreClient({
   const handleBrandToggle = (brand: string) => {
     setSelectedBrands((prev) => (prev.includes(brand) ? prev.filter((name) => name !== brand) : [...prev, brand]))
   }
+
+  useEffect(() => {
+    if (!arraysEqual(selectedCategories, initialSelectedCategories)) {
+      setSelectedCategories(initialSelectedCategories)
+    }
+  }, [initialSelectedCategories, selectedCategories])
+
+  useEffect(() => {
+    setProducts(initialProducts)
+    setTotalCount(calculatedInitialTotal)
+    setHasMore(initialProducts.length < calculatedInitialTotal)
+  }, [initialProducts, calculatedInitialTotal])
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -504,7 +526,7 @@ export function StoreClient({
             </div>
 
             <div className="rounded-2xl md:rounded-3xl bg-[#F5F1E8] p-4 md:p-6 lg:p-8">
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -814,5 +836,13 @@ function buildDescendantMap(tree: CategoryNode[]) {
 
   tree.forEach((root) => traverse(root))
   return map
+}
+
+function arraysEqual<T>(a: T[], b: T[]) {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
 }
 

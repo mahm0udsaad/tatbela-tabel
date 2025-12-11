@@ -5,7 +5,7 @@ import { ShoppingCart, User, LogOut, Home, Store, Blend, Soup, Phone, Search, Ta
 import { useState, useEffect } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
 import Image from "next/image"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { useCart } from "@/components/cart-provider"
 
@@ -15,6 +15,7 @@ export function Navbar() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const supabase = getSupabaseClient()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const { cart } = useCart()
   const isB2BRoute = pathname?.startsWith("/b2b")
@@ -39,8 +40,8 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/", label: "الرئيسية", icon: Home, shortLabel: "الرئيسية" },
-    { href: "/store", label: "العطارة", icon: Store, shortLabel: "العطارة" },
-    { href: "/blends", label: "الخلطات", icon: Blend, shortLabel: "الخلطات" },
+    { href: "/store?category=atara", label: "العطارة", icon: Store, shortLabel: "العطارة" },
+    { href: "/store?category=blends", label: "الخلطات", icon: Blend, shortLabel: "الخلطات" },
     { href: "/sauces", label: "الصوصات", icon: Soup, shortLabel: "الصوصات" },
     { href: "/b2b", label: "منتجات الجمله", icon: ShoppingCart, shortLabel: "جملة" },
     { href: "/offers", label: "العروض", icon: Tag, shortLabel: "العروض" },
@@ -52,7 +53,9 @@ export function Navbar() {
     const query = searchTerm.trim()
     if (!query) return
     const targetPath = isB2BRoute ? "/b2b" : "/store"
-    router.push(`${targetPath}?search=${encodeURIComponent(query)}`)
+    const params = new URLSearchParams(searchParams)
+    params.set("search", query)
+    router.push(`${targetPath}?${params.toString()}`)
     setMobileSearchOpen(false)
   }
 
@@ -79,7 +82,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-[#2B2520] hover:text-[#E8A835] transition-colors font-bold text-lg"
+                  className="text-[#2B2520] hover:text-[#E8A835] transition-colors font-bold lg:text-lg md:text-sm"
                 >
                   {link.label}
                 </Link>

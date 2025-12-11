@@ -4,14 +4,30 @@ import { getCategoryBranch } from "./category-helpers"
 
 export const dynamic = "force-dynamic"
 
-export default async function StorePage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
+export default async function StorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; category?: string }>
+}) {
   const supabase = await createClient()
   const params = await searchParams
-  const [{ data: products }, { data: categoriesData }] = await Promise.all([
-    supabase
-      .from("products")
-      .select(
-        `
+  const targetSlug = params.category ?? "store"
+  const { data: categoriesData } = await supabase
+    .from("categories")
+    .select("id, name_ar, parent_id, slug, sort_order")
+    .order("sort_order", { ascending: true })
+
+  const allCategories = categoriesData ?? []
+  let { rootCategory, categoryIds } = getCategoryBranch(allCategories, targetSlug)
+  if (!rootCategory && targetSlug !== "store") {
+    ;({ rootCategory, categoryIds } = getCategoryBranch(allCategories, "store"))
+  }
+  const initialSelectedCategories = rootCategory ? [rootCategory.id] : []
+
+  let productsQuery = supabase
+    .from("products")
+    .select(
+      `
         id,
         name_ar,
         description_ar,
@@ -30,14 +46,16 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
         product_images (image_url, is_primary),
         product_variants (stock)
       `,
-      )
-      .eq("is_archived", false) // Exclude archived products
-      .eq("is_b2b", false)
-      .order("sort_order", { ascending: true }),
-    supabase.from("categories").select("id, name_ar, parent_id, slug, sort_order").order("sort_order", { ascending: true }),
-  ])
+    )
+    .eq("is_archived", false) // Exclude archived products
+    .eq("is_b2b", false)
+    .order("sort_order", { ascending: true })
 
-  const { categories, rootCategory } = getCategoryBranch(categoriesData ?? [], "store")
+  if (categoryIds.length > 0) {
+    productsQuery = productsQuery.in("category_id", categoryIds)
+  }
+
+  const { data: products } = await productsQuery
   const categoryTitle = rootCategory?.name_ar ?? "استكشف مجموعتنا الكاملة"
 
   return (
@@ -47,7 +65,7 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
           <div className="flex flex-col md:flex-row items-start justify-between gap-6">
             <div>
               <p className="text-sm text-[#8B6F47] uppercase tracking-wider mb-2">Tatbeelah & Tabel</p>
-              <h1 className="text-4xl font-bold text-[#2B2520] mb-4">العطارة</h1>
+              <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{categoryTitle}</h1>
               <p className="text-lg text-[#8B6F47] max-w-2xl">
                 تشكيلة واسعة من التوابل المصرية والخلطات الأصلية والصوصات المميزة، مختارة بعناية لتضيف طعمًا فريدًا لكل وجبة.
               </p>
@@ -68,9 +86,12 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
       </section>
 
       <StoreClient
+        key={targetSlug}
         initialProducts={products ?? []}
-        categories={categories ?? []}
+        categories={allCategories}
         initialSearch={params.search ?? ""}
+        initialSelectedCategories={initialSelectedCategories}
+        categoryScopeIds={categoryIds}
       />
     </main>
   )
