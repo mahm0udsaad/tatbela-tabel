@@ -1,4 +1,5 @@
 import type React from "react"
+import { Suspense } from "react"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { WebsiteLayout } from "@/components/website-layout"
@@ -38,7 +39,9 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body className="font-sans antialiased">
-        <WebsiteLayout>{children}</WebsiteLayout>
+        <Suspense fallback={null}>
+          <WebsiteLayout>{children}</WebsiteLayout>
+        </Suspense>
         <Analytics />
       </body>
     </html>
