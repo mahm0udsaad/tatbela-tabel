@@ -15,6 +15,7 @@ import {
   type PaymobBillingData,
   type PaymobRequestPayload,
 } from "@/lib/validation/paymob"
+import { getUserAddresses, saveAddress, type Address } from "@/lib/actions/addresses"
 
 type ShippingFormData = {
   firstName: string
@@ -49,6 +50,9 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   const [shippingError, setShippingError] = useState<string | null>(null)
   const [shippingZones, setShippingZones] = useState<ShippingZone[]>([])
   const [shippingZoneId, setShippingZoneId] = useState<string | null>(null)
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+  const [saveAddressForLater, setSaveAddressForLater] = useState(true)
   const [formData, setFormData] = useState<ShippingFormData>({
     firstName: "",
     lastName: "",
@@ -72,9 +76,20 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
           ...prev,
           email: sessionData.session.user.email || "",
         }))
+
+        // Load saved addresses
+        const addresses = await getUserAddresses()
+        setSavedAddresses(addresses)
+        
+        // Auto-select default address or first address (will be loaded after zones are ready)
+        const defaultAddr = addresses.find(a => a.is_default) || addresses[0]
+        if (defaultAddr) {
+          setSelectedAddressId(defaultAddr.id)
+        }
       }
     }
     checkUser()
+    
     const loadZones = async () => {
       const { data, error } = await supabase
         .from("shipping_zones")
@@ -86,13 +101,43 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
         return
       }
       setShippingZones(data ?? [])
-      if ((data ?? []).length > 0) {
+      if ((data ?? []).length > 0 && !selectedAddressId) {
         setShippingZoneId(data![0].id)
         setFormData((prev) => ({ ...prev, governorate: data![0].governorate }))
       }
     }
     loadZones()
   }, [supabase])
+
+  // Load address into form when address is selected and zones are loaded
+  useEffect(() => {
+    if (selectedAddressId && shippingZones.length > 0 && savedAddresses.length > 0 && user) {
+      const address = savedAddresses.find(a => a.id === selectedAddressId)
+      if (address) {
+        loadAddressIntoForm(address)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAddressId, shippingZones.length, savedAddresses.length])
+
+  const loadAddressIntoForm = (address: Address) => {
+    setFormData({
+      firstName: address.recipient_name?.split(" ")[0] || "",
+      lastName: address.recipient_name?.split(" ").slice(1).join(" ") || "",
+      email: user?.email || "",
+      phone: address.phone || "",
+      address: address.street,
+      city: address.city,
+      governorate: address.governorate,
+      postalCode: address.postal_code || "",
+    })
+    
+    // Set shipping zone
+    const zone = shippingZones.find((z) => z.governorate === address.governorate)
+    if (zone) {
+      setShippingZoneId(zone.id)
+    }
+  }
 
   const orderItems = cart?.items || []
   const subtotal = orderItems.reduce(
@@ -151,7 +196,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
     if (paymentError) setPaymentError(null)
   }
 
-  const handleShippingSubmit = (e: React.FormEvent) => {
+  const handleShippingSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const sanitizedData = getSanitizedShippingData()
     const billingPayload = buildBillingPayload(sanitizedData)
@@ -160,6 +205,28 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
     if (!validationResult.success) {
       setShippingError(formatValidationIssues(validationResult.error.issues))
       return
+    }
+
+    // Save address if user is logged in and wants to save it
+    if (user && saveAddressForLater && !selectedAddressId) {
+      try {
+        const fullName = `${sanitizedData.firstName} ${sanitizedData.lastName}`.trim()
+        await saveAddress({
+          recipient_name: fullName,
+          phone: sanitizedData.phone,
+          governorate: sanitizedData.governorate,
+          city: sanitizedData.city,
+          street: sanitizedData.address,
+          postal_code: sanitizedData.postalCode || null,
+          is_default: savedAddresses.length === 0, // Set as default if it's the first address
+        })
+        // Reload addresses
+        const addresses = await getUserAddresses()
+        setSavedAddresses(addresses)
+      } catch (error) {
+        console.error("Error saving address:", error)
+        // Continue anyway, don't block checkout
+      }
     }
 
     setFormData(sanitizedData)
@@ -445,6 +512,36 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 <form onSubmit={handleShippingSubmit} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8">
                   <h2 className="text-2xl font-bold text-[#2B2520] mb-6">بيانات التوصيل</h2>
 
+                  {/* Saved Addresses Selection */}
+                  {!isB2B && savedAddresses.length > 0 && (
+                    <div className="mb-6 p-4 bg-[#F5F1E8] rounded-lg border border-[#E8E2D1]">
+                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">
+                        اختر عنوان محفوظ (اختياري)
+                      </label>
+                      <select
+                        value={selectedAddressId || ""}
+                        onChange={(e) => {
+                          const addrId = e.target.value || null
+                          setSelectedAddressId(addrId)
+                          if (addrId) {
+                            const addr = savedAddresses.find(a => a.id === addrId)
+                            if (addr) {
+                              loadAddressIntoForm(addr)
+                            }
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835] bg-white text-[#2B2520] mb-2"
+                      >
+                        <option value="">إضافة عنوان جديد</option>
+                        {savedAddresses.map((addr) => (
+                          <option key={addr.id} value={addr.id}>
+                            {addr.label || `${addr.governorate}, ${addr.city}`} {addr.is_default && "(افتراضي)"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div className="grid md:grid-cols-2 gap-6 mb-6">
                     <div>
                       <label className="block text-sm font-semibold text-[#2B2520] mb-2">الاسم الأول*</label>
@@ -542,6 +639,21 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                       />
                     </div>
                   </div>
+
+                  {/* Save Address Checkbox */}
+                  {!isB2B && user && !selectedAddressId && (
+                    <div className="mb-6">
+                      <label className="flex items-center gap-2 text-[#2B2520] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={saveAddressForLater}
+                          onChange={(e) => setSaveAddressForLater(e.target.checked)}
+                          className="w-4 h-4 text-[#E8A835] border-[#D9D4C8] rounded focus:ring-[#E8A835]"
+                        />
+                        <span className="text-sm">حفظ هذا العنوان للاستخدام لاحقاً</span>
+                      </label>
+                    </div>
+                  )}
 
                   <button
                     type="submit"

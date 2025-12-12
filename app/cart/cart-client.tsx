@@ -1,9 +1,12 @@
 'use client'
 
 import Link from "next/link"
-import { ArrowRight, Trash2, Plus, Minus, ShoppingBag } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowRight, Trash2, Plus, Minus, ShoppingBag, MapPin } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import type { CartItem } from "@/lib/actions/cart"
+import { getUserAddresses, calculateShipping, type Address } from "@/lib/actions/addresses"
+import { getSupabaseClient } from "@/lib/supabase"
 
 const getProductImageUrl = (item: CartItem) => {
   const images = item.product.product_images ?? []
@@ -32,6 +35,53 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
     freeShipping && freeShipping.threshold !== null && !freeShipping.eligible
       ? Math.max(0, Number(freeShipping.threshold) - (cart?.subtotal ?? 0))
       : 0
+
+  const [addresses, setAddresses] = useState<Address[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+  const [shippingFee, setShippingFee] = useState<number>(0)
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true)
+  const supabase = getSupabaseClient()
+
+  useEffect(() => {
+    const loadAddresses = async () => {
+      setIsLoadingAddresses(true)
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (sessionData.session?.user) {
+          const userAddresses = await getUserAddresses()
+          setAddresses(userAddresses)
+          
+          // Auto-select default address or first address
+          const defaultAddr = userAddresses.find(a => a.is_default) || userAddresses[0]
+          if (defaultAddr) {
+            setSelectedAddressId(defaultAddr.id)
+            const fee = await calculateShipping(defaultAddr.governorate)
+            setShippingFee(fee)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading addresses:', error)
+      } finally {
+        setIsLoadingAddresses(false)
+      }
+    }
+    loadAddresses()
+  }, [supabase])
+
+  useEffect(() => {
+    const updateShippingFee = async () => {
+      if (!selectedAddressId) {
+        setShippingFee(0)
+        return
+      }
+      const address = addresses.find(a => a.id === selectedAddressId)
+      if (address) {
+        const fee = await calculateShipping(address.governorate)
+        setShippingFee(fee)
+      }
+    }
+    updateShippingFee()
+  }, [selectedAddressId, addresses])
 
   if (isLoading) {
     return (
@@ -153,6 +203,43 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 </div>
               ) : null}
               
+              {/* Address Selection */}
+              {!isB2B && addresses.length > 0 && (
+                <div className="mb-4 p-4 bg-[#F5F1E8] rounded-lg border border-[#E8E2D1]">
+                  <label className="block text-sm font-semibold text-[#2B2520] mb-2 flex items-center gap-2">
+                    <MapPin size={16} />
+                    عنوان التوصيل
+                  </label>
+                  <select
+                    value={selectedAddressId || ""}
+                    onChange={(e) => setSelectedAddressId(e.target.value || null)}
+                    className="w-full px-4 py-2 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835] bg-white text-[#2B2520]"
+                  >
+                    {addresses.map((addr) => (
+                      <option key={addr.id} value={addr.id}>
+                        {addr.label || `${addr.governorate}, ${addr.city}`} {addr.is_default && "(افتراضي)"}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedAddressId && (
+                    <p className="text-xs text-[#8B6F47] mt-2">
+                      {addresses.find(a => a.id === selectedAddressId)?.street}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {!isB2B && addresses.length === 0 && !isLoadingAddresses && (
+                <div className="mb-4 p-3 bg-[#FFF8ED] rounded-lg border border-[#E8A835]/40">
+                  <p className="text-sm text-[#8B6F47]">
+                    <Link href={checkoutPath} className="text-[#E8A835] font-semibold hover:underline">
+                      أضف عنوان التوصيل
+                    </Link>{" "}
+                    لحساب رسوم الشحن
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-[#8B6F47]">
                   <span>المجموع الفرعي</span>
@@ -160,11 +247,24 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 </div>
                 <div className="flex justify-between text-[#8B6F47]">
                   <span>الشحن</span>
-                  <span>{freeShipping?.eligible ? "مجاني" : "يحتسب عند الدفع"}</span>
+                  <span>
+                    {isB2B 
+                      ? "يحتسب عند الدفع"
+                      : freeShipping?.eligible 
+                        ? "مجاني" 
+                        : selectedAddressId && !isLoadingAddresses
+                          ? `${shippingFee.toFixed(2)} ج.م`
+                          : "يحتسب عند الدفع"}
+                  </span>
                 </div>
                 <div className="border-t border-[#E8E2D1] pt-3 flex justify-between font-bold text-lg text-[#2B2520]">
                   <span>الإجمالي</span>
-                  <span className="text-[#C41E3A]">{cart.subtotal.toFixed(2)} ج.م</span>
+                  <span className="text-[#C41E3A]">
+                    {isB2B || !selectedAddressId || isLoadingAddresses
+                      ? cart.subtotal.toFixed(2)
+                      : (cart.subtotal + (freeShipping?.eligible ? 0 : shippingFee)).toFixed(2)}{" "}
+                    ج.م
+                  </span>
                 </div>
               </div>
 
