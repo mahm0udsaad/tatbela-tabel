@@ -114,7 +114,7 @@ export function Navbar() {
           </div>
 
           {/* Logo - Centered */}
-          <Link href="/" className="flex items-center justify-center flex-shrink-0 mx-4">
+          <Link href="/" className="overflow-y-hidden h-full flex items-center justify-center flex-shrink-0 mx-4">
             <Image src="/icon.png" alt="logo" width={100} height={100} className="md:w-64 md:h-40 w-[225px] h-auto" />
           </Link>
 
