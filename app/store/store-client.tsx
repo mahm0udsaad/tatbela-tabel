@@ -11,6 +11,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { SearchAutocomplete } from "@/components/search-autocomplete"
+import { SearchHighlighter } from "@/components/search-highlighter"
+import { searchService, type SearchAnalytics } from "@/lib/search"
 import type { CategoryRecord } from "./category-helpers"
 
 type ProductImage = {
@@ -117,6 +120,7 @@ export function StoreClient({
   const [hasMore, setHasMore] = useState(initialProducts.length < calculatedInitialTotal)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const filtersInitializedRef = useRef(false)
+  const prevInitialSelectedCategoriesRef = useRef<string[]>(initialSelectedCategories)
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories])
   const categoryDescendants = useMemo(() => buildDescendantMap(categoryTree), [categoryTree])
@@ -138,67 +142,8 @@ export function StoreClient({
     return []
   }, [selectedCategoryIds, categoryScopeIds])
 
-  const buildQuery = () => {
-    let query = supabase
-      .from("products")
-      .select(
-        `
-        id,
-        name_ar,
-        description_ar,
-        brand,
-        type,
-        price,
-        original_price,
-        rating,
-        reviews_count,
-        stock,
-        category_id,
-        created_at,
-        is_featured,
-        is_b2b,
-        b2b_price_hidden,
-        product_images (image_url, is_primary),
-        product_variants (stock)
-      `,
-        { count: "exact" },
-      )
-      .eq("is_archived", false)
-      .eq("is_b2b", isB2B)
-
-    const trimmed = search.trim()
-    if (trimmed) {
-      const term = trimmed.replace(/%/g, "")
-      query = query.or(`name_ar.ilike.%${term}%,description_ar.ilike.%${term}%,brand.ilike.%${term}%`)
-    }
-
-    if (categoryFilterIds.length > 0) {
-      query = query.in("category_id", categoryFilterIds)
-    }
-
-    if (selectedBrands.length > 0) {
-      query = query.in("brand", selectedBrands)
-    }
-
-    query = query.gte("price", priceRange[0]).lte("price", priceRange[1])
-
-    switch (sortBy) {
-      case "price-low":
-        query = query.order("price", { ascending: true }).order("created_at", { ascending: false, nullsLast: true })
-        break
-      case "price-high":
-        query = query.order("price", { ascending: false }).order("created_at", { ascending: false, nullsLast: true })
-        break
-      case "newest":
-        query = query.order("created_at", { ascending: false, nullsLast: true })
-        break
-      default:
-        query = query.order("reviews_count", { ascending: false, nullsLast: true }).order("sort_order", { ascending: true })
-        break
-    }
-
-    return query
-  }
+  // Track search analytics
+  const [searchAnalytics, setSearchAnalytics] = useState<SearchAnalytics | null>(null)
 
   const fetchProducts = async (reset = false) => {
     if (!reset && (loading || loadingMore)) return
@@ -214,17 +159,33 @@ export function StoreClient({
     const to = from + pageSize - 1
 
     try {
-      const { data, error, count } = await buildQuery().range(from, to)
+      const searchResult = await searchService.searchProducts({
+        query: search,
+        categoryIds: categoryFilterIds.length > 0 ? categoryFilterIds : undefined,
+        brands: selectedBrands.length > 0 ? selectedBrands : undefined,
+        priceMin: priceRange[0],
+        priceMax: priceRange[1],
+        isB2B,
+        limit: pageSize,
+        offset: from,
+        sortBy: search.trim() ? 'relevance' : sortBy
+      })
 
-      if (error) throw error
-      const received = data?.length ?? 0
+      const received = searchResult.data?.length ?? 0
       const previousLength = reset ? 0 : products.length
       const totalLoaded = previousLength + received
 
-      setProducts((prev) => (reset ? data || [] : [...prev, ...(data || [])]))
-      if (typeof count === "number") {
-        setTotalCount(count)
-        setHasMore(totalLoaded < count)
+      setProducts((prev) => (reset ? searchResult.data || [] : [...prev, ...(searchResult.data || [])]))
+
+      // For enhanced search, we need to track total count differently
+      if (reset && searchResult.analytics) {
+        setSearchAnalytics(searchResult.analytics)
+        setTotalCount(searchResult.count)
+        setHasMore(totalLoaded < searchResult.count)
+      } else if (reset) {
+        // Fallback for non-search queries
+        setTotalCount(searchResult.count)
+        setHasMore(received === pageSize)
       } else {
         setHasMore(received === pageSize)
       }
@@ -235,6 +196,7 @@ export function StoreClient({
       setLoadingMore(false)
     }
   }
+
 
   useEffect(() => {
     if (!filtersInitializedRef.current) {
@@ -276,7 +238,11 @@ export function StoreClient({
   useEffect(() => {
     // Keep local category state in sync with server-provided defaults (e.g. route change),
     // but never "fight" user interaction by re-applying defaults on every toggle.
-    setSelectedCategories(initialSelectedCategories)
+    // Only update if the arrays are actually different (deep comparison)
+    if (!arraysEqual(prevInitialSelectedCategoriesRef.current, initialSelectedCategories)) {
+      prevInitialSelectedCategoriesRef.current = initialSelectedCategories
+      setSelectedCategories(initialSelectedCategories)
+    }
   }, [initialSelectedCategories])
 
   // Sync search state with URL/prop changes (e.g., navbar search navigation)
@@ -290,41 +256,32 @@ export function StoreClient({
     setHasMore(initialProducts.length < calculatedInitialTotal)
   }, [initialProducts, calculatedInitialTotal])
 
-  const handleSearchSubmit = (event: React.FormEvent) => {
-    event.preventDefault()
+  const handleSearchSubmit = (searchValue: string) => {
+    setSearch(searchValue)
     const params = new URLSearchParams(searchParams)
-    if (search) {
-      params.set("search", search)
+    if (searchValue) {
+      params.set("search", searchValue)
     } else {
       params.delete("search")
     }
     router.replace(`/store?${params.toString()}`)
-    fetchProducts(true)
+    // fetchProducts will be triggered by the useEffect when search state changes
   }
 
   const FiltersContent = () => (
     <div className="space-y-4">
-      <form onSubmit={handleSearchSubmit} className="lg:hidden">
+      <div className="lg:hidden">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow p-4 space-y-3">
           <h2 className="text-lg font-bold text-[#2B2520]">البحث</h2>
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 size-5 text-[#8B6F47]" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="ابحث عن منتج..."
-              className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 pr-10 focus:border-[#E8A835] focus:outline-none text-base"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full px-4 py-3 rounded-lg bg-[#E8A835] text-white font-semibold hover:bg-[#D9941E] active:scale-[0.98] transition-transform"
-          >
-            بحث
-          </button>
+          <SearchAutocomplete
+            value={search}
+            onChange={setSearch}
+            onSubmit={handleSearchSubmit}
+            placeholder="ابحث عن منتج..."
+            className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 focus:border-[#E8A835] focus:outline-none text-base"
+          />
         </div>
-      </form>
+      </div>
 
       <Accordion type="multiple" defaultValue={["categories", "brands", "price"]} className="w-full">
         <AccordionItem value="categories" className="border-none">
@@ -400,43 +357,31 @@ export function StoreClient({
     <section className="py-6 md:py-12">
       <div className="max-w-[95%] mx-auto px-4">
         {/* Mobile Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="lg:hidden mb-6">
-          <div className="relative">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 size-5 text-[#8B6F47]" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="ابحث عن منتج..."
-              className="w-full rounded-xl border-2 border-[#D9D4C8] px-4 py-4 pr-12 focus:border-[#E8A835] focus:outline-none text-base bg-white shadow-sm"
-            />
-          </div>
-        </form>
+        <div className="lg:hidden mb-6">
+          <SearchAutocomplete
+            value={search}
+            onChange={setSearch}
+            onSubmit={handleSearchSubmit}
+            placeholder="ابحث عن منتج..."
+            className="w-full rounded-xl border-2 border-[#D9D4C8] px-4 py-4 focus:border-[#E8A835] focus:outline-none text-base bg-white shadow-sm"
+          />
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
           {/* Desktop Sidebar */}
           <aside className="hidden lg:block lg:w-72 flex-shrink-0 space-y-6">
-            <form onSubmit={handleSearchSubmit}>
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow p-4 space-y-3">
-                <h2 className="text-lg font-bold text-[#2B2520]">البحث</h2>
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[#8B6F47]" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="ابحث عن منتج..."
-                    className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 pr-9 focus:border-[#E8A835] focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full px-4 py-2 rounded-lg bg-[#E8A835] text-white font-semibold hover:bg-[#D9941E] transition-colors"
-                >
-                  بحث
-                </button>
-              </div>
-            </form>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow p-4 space-y-3">
+              <h2 className="text-lg font-bold text-[#2B2520]">البحث</h2>
+              <SearchAutocomplete
+                value={search}
+                onChange={setSearch}
+                onSubmit={handleSearchSubmit}
+                placeholder="ابحث عن منتج..."
+                className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835] focus:outline-none"
+                showRecentSearches={false}
+                showPopularSearches={false}
+              />
+            </div>
 
             <FilterSection title="الفئات">
               <CategoryFilter tree={categoryTree} selected={selectedCategories} onToggle={handleCategoryToggle} />
@@ -534,7 +479,7 @@ export function StoreClient({
 
             <div className="rounded-2xl md:rounded-3xl bg-[#F5F1E8] p-4 md:p-6 lg:p-8">
               <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                {products.map((product) => (
+                {products.map((product, index) => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -542,6 +487,9 @@ export function StoreClient({
                     priceHidden={mode === "b2b" ? priceHidden : false}
                     contactLabel={contactLabel}
                     contactUrl={contactUrl}
+                    searchTerm={search}
+                    position={index + 1}
+                    searchAnalytics={searchAnalytics}
                   />
                 ))}
               </div>
@@ -687,12 +635,18 @@ function ProductCard({
   priceHidden = false,
   contactLabel = "تواصل مع المبيعات",
   contactUrl = "/contact",
+  searchTerm,
+  position,
+  searchAnalytics,
 }: {
   product: ProductRecord
   mode?: "b2c" | "b2b"
   priceHidden?: boolean
   contactLabel?: string
   contactUrl?: string
+  searchTerm?: string
+  position?: number
+  searchAnalytics?: SearchAnalytics | null
 }) {
   const primaryImage =
     product.product_images?.find((image) => image.is_primary)?.image_url ||
@@ -713,9 +667,16 @@ function ProductCard({
   const hidePrices = mode === "b2b" && (priceHidden || product.b2b_price_hidden)
   const productLink = mode === "b2b" ? `/b2b/product/${product.id}` : `/product/${product.id}`
 
+  const handleProductClick = () => {
+    if (searchAnalytics?.queryId && position) {
+      searchService.trackSearchClick(searchAnalytics.queryId, product.id, position)
+    }
+  }
+
   return (
     <Link
       href={productLink}
+      onClick={handleProductClick}
       className="bg-white rounded-2xl overflow-hidden shadow hover:shadow-lg transition border border-[#E8E2D1] flex flex-col group"
     >
       <div className="relative h-64 bg-[#F5F1E8] overflow-hidden">
@@ -751,9 +712,11 @@ function ProductCard({
         ) : null}
         <p className="text-xs text-[#E8A835] font-semibold uppercase mb-2">{product.brand}</p>
         <h3 className="text-lg font-bold text-[#2B2520] mb-2 line-clamp-2 group-hover:text-[#E8A835] transition-colors">
-          {product.name_ar}
+          <SearchHighlighter text={product.name_ar} searchTerm={searchTerm} />
         </h3>
-        <p className="text-sm text-[#8B6F47] line-clamp-2 mb-4">{product.description_ar}</p>
+        <p className="text-sm text-[#8B6F47] line-clamp-2 mb-4">
+          <SearchHighlighter text={product.description_ar || ''} searchTerm={searchTerm} />
+        </p>
         <div className="flex items-center gap-2 mb-4">
           <div className="flex">
             {Array.from({ length: 5 }).map((_, index) => (

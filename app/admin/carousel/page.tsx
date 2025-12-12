@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { Plus, Edit2, Trash2, Upload, Loader2, ImageDown } from "lucide-react"
+import { Plus, Edit2, Trash2, Upload, Loader2, ImageDown, GripVertical } from "lucide-react"
 import ReactCrop, { type Crop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core"
@@ -52,11 +52,19 @@ function SortableSlide({
     <div 
       ref={setNodeRef} 
       style={style} 
-      {...attributes} 
-      {...listeners} 
-      className="border border-[#E8A835]/30 rounded-2xl overflow-hidden bg-[#FFFDF8] touch-none"
+      {...attributes}
+      className="border border-[#E8A835]/30 rounded-2xl overflow-hidden bg-[#FFFDF8] relative"
     >
-      <div className="aspect-[16/9] bg-[#F5F1E8]">
+      {/* Drag Handle */}
+      <div
+        {...listeners}
+        className="absolute top-2 left-2 z-10 p-2 bg-white/90 backdrop-blur-sm rounded-lg cursor-grab active:cursor-grabbing hover:bg-white shadow-sm border border-[#E8A835]/20"
+        title="اسحب لإعادة الترتيب"
+      >
+        <GripVertical size={18} className="text-[#8B6F47]" />
+      </div>
+      
+      <div className="aspect-[16/9] bg-[#F5F1E8] h-[25rem]">
         <img src={slide.image_url} alt={slide.alt_text ?? "صورة"} className="h-full w-full object-cover pointer-events-none" />
       </div>
       <div className="p-4 space-y-3">
@@ -67,20 +75,17 @@ function SortableSlide({
           )}
         </div>
         {slide.alt_text && <p className="text-[#2B2520] font-semibold">{slide.alt_text}</p>}
-        <div 
-          className="flex items-center gap-3"
-          onPointerDown={(e) => e.stopPropagation()} 
-        >
+        <div className="flex items-center gap-3">
           <button
             onClick={() => onEdit(slide)}
-            className="flex-1 px-4 py-2 bg-white border border-[#E8A835] text-[#E8A835] rounded-lg font-semibold hover:bg-[#FFF3D6] flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2 bg-white border border-[#E8A835] text-[#E8A835] rounded-lg font-semibold hover:bg-[#FFF3D6] flex items-center justify-center gap-2 transition-colors"
           >
             <Edit2 size={16} />
             تعديل
           </button>
           <button
             onClick={() => onDelete(slide)}
-            className="flex-1 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg font-semibold hover:bg-red-100 flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg font-semibold hover:bg-red-100 flex items-center justify-center gap-2 transition-colors"
           >
             <Trash2 size={16} />
             حذف

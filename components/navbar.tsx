@@ -8,6 +8,7 @@ import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { useCart } from "@/components/cart-provider"
+import { SearchAutocomplete } from "@/components/search-autocomplete"
 
 export function Navbar() {
   const [user, setUser] = useState<any>(null)
@@ -54,9 +55,19 @@ export function Navbar() {
     { href: "/contact", label: "تواصل معنا", icon: Phone, shortLabel: "اتصل" },
   ]
 
-  const handleSearchSubmit = async (event?: React.FormEvent) => {
-    event?.preventDefault()
-    const query = searchTerm.trim()
+  const handleSearchSubmit = (searchValue?: string | React.FormEvent) => {
+    // Handle both string (from SearchAutocomplete) and form event (for backward compatibility)
+    let query: string
+    
+    if (typeof searchValue === 'string') {
+      query = searchValue.trim()
+    } else if (searchValue && 'preventDefault' in searchValue) {
+      searchValue.preventDefault()
+      query = searchTerm.trim()
+    } else {
+      query = searchTerm.trim()
+    }
+    
     const targetPath = isB2BRoute ? "/b2b" : "/store"
     const params = new URLSearchParams(searchParams)
     
@@ -110,22 +121,17 @@ export function Navbar() {
           {/* Right Side - Search + Cart + Auth */}
           <div className="flex items-center gap-4 justify-end flex-1">
             {/* Desktop Search */}
-            <form
-              onSubmit={handleSearchSubmit}
-              className="hidden md:flex items-center bg-[#F5F1E8] rounded-full px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-[#E8A835]"
-            >
-              <Search size={18} className="text-[#8B6F47]" />
-              <input
-                type="text"
+            <div className="hidden md:flex items-center bg-[#F5F1E8] rounded-full px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-[#E8A835]">
+              <SearchAutocomplete
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={setSearchTerm}
+                onSubmit={handleSearchSubmit}
                 placeholder="ابحث عن منتج أو خلطة"
                 className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-[#2B2520] placeholder:text-[#8B6F47]"
+                showRecentSearches={false}
+                showPopularSearches={false}
               />
-              <button type="submit" className="text-sm font-semibold text-[#E8A835]">
-                بحث
-              </button>
-            </form>
+            </div>
 
             {/* Desktop Cart */}
             <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors hidden md:flex relative">
@@ -195,19 +201,17 @@ export function Navbar() {
       {/* Mobile search drawer */}
       {mobileSearchOpen && (
         <div className="md:hidden px-4 pb-4 bg-white/80 backdrop-blur-sm border-b border-[#E8A835]/20">
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-3 bg-[#F5F1E8] rounded-2xl px-4 py-3">
-            <Search size={20} className="text-[#8B6F47]" />
-            <input
-              type="text"
-              autoFocus
+          <div className="flex items-center gap-3 bg-[#F5F1E8] rounded-2xl px-4 py-3">
+            <SearchAutocomplete
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={setSearchTerm}
+              onSubmit={(value) => {
+                handleSearchSubmit(value)
+                setMobileSearchOpen(false)
+              }}
               placeholder="ابحث عن منتجات"
               className="flex-1 bg-transparent border-none outline-none text-sm text-[#2B2520] placeholder:text-[#8B6F47]"
             />
-            <button type="submit" className="text-sm font-semibold text-[#E8A835]">
-              بحث
-            </button>
             <button
               type="button"
               onClick={() => setMobileSearchOpen(false)}
@@ -215,7 +219,7 @@ export function Navbar() {
             >
               إغلاق
             </button>
-          </form>
+          </div>
         </div>
       )}
 
