@@ -22,6 +22,12 @@ export function Navbar() {
 
   const cartCount = cart?.items.reduce((acc, item) => acc + item.quantity, 0) || 0
 
+  // Sync search input with URL params
+  useEffect(() => {
+    const searchFromUrl = searchParams.get("search") || ""
+    setSearchTerm(searchFromUrl)
+  }, [searchParams])
+
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession()
@@ -51,11 +57,17 @@ export function Navbar() {
   const handleSearchSubmit = async (event?: React.FormEvent) => {
     event?.preventDefault()
     const query = searchTerm.trim()
-    if (!query) return
     const targetPath = isB2BRoute ? "/b2b" : "/store"
     const params = new URLSearchParams(searchParams)
-    params.set("search", query)
-    router.push(`${targetPath}?${params.toString()}`)
+    
+    if (query) {
+      params.set("search", query)
+    } else {
+      params.delete("search")
+    }
+    
+    const queryString = params.toString()
+    router.push(queryString ? `${targetPath}?${queryString}` : targetPath)
     setMobileSearchOpen(false)
   }
 

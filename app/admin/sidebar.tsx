@@ -21,6 +21,7 @@ export function AdminSidebar() {
     { href: "/admin/orders", label: "الطلبات", icon: ShoppingBag },
     { href: "/admin/products", label: "المنتجات", icon: Package },  
     { href: "/admin/products/order", label: "ترتيب المنتجات", icon: ListOrdered },
+    { href: "/admin/b2b/products/order", label: "ترتيب منتجات الجملة", icon: ListOrdered },
     { href: "/admin/featured-products/order", label: "ترتيب أبرز المنتجات", icon: Star },
     { href: "/admin/reviews", label: "التقييمات", icon: MessageSquare },
     { href: "/admin/categories", label: "الفئات", icon: Layers },

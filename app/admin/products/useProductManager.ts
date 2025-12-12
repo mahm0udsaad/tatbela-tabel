@@ -1,7 +1,7 @@
 "use client"
 
 import type { ChangeEvent } from "react"
-import { useEffect, useMemo, useRef, useState, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import type { Crop } from "react-image-crop"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
@@ -97,10 +97,37 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
 
   const selectedProduct = useMemo(() => products.find((product) => product.id === selectedProductId) ?? null, [products, selectedProductId])
 
-  const getCategoryNameById = (categoryId: string | null) => {
+  const getCategoryNameById = useCallback((categoryId: string | null) => {
     if (!categoryId) return ""
     return categories.find((category) => category.id === categoryId)?.name_ar ?? ""
-  }
+  }, [categories])
+
+  // Ensure the category field is always prefilled when the user is working inside a selected category,
+  // even if they didn't explicitly click "منتج جديد" (e.g. when a category has 0 products).
+  useEffect(() => {
+    if (viewFilter !== "category") return
+    if (!selectedCategoryId) return
+    if (selectedProduct) return
+
+    const targetCategoryName = getCategoryNameById(selectedCategoryId)
+
+    setProductForm((prev) => {
+      // Never override an existing product's category
+      if (prev.id) return prev
+
+      // If already aligned, do nothing
+      if (prev.category_id === selectedCategoryId && (prev.type || "") === (targetCategoryName || "")) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        category_id: selectedCategoryId,
+        // Only fill type if user hasn't already typed it
+        type: prev.type?.trim() ? prev.type : targetCategoryName,
+      }
+    })
+  }, [selectedCategoryId, selectedProduct, viewFilter, getCategoryNameById])
 
   useEffect(() => {
     setProducts(initialProducts ?? [])

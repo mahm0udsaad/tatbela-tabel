@@ -243,7 +243,7 @@ export function StoreClient({
     }
     const timer = setTimeout(() => fetchProducts(true), 300)
     return () => clearTimeout(timer)
-  }, [sortBy, selectedCategories, selectedBrands, priceRange])
+  }, [sortBy, selectedCategories, selectedBrands, priceRange, search])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -274,10 +274,15 @@ export function StoreClient({
   }
 
   useEffect(() => {
-    if (!arraysEqual(selectedCategories, initialSelectedCategories)) {
-      setSelectedCategories(initialSelectedCategories)
-    }
-  }, [initialSelectedCategories, selectedCategories])
+    // Keep local category state in sync with server-provided defaults (e.g. route change),
+    // but never "fight" user interaction by re-applying defaults on every toggle.
+    setSelectedCategories(initialSelectedCategories)
+  }, [initialSelectedCategories])
+
+  // Sync search state with URL/prop changes (e.g., navbar search navigation)
+  useEffect(() => {
+    setSearch(initialSearch)
+  }, [initialSearch])
 
   useEffect(() => {
     setProducts(initialProducts)
