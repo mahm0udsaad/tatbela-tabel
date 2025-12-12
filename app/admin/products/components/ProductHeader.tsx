@@ -8,13 +8,17 @@ type ProductHeaderProps = {
   isPending: boolean
   onBack?: () => void
   selectedCategoryName?: string | null
+  isB2B?: boolean
 }
 
-export function ProductHeader({ onCreateNew, onSave, isPending, onBack, selectedCategoryName }: ProductHeaderProps) {
-  const title = selectedCategoryName ? `إدارة المنتجات < ${selectedCategoryName}` : "إدارة المنتجات"
+export function ProductHeader({ onCreateNew, onSave, isPending, onBack, selectedCategoryName, isB2B = false }: ProductHeaderProps) {
+  const baseTitle = isB2B ? "إدارة منتجات الجملة (B2B)" : "إدارة المنتجات"
+  const title = selectedCategoryName ? `${baseTitle} < ${selectedCategoryName}` : baseTitle
   const subtitle = selectedCategoryName
     ? `أنت تدير الآن فئة ${selectedCategoryName}. يمكنك العودة لاختيار فئة مختلفة في أي وقت.`
-    : "تحكم كامل بالمنتجات، المتغيرات، ومستوى المخزون"
+    : isB2B
+      ? "تحكم كامل بمنتجات الجملة، المتغيرات، ومستوى المخزون"
+      : "تحكم كامل بالمنتجات، المتغيرات، ومستوى المخزون"
 
   return (
     <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

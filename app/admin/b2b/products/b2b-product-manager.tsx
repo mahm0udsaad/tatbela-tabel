@@ -242,6 +242,7 @@ export function B2BProductManager({
               ? "منتجات الجملة المميزة"
               : manager.selectedCategoryName
         }
+        isB2B={true}
       />
 
       <StatusBanner statusMessage={manager.statusMessage} errorMessage={manager.errorMessage} />

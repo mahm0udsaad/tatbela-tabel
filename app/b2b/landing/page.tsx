@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Star, ArrowRight } from "lucide-react"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { createClient as createServerClient } from "@/lib/supabase/server"
+import { AddToCartButton } from "@/components/add-to-cart-button"
 
 export const dynamic = "force-dynamic"
 
@@ -43,42 +44,125 @@ const fallbackHeroImages: HeroCarouselImage[] = [
     id: "fallback-1",
     image_url: "/sliders/anju-ravindranath-Nihdo084Yos-unsplash.jpg",
     alt_text: "مزيج من التوابل الأصلية",
-    link_url: "/store",
+    link_url: "/b2b",
     sort_order: 0,
   },
   {
     id: "fallback-2",
     image_url: "/sliders/paolo-bendandi-VVe3zOZM88E-unsplash.jpg",
     alt_text: "أطباق الكاري المميزة من تتبيلة",
-    link_url: "/recipes",
+    link_url: "/b2b",
     sort_order: 1,
   },
   {
     id: "fallback-3",
     image_url: "/sliders/tamanna-rumee-qkgxIZOhvWI-unsplash.jpg",
     alt_text: "عروض الموسم على خلطات الدجاج",
-    link_url: "/store?category=offers",
+    link_url: "/b2b",
     sort_order: 2,
   },
   {
     id: "fallback-4",
     image_url: "/sliders/zahrin-lukman-VSNoQdimlQQ-unsplash.jpg",
     alt_text: "أفضل أنواع التوابل العالمية",
-    link_url: "/store",
+    link_url: "/b2b",
     sort_order: 3,
   },
 ]
 
 const fallbackPromotion: PromotionContent = {
-  tagline: "عرض حصري محدود",
-  title: "خصم 10% على كل المنتجات",
-  description: "استمتع بأفضل التوابل المصرية الأصلية بسعر خاص. العرض محدود الوقت فقط!",
-  cta_label: "اغتنم العرض الآن",
-  cta_url: "/store",
+  tagline: "عرض حصري للجملة",
+  title: "أسعار خاصة لتجار الجملة",
+  description: "استمتع بأفضل الأسعار على التوابل المصرية الأصلية للكميات الكبيرة. تواصل معنا للحصول على أفضل العروض!",
+  cta_label: "تواصل مع المبيعات",
+  cta_url: "/contact",
   background_from: "#1A4D2E",
   background_via: "#0F2F1F",
   background_to: "#1A4D2E",
 }
+
+const categories = [
+  {
+    id: 1,
+    name: "العطارة",
+    arabicName: "العطارة",
+    description: "توابل طبيعية مختارة بعناية",
+    icon: "🌶️",
+    href: "/b2b",
+  },
+  {
+    id: 2,
+    name: "الخلطات",
+    arabicName: "الخلطات",
+    description: "خلطات مصرية أصلية",
+    icon: "🥘",
+    href: "/b2b",
+  },
+  {
+    id: 3,
+    name: "الصوصات",
+    arabicName: "الصوصات",
+    description: "صوصات لذيذة وشهية",
+    icon: "🍲",
+    href: "/b2b",
+  },
+  {
+    id: 4,
+    name: "منتجات الجمله",
+    arabicName: "منتجات الجمله",
+    description: "أفضل الأسعار لتجار الجملة والكميات الكبيرة",
+    icon: "📦",
+    href: "/b2b",
+  },
+]
+
+type FeaturedProductImage = {
+  image_url: string
+  is_primary: boolean
+}
+
+type FeaturedProductRecord = {
+  id: string
+  name_ar: string
+  brand: string
+  price: number
+  original_price: number | null
+  rating: number | null
+  reviews_count: number | null
+  product_images: FeaturedProductImage[] | null
+}
+
+type FeaturedProductCard = {
+  id: string
+  name_ar: string
+  brand: string
+  price: number
+  original_price: number | null
+  rating: number | null
+  reviews_count: number | null
+  image_url: string | null
+}
+
+const testimonials = [
+  {
+    name: "أحمد محمد",
+    location: "القاهرة",
+    text: "جودة عالية جداً وأسعار تنافسية. التعامل احترافي والتوصيل سريع. أنصح بهم بشدة!",
+    rating: 5,
+  },
+  {
+    name: "محمد علي",
+    location: "الجيزة",
+    text: "أفضل مورد للتوابل المصرية بالجملة. الخلطات طازة والكميات متوفرة دائماً.",
+    rating: 5,
+  },
+  {
+    name: "خالد حسن",
+    location: "الإسكندرية",
+    text: "منتجات أصلية وأسعار مناسبة للجملة. خدمة عملاء ممتازة.",
+    rating: 5,
+  },
+]
 
 async function getHeroCarouselImages(): Promise<HeroCarouselImage[]> {
   try {
@@ -124,101 +208,7 @@ async function getHomepagePromotion(): Promise<HomepagePromotion | null> {
   }
 }
 
-const categories = [
-  {
-    id: 1,
-    name: "العطارة",
-    arabicName: "العطارة",
-    description: "توابل طبيعية مختارة بعناية",
-    icon: "🌶️",
-    href: "/store",
-  },
-  {
-    id: 2,
-    name: "الخلطات",
-    arabicName: "الخلطات",
-    description: "خلطات مصرية أصلية",
-    icon: "🥘",
-    href: "/blends",
-  },
-  {
-    id: 3,
-    name: "الصوصات",
-    arabicName: "الصوصات",
-    description: "صوصات لذيذة وشهية",
-    icon: "🍲",
-    href: "/sauces",
-  },
-  {
-    id: 4,
-    name: "العروض",
-    arabicName: "العروض",
-    description: "أفضل العروض والخصومات",
-    icon: "🎁",
-    href: "/offers",
-  },
-  {
-    id: 5,
-    name: "منتجات الجمله",
-    arabicName: "منتجات الجمله",
-    description: "أفضل الأسعار لتجار الجملة والكميات الكبيرة",
-    icon: "📦",
-    href: "/wholesale",
-  }
-];
-
-
-type FeaturedProductImage = {
-  image_url: string
-  is_primary: boolean
-}
-
-type FeaturedProductRecord = {
-  id: string
-  name_ar: string
-  brand: string
-  price: number
-  original_price: number | null
-  rating: number | null
-  reviews_count: number | null
-  product_images: FeaturedProductImage[] | null
-}
-
-type FeaturedProductCard = {
-  id: string
-  name_ar: string
-  brand: string
-  price: number
-  original_price: number | null
-  rating: number | null
-  reviews_count: number | null
-  image_url: string | null
-}
-
-const testimonials = [
-  {
-    name: "فاطمة أحمد",
-    location: "القاهرة",
-    text: "جودة عالية جداً، الطعم رائع والتوصيل سريع جداً. شكراً تتبيلة وتابل!",
-    rating: 5,
-  },
-  {
-    name: "محمود علي",
-    location: "الجيزة",
-    text: "أفضل متجر للتوابل المصرية. الخلطات طازة وطعمها ممتاز جداً.",
-    rating: 5,
-  },
-  {
-    name: "سارة حسن",
-    location: "الإسكندرية",
-    text: "منتجات أصلية وأسعار مناسبة. سأطلب منهم دائماً.",
-    rating: 5,
-  },
-]
-
-import { AddToCartButton } from "@/components/add-to-cart-button"
-
-async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
+async function getB2BFeaturedProducts(): Promise<FeaturedProductCard[]> {
   const baseSelect = `
     id,
     name_ar,
@@ -236,14 +226,14 @@ async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
       .from("products")
       .select(baseSelect)
       .eq("is_featured", true)
+      .eq("is_b2b", true)
       .eq("is_archived", false)
-      .eq("is_b2b", false)
       .order("sort_order", { ascending: true })
       .order("updated_at", { ascending: false })
       .limit(8)
 
     if (error) {
-      console.error("Error fetching featured products:", error)
+      console.error("Error fetching B2B featured products:", error)
       return []
     }
 
@@ -254,12 +244,12 @@ async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
         .from("products")
         .select(baseSelect)
         .eq("is_archived", false)
-        .eq("is_b2b", false)
+        .eq("is_b2b", true)
         .order("reviews_count", { ascending: false })
         .limit(8)
 
       if (fallbackError) {
-        console.error("Error fetching fallback featured products:", fallbackError)
+        console.error("Error fetching fallback B2B featured products:", fallbackError)
         return featured
       }
 
@@ -272,7 +262,7 @@ async function getFeaturedProducts(): Promise<FeaturedProductCard[]> {
 
     return featured.slice(0, 8)
   } catch (error) {
-    console.error("Error fetching featured products:", error)
+    console.error("Error fetching B2B featured products:", error)
     return []
   }
 }
@@ -298,9 +288,9 @@ function mapFeaturedProducts(rows: FeaturedProductRecord[] | null | undefined): 
   })
 }
 
-export default async function Home() {
+export default async function B2BLandingPage() {
   const heroImages = await getHeroCarouselImages()
-  const featuredProducts = await getFeaturedProducts()
+  const featuredProducts = await getB2BFeaturedProducts()
   const promotion = await getHomepagePromotion()
   const heroSlides = heroImages.length > 0 ? heroImages : fallbackHeroImages
   const activePromotion: PromotionContent | null =
@@ -318,9 +308,9 @@ export default async function Home() {
       : null
   const shouldRenderPromotion = promotion ? promotion.is_active : true
   const promoContent = activePromotion ?? fallbackPromotion
+
   return (
     <main className="min-h-screen">
-
       {/* Hero Section */}
       <section className="relative pb-0 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
@@ -366,21 +356,22 @@ export default async function Home() {
           </Carousel>
         </div>
       </section>
+
       {featuredProducts.length > 0 && (
         <section className="relative z-10 -mt-12 md:-mt-20 mb-16 px-4">
           <div className="max-w-7xl mx-auto rounded-[32px] border border-[#E8E2D1] bg-[#F5F1E8] p-6 md:p-10 shadow-2xl">
             <div className="mb-10 flex flex-col items-center text-center">
               <p className="mb-2 text-sm uppercase tracking-[0.3em] text-[#8B6F47]">Featured • مختار بعناية</p>
-              <h3 className="text-3xl font-bold text-[#2B2520] md:text-4xl">أبرز منتجات Tatbeelah & Tabel</h3>
-              <p className="mt-3 max-w-2xl text-[#8B6F47]">مزيج من أفضل منتجاتنا الأعلى تقييماً والأكثر طلباً.</p>
+              <h3 className="text-3xl font-bold text-[#2B2520] md:text-4xl">أبرز منتجات الجملة</h3>
+              <p className="mt-3 max-w-2xl text-[#8B6F47]">مزيج من أفضل منتجاتنا الأعلى تقييماً والأكثر طلباً للجملة.</p>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
               {featuredProducts.map((product) => (
                 <div
-                  key={`hero-featured-${product.id}`}
+                  key={`b2b-featured-${product.id}`}
                   className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E8E2D1] bg-white transition-all duration-300 hover:border-[#E8A835] hover:shadow-xl"
                 >
-                  <Link href={`/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-[#F5F1E8]">
+                  <Link href={`/b2b/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-[#F5F1E8]">
                     {product.image_url ? (
                       <img
                         src={product.image_url}
@@ -401,7 +392,7 @@ export default async function Home() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wider text-[#E8A835]">{product.brand}</p>
-                        <Link href={`/product/${product.id}`}>
+                        <Link href={`/b2b/product/${product.id}`}>
                           <h4 className="mt-1 line-clamp-1 text-base font-bold text-[#2B2520] transition-colors hover:text-[#C41E3A]">
                             {product.name_ar}
                           </h4>
@@ -420,7 +411,7 @@ export default async function Home() {
                         {product.original_price && product.original_price > product.price && (
                           <span className="text-xs text-gray-400 line-through">{product.original_price} ج.م</span>
                         )}
-                      <AddToCartButton productId={product.id} className="h-9 px-2 text-xs" />
+                        <AddToCartButton productId={product.id} className="h-9 px-2 text-xs" />
                       </div>
                     </div>
                   </div>
@@ -429,7 +420,7 @@ export default async function Home() {
             </div>
             <div className="mt-10 flex justify-center">
               <Link
-                href="/store?featured=1"
+                href="/b2b"
                 className="inline-flex items-center justify-center rounded-full bg-[#2B2520] px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-[#2B2520]/20 transition-all hover:-translate-y-0.5 hover:bg-[#1b1612]"
               >
                 عرض الكل
@@ -445,10 +436,10 @@ export default async function Home() {
         <div className="max-w-8xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-[#2B2520] mb-4">تسوق حسب الفئة</h2>
-            <p className="text-lg text-[#8B6F47]">اختر من بين مجموعتنا الواسعة من التوابل والخلطات</p>
+            <p className="text-lg text-[#8B6F47]">اختر من بين مجموعتنا الواسعة من منتجات الجملة</p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {categories.map((category) => (
               <Link
                 key={category.id}
@@ -492,7 +483,7 @@ export default async function Home() {
                 href={promoContent.cta_url}
                 className="inline-block rounded-lg bg-white px-10 py-4 text-lg font-bold text-[#C41E3A] transition-colors hover:bg-gray-100"
               >
-                {promoContent.cta_label || "تسوق الآن"}
+                {promoContent.cta_label || "تواصل معنا"}
               </Link>
             )}
           </div>
@@ -527,7 +518,7 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
     </main>
   )
 }
+
