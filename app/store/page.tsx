@@ -24,39 +24,62 @@ export default async function StorePage({
   }
   const initialSelectedCategories = rootCategory ? [rootCategory.id] : []
 
-  let productsQuery = supabase
-    .from("products")
-    .select(
-      `
-        id,
-        name_ar,
-        description_ar,
-        brand,
-        type,
-        price,
-        original_price,
-        rating,
-        reviews_count,
-        stock,
-        category_id,
-        created_at,
-        is_featured,
-        is_b2b,
-        b2b_price_hidden,
-        product_images (image_url, is_primary),
-        product_variants (stock)
-      `,
-    )
-    .eq("is_archived", false) // Exclude archived products
-    .eq("is_b2b", false)
-    .order("sort_order", { ascending: true })
+  // Use enhanced search if search term exists, otherwise load products normally
+  let products: any[] = []
+  
+  if (params.search?.trim()) {
+    // Use the enhanced search function - search across ALL categories when searching
+    const { data: searchResults } = await supabase.rpc('search_products_enhanced', {
+      search_query: params.search.trim(),
+      category_ids: null, // Don't restrict by category when searching
+      brand_filter: null,
+      price_min: null,
+      price_max: null,
+      b2b_mode: false,
+      limit_count: 100,
+      offset_count: 0,
+      sort_by: 'relevance'
+    })
+    products = searchResults || []
+  } else {
+    // Load products normally
+    let productsQuery = supabase
+      .from("products")
+      .select(
+        `
+          id,
+          name_ar,
+          description_ar,
+          brand,
+          type,
+          price,
+          original_price,
+          rating,
+          reviews_count,
+          stock,
+          category_id,
+          created_at,
+          is_featured,
+          is_b2b,
+          b2b_price_hidden,
+          product_images (image_url, is_primary),
+          product_variants (stock)
+        `,
+      )
+      .eq("is_archived", false)
+      .eq("is_b2b", false)
+      .order("sort_order", { ascending: true })
 
-  if (categoryIds.length > 0) {
-    productsQuery = productsQuery.in("category_id", categoryIds)
+    if (categoryIds.length > 0) {
+      productsQuery = productsQuery.in("category_id", categoryIds)
+    }
+
+    const { data } = await productsQuery
+    products = data || []
   }
-
-  const { data: products } = await productsQuery
-  const categoryTitle = rootCategory?.name_ar ?? "استكشف مجموعتنا الكاملة"
+  const categoryTitle = params.search 
+    ? `نتائج البحث عن: ${params.search}` 
+    : (rootCategory?.name_ar ?? "استكشف مجموعتنا الكاملة")
 
   return (
     <main className="min-h-screen">
@@ -67,7 +90,10 @@ export default async function StorePage({
               <p className="text-sm text-[#8B6F47] uppercase tracking-wider mb-2">Tatbeelah & Tabel</p>
               <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{categoryTitle}</h1>
               <p className="text-lg text-[#8B6F47] max-w-2xl">
-                تشكيلة واسعة من التوابل المصرية والخلطات الأصلية والصوصات المميزة، مختارة بعناية لتضيف طعمًا فريدًا لكل وجبة.
+                {params.search 
+                  ? `وجدنا ${products?.length ?? 0} منتج مطابق لبحثك`
+                  : "تشكيلة واسعة من التوابل المصرية والخلطات الأصلية والصوصات المميزة، مختارة بعناية لتضيف طعمًا فريدًا لكل وجبة."
+                }
               </p>
             </div>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md p-4 w-full md:w-auto flex items-center gap-4">
@@ -90,8 +116,8 @@ export default async function StorePage({
         initialProducts={products ?? []}
         categories={allCategories}
         initialSearch={params.search ?? ""}
-        initialSelectedCategories={initialSelectedCategories}
-        categoryScopeIds={categoryIds}
+        initialSelectedCategories={params.search ? [] : initialSelectedCategories}
+        categoryScopeIds={params.search ? [] : categoryIds}
       />
     </main>
   )

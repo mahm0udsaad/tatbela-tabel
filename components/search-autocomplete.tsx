@@ -248,7 +248,7 @@ export function SearchAutocomplete({
       {showDropdown && (
         <div
           ref={dropdownRef}
-          className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#E8E2D1] z-50 max-h-96 overflow-y-auto"
+          className="w-[22rem] rounded-[5rem] absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#E8E2D1] z-[80] max-h-96 overflow-y-auto"
         >
           {value.trim() ? (
             // Search suggestions

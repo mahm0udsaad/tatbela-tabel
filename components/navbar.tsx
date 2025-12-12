@@ -84,7 +84,7 @@ export function Navbar() {
 
   return (
    <>
-    <nav className="overflow-hidden bg-white/80 backdrop-blur-sm border-b border-[#E8A835]/20 fixed top-0 left-0 right-0 z-50">
+    <nav className="overflow-visible bg-white/80 backdrop-blur-sm border-b border-[#E8A835]/20 fixed top-0 left-0 right-0 z-50">
       <div className="sm:mx-8 sm:px-4 px-1">
         <div className="flex items-center justify-between h-20">
           {/* Left Side - Desktop Menu + Mobile Search */}
@@ -128,8 +128,8 @@ export function Navbar() {
                 onSubmit={handleSearchSubmit}
                 placeholder="ابحث عن منتج أو خلطة"
                 className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-[#2B2520] placeholder:text-[#8B6F47]"
-                showRecentSearches={false}
-                showPopularSearches={false}
+                showRecentSearches={true}
+                showPopularSearches={true}
               />
             </div>
 
