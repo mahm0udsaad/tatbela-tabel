@@ -1,38 +1,35 @@
 import { createClient } from "@/lib/supabase/server"
-import { StoreClient } from "../store/store-client"
+import { OffersClient } from "./offers-client"
 
 export const dynamic = "force-dynamic"
 
 export default async function OffersPage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
   const supabase = await createClient()
   const params = await searchParams
-  const [{ data: products }, { data: categories }] = await Promise.all([
-    supabase
-      .from("products")
-      .select(
-        `
-        id,
-        name_ar,
-        description_ar,
-        brand,
-        type,
-        price,
-        original_price,
-        rating,
-        reviews_count,
-        stock,
-        category_id,
-        created_at,
-        is_featured,
-        product_images (image_url, is_primary),
-        product_variants (stock)
-      `,
-      )
-      .not("original_price", "is", null)
-      .eq("is_archived", false)
-      .order("created_at", { ascending: false }),
-    supabase.from("categories").select("id, name_ar, parent_id, slug, sort_order").order("sort_order", { ascending: true }),
-  ])
+  
+  const { data: offers } = await supabase
+    .from("offers")
+    .select(
+      `
+      id,
+      name_ar,
+      description_ar,
+      brand,
+      type,
+      price,
+      original_price,
+      rating,
+      reviews_count,
+      stock,
+      created_at,
+      is_featured,
+      offer_images (image_url, is_primary),
+      offer_variants (stock)
+    `,
+    )
+    .eq("is_archived", false)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false })
 
   return (
     <main className="min-h-screen">
@@ -49,16 +46,15 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md p-4 w-full md:w-auto flex items-center gap-4">
               <div>
                 <p className="text-xs text-[#8B6F47] uppercase tracking-wider">عدد العروض</p>
-                <h2 className="text-3xl font-bold text-[#2B2520]">{products?.length ?? 0} منتج</h2>
+                <h2 className="text-3xl font-bold text-[#2B2520]">{offers?.length ?? 0} عرض</h2>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <StoreClient
-        initialProducts={products ?? []}
-        categories={categories ?? []}
+      <OffersClient
+        initialOffers={offers ?? []}
         initialSearch={params.search ?? ""}
       />
     </main>

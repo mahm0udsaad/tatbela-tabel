@@ -280,7 +280,7 @@ export function ProductDetailClient({
               <div className="flex">
                 {images.map((image) => (
                   <div key={image.id} className="flex-[0_0_100%] min-w-0">
-                    <div className="relative h-[320px] md:h-[520px] flex items-center justify-center">
+                    <div className="relative flex items-center justify-center">
                       <img
                         src={image.image_url}
                         alt={product.name_ar}
