@@ -9,7 +9,9 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
-const HERO_ASPECT_RATIO = 1408 / 720
+const HERO_TARGET_WIDTH = 1850
+const HERO_TARGET_HEIGHT = 820
+const HERO_ASPECT_RATIO = HERO_TARGET_WIDTH / HERO_TARGET_HEIGHT
 
 interface CarouselImage {
   id: string
@@ -64,7 +66,7 @@ function SortableSlide({
         <GripVertical size={18} className="text-[#8B6F47]" />
       </div>
       
-      <div className="aspect-[16/9] bg-[#F5F1E8] h-[25rem]">
+      <div className="aspect-[1850/820] bg-[#F5F1E8]">
         <img src={slide.image_url} alt={slide.alt_text ?? "صورة"} className="h-full w-full object-cover pointer-events-none" />
       </div>
       <div className="p-4 space-y-3">
@@ -280,27 +282,11 @@ export default function AdminCarouselPage() {
       const cropWidth = (crop.width ?? 0) * scaleX
       const cropHeight = (crop.height ?? 0) * scaleY
 
-      // Optimization: Limit max width/height to improve upload speed
-      const MAX_DIMENSION = 1920
-      let targetWidth = cropWidth
-      let targetHeight = cropHeight
-
-      if (targetWidth > MAX_DIMENSION || targetHeight > MAX_DIMENSION) {
-        if (targetWidth > targetHeight) {
-          const ratio = MAX_DIMENSION / targetWidth
-          targetWidth = MAX_DIMENSION
-          targetHeight = targetHeight * ratio
-        } else {
-          const ratio = MAX_DIMENSION / targetHeight
-          targetHeight = MAX_DIMENSION
-          targetWidth = targetWidth * ratio
-        }
-      }
-
-      canvas.width = targetWidth
-      canvas.height = targetHeight
+      // Export at a fixed size for consistent home slider rendering
+      canvas.width = HERO_TARGET_WIDTH
+      canvas.height = HERO_TARGET_HEIGHT
       ctx.imageSmoothingQuality = "high"
-      ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight)
+      ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, HERO_TARGET_WIDTH, HERO_TARGET_HEIGHT)
 
       canvas.toBlob(
         (blob) => {
@@ -311,9 +297,8 @@ export default function AdminCarouselPage() {
           }
 
           const croppedUrl = URL.createObjectURL(blob)
-          const fileExtension = "jpg" // Force JPG for optimized size
           const fileType = "image/jpeg"
-          const croppedFile = new File([blob], `carousel-${Date.now()}.jpg`, { type: fileType })
+          const croppedFile = new File([blob], `carousel-${Date.now()}-${HERO_TARGET_WIDTH}x${HERO_TARGET_HEIGHT}.jpg`, { type: fileType })
           setPreviewUrl(croppedUrl)
           setSelectedFile(croppedFile)
           setIsApplyingCrop(false)
@@ -471,7 +456,9 @@ export default function AdminCarouselPage() {
                       <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                     </label>
                     {previewUrl && (
-                      <img src={previewUrl} alt="preview" className="h-20 w-32 object-cover rounded-lg border border-[#E8A835]/30" />
+                      <div className="w-32 aspect-[1850/820] overflow-hidden rounded-lg border border-[#E8A835]/30 bg-[#F5F1E8]">
+                        <img src={previewUrl} alt="preview" className="h-full w-full object-cover" />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -523,12 +510,12 @@ export default function AdminCarouselPage() {
                         تظهر الصورة بالارتفاع المستخدم في الصفحة الرئيسية للتأكد من كونها مناسبة تماماً
                       </p>
                     </div>
-                    <div className="relative h-[460px] md:h-[720px] rounded-[32px] overflow-hidden bg-[#1f1b16] border border-[#E8A835]/40">
+                    <div className="relative w-full aspect-[1850/820] rounded-[32px] overflow-hidden bg-[#1f1b16] border border-[#E8A835]/40">
                       <img src={previewUrl} alt="معاينة السلايدر" className="h-full w-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/70" />
                       <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white/80 text-xs">
                         <span>نسبة عرض {HERO_ASPECT_RATIO.toFixed(2)} : 1</span>
-                        <span>الارتفاع 720px (على الشاشات الكبيرة)</span>
+                        <span>{HERO_TARGET_WIDTH}×{HERO_TARGET_HEIGHT}</span>
                       </div>
                     </div>
                   </div>

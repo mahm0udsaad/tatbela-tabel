@@ -207,7 +207,7 @@ export function SearchAutocomplete({
   )
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <div className="relative">
         <input
           ref={inputRef}

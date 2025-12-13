@@ -2,8 +2,16 @@ import type React from "react"
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
+import { Cairo } from "next/font/google"
 import { WebsiteLayout } from "@/components/website-layout"
 import "./globals.css"
+
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  weight: ["200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-cairo",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "تتبيلة & تابل - Tatbeelah & Tabel | متجر التوابل المصرية",
@@ -37,8 +45,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ar" dir="rtl">
-      <body className="font-sans antialiased">
+    <html lang="ar" dir="rtl" className={cairo.variable}>
+      <body className="font-cairo antialiased">
         <Suspense fallback={null}>
           <WebsiteLayout>{children}</WebsiteLayout>
         </Suspense>

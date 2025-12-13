@@ -105,7 +105,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-[#2B2520] hover:text-[#E8A835] transition-colors font-bold lg:text-lg md:text-sm"
+                  className="text-[#2B2520] hover:text-[#E8A835] transition-colors lg:text-lg md:text-sm"
                 >
                   {link.label}
                 </Link>
@@ -121,7 +121,7 @@ export function Navbar() {
           {/* Right Side - Search + Cart + Auth */}
           <div className="flex items-center gap-4 justify-end flex-1">
             {/* Desktop Search */}
-            <div className="hidden md:flex items-center bg-[#F5F1E8] rounded-full px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-[#E8A835]">
+            <div className="hidden md:flex items-center px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-[#E8A835]">
               <SearchAutocomplete
                 value={searchTerm}
                 onChange={setSearchTerm}

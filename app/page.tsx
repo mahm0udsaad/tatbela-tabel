@@ -329,12 +329,15 @@ export default async function Home() {
         </div>
 
         <div className="max-w-8xl mx-auto px-4 relative z-10">
-          <Carousel className="relative md:h-[80vh] lg:h-[85vh] xl:h-[90vh]" opts={{ loop: true, direction: "rtl" }}>
+          <Carousel className="relative" opts={{ loop: true, direction: "rtl" }}>
             <CarouselContent>
               {heroSlides.map((slide) => (
-                <CarouselItem key={slide.id} className="h-full">
+                <CarouselItem key={slide.id} className="w-full">
                   {slide.link_url ? (
-                    <Link href={slide.link_url} className="block relative h-full w-full overflow-hidden rounded-[32px] bg-[#1f1b16] cursor-pointer group">
+                    <Link
+                      href={slide.link_url}
+                      className="block relative w-full aspect-[1850/820] overflow-hidden rounded-[32px] bg-[#1f1b16] cursor-pointer group"
+                    >
                       <img
                         src={slide.image_url}
                         alt={slide.alt_text ?? "صورة السلايدر"}
@@ -346,7 +349,7 @@ export default async function Home() {
                       </div>
                     </Link>
                   ) : (
-                    <div className="relative h-full overflow-hidden rounded-[32px] bg-[#1f1b16]">
+                    <div className="relative w-full aspect-[1850/820] overflow-hidden rounded-[32px] bg-[#1f1b16]">
                       <img
                         src={slide.image_url}
                         alt={slide.alt_text ?? "صورة السلايدر"}
