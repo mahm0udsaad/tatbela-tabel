@@ -131,7 +131,7 @@ const categories = [
     arabicName: "العطارة",
     description: "توابل طبيعية مختارة بعناية",
     icon: "🌶️",
-    href: "/store",
+    href: "/store?category=atara",
   },
   {
     id: 2,
@@ -139,7 +139,7 @@ const categories = [
     arabicName: "الخلطات",
     description: "خلطات مصرية أصلية",
     icon: "🥘",
-    href: "/blends",
+    href: "/store?category=blends",
   },
   {
     id: 3,
@@ -163,7 +163,7 @@ const categories = [
     arabicName: "منتجات الجمله",
     description: "أفضل الأسعار لتجار الجملة والكميات الكبيرة",
     icon: "📦",
-    href: "/wholesale",
+    href: "/b2b",
   }
 ];
 
