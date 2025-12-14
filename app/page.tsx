@@ -370,7 +370,7 @@ export default async function Home() {
         </div>
       </section>
       {featuredProducts.length > 0 && (
-        <section className="relative z-10 -mt-12 md:-mt-20 mb-16 px-4">
+        <section className="relative z-10 mb-16 px-4">
           <div className="max-w-7xl mx-auto rounded-[32px] border border-[#E8E2D1] bg-[#F5F1E8] p-6 md:p-10 shadow-2xl">
             <div className="mb-10 flex flex-col items-center text-center">
             </div>
