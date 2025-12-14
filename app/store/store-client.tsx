@@ -438,10 +438,9 @@ export function StoreClient({
               <div className="flex items-center justify-between gap-3">
                 <div className="flex-1">
                   <h2 className="text-xl md:text-2xl font-bold text-[#2B2520] mb-1">
-                    {search.trim() ? "نتائج البحث" : "اكتشف منتجاتنا"}
+                    {search.trim() ? "نتائج البحث" : ""}
                   </h2>
                   <p className="text-sm text-[#8B6F47]">
-                    {totalCount} {totalCount === 1 ? "منتج" : "منتج"}
                     {loading && <span className="text-xs"> (يتم التحديث...)</span>}
                   </p>
                 </div>

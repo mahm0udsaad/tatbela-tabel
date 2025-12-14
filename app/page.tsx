@@ -373,9 +373,6 @@ export default async function Home() {
         <section className="relative z-10 -mt-12 md:-mt-20 mb-16 px-4">
           <div className="max-w-7xl mx-auto rounded-[32px] border border-[#E8E2D1] bg-[#F5F1E8] p-6 md:p-10 shadow-2xl">
             <div className="mb-10 flex flex-col items-center text-center">
-              <p className="mb-2 text-sm uppercase tracking-[0.3em] text-[#8B6F47]">Featured • مختار بعناية</p>
-              <h3 className="text-3xl font-bold text-[#2B2520] md:text-4xl">أبرز منتجات Tatbeelah & Tabel</h3>
-              <p className="mt-3 max-w-2xl text-[#8B6F47]">مزيج من أفضل منتجاتنا الأعلى تقييماً والأكثر طلباً.</p>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
               {featuredProducts.map((product) => (
