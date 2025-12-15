@@ -6,13 +6,8 @@ import { getSupabaseClient } from "@/lib/supabase"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { DEFAULT_ABOUT_PAGE, DEFAULT_CONTACT_PAGE, DEFAULT_FOOTER } from "@/lib/site-content/defaults"
-import type {
-  AboutIconKey,
-  AboutPagePayload,
-  ContactPagePayload,
-  FooterPayload,
-} from "@/lib/site-content/types"
-import { aboutPagePayloadSchema, contactPagePayloadSchema, footerPayloadSchema } from "@/lib/site-content/schemas"
+import type { AboutPagePayload, ContactPagePayload, FooterPayload } from "@/lib/site-content/types"
+import { aboutPagePayloadSchema, coerceAboutPagePayload, contactPagePayloadSchema, footerPayloadSchema } from "@/lib/site-content/schemas"
 
 type PageSettingsRow = {
   key: string
@@ -30,16 +25,6 @@ function moveItem<T>(list: T[], from: number, to: number) {
   copy.splice(to, 0, item)
   return copy
 }
-
-const ICON_OPTIONS: { key: AboutIconKey; label: string }[] = [
-  { key: "flame", label: "Flame" },
-  { key: "recycle", label: "Recycle" },
-  { key: "handPlatter", label: "HandPlatter" },
-  { key: "users", label: "Users" },
-  { key: "leaf", label: "Leaf" },
-  { key: "rocket", label: "Rocket" },
-  { key: "award", label: "Award" },
-]
 
 export function SiteContentAdminClient({ initialSettings }: { initialSettings: SettingsByKey }) {
   const supabase = getSupabaseClient()
@@ -63,8 +48,7 @@ export function SiteContentAdminClient({ initialSettings }: { initialSettings: S
     return parsed.success ? parsed.data : DEFAULT_CONTACT_PAGE
   })
   const [about, setAbout] = useState<AboutPagePayload>(() => {
-    const parsed = aboutPagePayloadSchema.safeParse(initialAboutRow?.payload)
-    return parsed.success ? parsed.data : DEFAULT_ABOUT_PAGE
+    return coerceAboutPagePayload(initialAboutRow?.payload, DEFAULT_ABOUT_PAGE)
   })
 
   const [isSaving, setIsSaving] = useState(false)
@@ -111,7 +95,7 @@ export function SiteContentAdminClient({ initialSettings }: { initialSettings: S
 
       if (key === "about_page") {
         const parsed = aboutPagePayloadSchema.safeParse(about)
-        if (!parsed.success) throw new Error("بيانات صفحة من نحن غير صالحة. تأكد من الأقسام.")
+        if (!parsed.success) throw new Error("بيانات صفحة من نحن غير صالحة. تأكد من العنوان والمحتوى.")
         const { error: upsertError } = await supabase.from("page_settings").upsert({
           key,
           is_active: aboutActive,
@@ -658,508 +642,27 @@ export function SiteContentAdminClient({ initialSettings }: { initialSettings: S
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[#E8E2D1] p-4 space-y-4">
-                <p className="text-lg font-semibold text-[#2B2520]">الهيرو</p>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">Eyebrow</label>
-                    <input
-                      value={about.hero.eyebrow}
-                      onChange={(e) => setAbout((p) => ({ ...p, hero: { ...p.hero, eyebrow: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">Highlight</label>
-                    <input
-                      value={about.hero.highlight}
-                      onChange={(e) => setAbout((p) => ({ ...p, hero: { ...p.hero, highlight: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">Title</label>
-                    <input
-                      value={about.hero.title}
-                      onChange={(e) => setAbout((p) => ({ ...p, hero: { ...p.hero, title: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">Description</label>
-                    <textarea
-                      value={about.hero.description}
-                      onChange={(e) => setAbout((p) => ({ ...p, hero: { ...p.hero, description: e.target.value } }))}
-                      className="h-28 w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">زر 1 (النص)</label>
-                    <input
-                      value={about.hero.primaryCtaLabel}
-                      onChange={(e) => setAbout((p) => ({ ...p, hero: { ...p.hero, primaryCtaLabel: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">زر 1 (الرابط)</label>
-                    <input
-                      value={about.hero.primaryCtaUrl}
-                      onChange={(e) => setAbout((p) => ({ ...p, hero: { ...p.hero, primaryCtaUrl: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                      placeholder="/store"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">زر 2 (النص)</label>
-                    <input
-                      value={about.hero.secondaryCtaLabel}
-                      onChange={(e) => setAbout((p) => ({ ...p, hero: { ...p.hero, secondaryCtaLabel: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">زر 2 (الرابط)</label>
-                    <input
-                      value={about.hero.secondaryCtaUrl}
-                      onChange={(e) => setAbout((p) => ({ ...p, hero: { ...p.hero, secondaryCtaUrl: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                      placeholder="/contact"
-                    />
-                  </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-[#2B2520]">عنوان المقال</label>
+                  <input
+                    value={about.title}
+                    onChange={(e) => setAbout((p) => ({ ...p, title: e.target.value }))}
+                    className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
+                    placeholder="من نحن"
+                  />
                 </div>
-              </div>
-
-              <div className="rounded-xl border border-[#E8E2D1] p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-lg font-semibold text-[#2B2520]">إحصائيات</p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAbout((p) => ({
-                        ...p,
-                        stats: [...p.stats, { value: "1", label: "عنوان", detail: "تفاصيل" }],
-                      }))
-                    }
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm font-semibold text-[#2B2520] hover:bg-[#F5F1E8]"
-                  >
-                    <Plus size={16} />
-                    إضافة
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {about.stats.map((s, i) => (
-                    <div key={`${s.label}-${i}`} className="rounded-xl border border-[#E8E2D1] p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-[#2B2520]">عنصر #{i + 1}</p>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setAbout((p) => ({ ...p, stats: moveItem(p.stats, i, i - 1) }))}
-                            className="rounded-lg border border-[#D9D4C8] p-2 hover:bg-[#F5F1E8]"
-                            aria-label="تحريك للأعلى"
-                          >
-                            <ArrowUp size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setAbout((p) => ({ ...p, stats: moveItem(p.stats, i, i + 1) }))}
-                            className="rounded-lg border border-[#D9D4C8] p-2 hover:bg-[#F5F1E8]"
-                            aria-label="تحريك للأسفل"
-                          >
-                            <ArrowDown size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setAbout((p) => ({ ...p, stats: p.stats.filter((_, j) => j !== i) }))}
-                            className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
-                            aria-label="حذف"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="grid gap-2 md:grid-cols-3">
-                        <input
-                          value={s.value}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, stats: p.stats.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="15+"
-                        />
-                        <input
-                          value={s.label}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, stats: p.stats.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="عنوان"
-                        />
-                        <input
-                          value={s.detail}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, stats: p.stats.map((x, j) => (j === i ? { ...x, detail: e.target.value } : x)) }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="تفاصيل"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#E8E2D1] p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-lg font-semibold text-[#2B2520]">قيمنا (Cards)</p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAbout((p) => ({
-                        ...p,
-                        values: [...p.values, { title: "قيمة جديدة", description: "وصف", icon: "leaf" }],
-                      }))
-                    }
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm font-semibold text-[#2B2520] hover:bg-[#F5F1E8]"
-                  >
-                    <Plus size={16} />
-                    إضافة
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {about.values.map((v, i) => (
-                    <div key={`${v.title}-${i}`} className="rounded-xl border border-[#E8E2D1] p-3 space-y-2">
-                      <div className="flex gap-2">
-                        <input
-                          value={v.title}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, values: p.values.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)) }))
-                          }
-                          className="flex-1 rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                        />
-                        <select
-                          value={v.icon}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, values: p.values.map((x, j) => (j === i ? { ...x, icon: e.target.value as any } : x)) }))
-                          }
-                          className="rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm bg-white focus:border-[#E8A835] focus:outline-none"
-                        >
-                          {ICON_OPTIONS.map((opt) => (
-                            <option key={opt.key} value={opt.key}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setAbout((p) => ({ ...p, values: p.values.filter((_, j) => j !== i) }))}
-                          className="rounded-lg border border-red-200 px-3 text-red-600 hover:bg-red-50"
-                          aria-label="حذف"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                      <textarea
-                        value={v.description}
-                        onChange={(e) =>
-                          setAbout((p) => ({
-                            ...p,
-                            values: p.values.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)),
-                          }))
-                        }
-                        className="h-20 w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#E8E2D1] p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-lg font-semibold text-[#2B2520]">الخط الزمني</p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAbout((p) => ({
-                        ...p,
-                        milestones: [...p.milestones, { year: "2025", title: "محطة جديدة", description: "وصف" }],
-                      }))
-                    }
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm font-semibold text-[#2B2520] hover:bg-[#F5F1E8]"
-                  >
-                    <Plus size={16} />
-                    إضافة
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {about.milestones.map((m, i) => (
-                    <div key={`${m.year}-${i}`} className="rounded-xl border border-[#E8E2D1] p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-[#2B2520]">محطة #{i + 1}</p>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setAbout((p) => ({ ...p, milestones: moveItem(p.milestones, i, i - 1) }))}
-                            className="rounded-lg border border-[#D9D4C8] p-2 hover:bg-[#F5F1E8]"
-                            aria-label="تحريك للأعلى"
-                          >
-                            <ArrowUp size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setAbout((p) => ({ ...p, milestones: moveItem(p.milestones, i, i + 1) }))}
-                            className="rounded-lg border border-[#D9D4C8] p-2 hover:bg-[#F5F1E8]"
-                            aria-label="تحريك للأسفل"
-                          >
-                            <ArrowDown size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setAbout((p) => ({ ...p, milestones: p.milestones.filter((_, j) => j !== i) }))}
-                            className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
-                            aria-label="حذف"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        <input
-                          value={m.year}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, milestones: p.milestones.map((x, j) => (j === i ? { ...x, year: e.target.value } : x)) }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="2024"
-                        />
-                        <input
-                          value={m.title}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, milestones: p.milestones.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)) }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="عنوان"
-                        />
-                      </div>
-                      <textarea
-                        value={m.description}
-                        onChange={(e) =>
-                          setAbout((p) => ({
-                            ...p,
-                            milestones: p.milestones.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)),
-                          }))
-                        }
-                        className="h-20 w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                        placeholder="وصف"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#E8E2D1] p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-lg font-semibold text-[#2B2520]">التوريد</p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAbout((p) => ({
-                        ...p,
-                        sourcingHighlights: [...p.sourcingHighlights, { region: "منطقة", crop: "محصول", note: "ملاحظة" }],
-                      }))
-                    }
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm font-semibold text-[#2B2520] hover:bg-[#F5F1E8]"
-                  >
-                    <Plus size={16} />
-                    إضافة
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {about.sourcingHighlights.map((h, i) => (
-                    <div key={`${h.region}-${i}`} className="rounded-xl border border-[#E8E2D1] p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-[#2B2520]">عنصر #{i + 1}</p>
-                        <button
-                          type="button"
-                          onClick={() => setAbout((p) => ({ ...p, sourcingHighlights: p.sourcingHighlights.filter((_, j) => j !== i) }))}
-                          className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
-                          aria-label="حذف"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        <input
-                          value={h.region}
-                          onChange={(e) =>
-                            setAbout((p) => ({
-                              ...p,
-                              sourcingHighlights: p.sourcingHighlights.map((x, j) => (j === i ? { ...x, region: e.target.value } : x)),
-                            }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="دلتا النيل"
-                        />
-                        <input
-                          value={h.crop}
-                          onChange={(e) =>
-                            setAbout((p) => ({
-                              ...p,
-                              sourcingHighlights: p.sourcingHighlights.map((x, j) => (j === i ? { ...x, crop: e.target.value } : x)),
-                            }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="كمون"
-                        />
-                      </div>
-                      <textarea
-                        value={h.note}
-                        onChange={(e) =>
-                          setAbout((p) => ({
-                            ...p,
-                            sourcingHighlights: p.sourcingHighlights.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)),
-                          }))
-                        }
-                        className="h-20 w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                        placeholder="ملاحظة"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#E8E2D1] p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-lg font-semibold text-[#2B2520]">الفريق</p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAbout((p) => ({
-                        ...p,
-                        team: [...p.team, { name: "اسم", role: "الدور", focus: "الوصف", quote: "اقتباس" }],
-                      }))
-                    }
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm font-semibold text-[#2B2520] hover:bg-[#F5F1E8]"
-                  >
-                    <Plus size={16} />
-                    إضافة
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {about.team.map((t, i) => (
-                    <div key={`${t.name}-${i}`} className="rounded-xl border border-[#E8E2D1] p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-[#2B2520]">عضو #{i + 1}</p>
-                        <button
-                          type="button"
-                          onClick={() => setAbout((p) => ({ ...p, team: p.team.filter((_, j) => j !== i) }))}
-                          className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
-                          aria-label="حذف"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        <input
-                          value={t.name}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, team: p.team.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="الاسم"
-                        />
-                        <input
-                          value={t.role}
-                          onChange={(e) =>
-                            setAbout((p) => ({ ...p, team: p.team.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)) }))
-                          }
-                          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                          placeholder="الدور"
-                        />
-                      </div>
-                      <textarea
-                        value={t.focus}
-                        onChange={(e) =>
-                          setAbout((p) => ({ ...p, team: p.team.map((x, j) => (j === i ? { ...x, focus: e.target.value } : x)) }))
-                        }
-                        className="h-16 w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                        placeholder="الوصف"
-                      />
-                      <textarea
-                        value={t.quote}
-                        onChange={(e) =>
-                          setAbout((p) => ({ ...p, team: p.team.map((x, j) => (j === i ? { ...x, quote: e.target.value } : x)) }))
-                        }
-                        className="h-16 w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                        placeholder="اقتباس"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#E8E2D1] p-4 space-y-4">
-                <p className="text-lg font-semibold text-[#2B2520]">Call To Action (آخر الصفحة)</p>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">Eyebrow</label>
-                    <input
-                      value={about.cta.eyebrow}
-                      onChange={(e) => setAbout((p) => ({ ...p, cta: { ...p.cta, eyebrow: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <label className="block text-sm font-semibold text-[#2B2520]">محتوى المقال</label>
+                    <span className="text-xs text-[#8B6F47]">استخدم سطر فارغ للفصل بين الفقرات</span>
                   </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">Title</label>
-                    <input
-                      value={about.cta.title}
-                      onChange={(e) => setAbout((p) => ({ ...p, cta: { ...p.cta, title: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">Description</label>
-                    <textarea
-                      value={about.cta.description}
-                      onChange={(e) => setAbout((p) => ({ ...p, cta: { ...p.cta, description: e.target.value } }))}
-                      className="h-24 w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">زر 1 (النص)</label>
-                    <input
-                      value={about.cta.primaryCtaLabel}
-                      onChange={(e) => setAbout((p) => ({ ...p, cta: { ...p.cta, primaryCtaLabel: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">زر 1 (الرابط)</label>
-                    <input
-                      value={about.cta.primaryCtaUrl}
-                      onChange={(e) => setAbout((p) => ({ ...p, cta: { ...p.cta, primaryCtaUrl: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                      placeholder="/store"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">زر 2 (النص)</label>
-                    <input
-                      value={about.cta.secondaryCtaLabel}
-                      onChange={(e) => setAbout((p) => ({ ...p, cta: { ...p.cta, secondaryCtaLabel: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-[#2B2520]">زر 2 (الرابط)</label>
-                    <input
-                      value={about.cta.secondaryCtaUrl}
-                      onChange={(e) => setAbout((p) => ({ ...p, cta: { ...p.cta, secondaryCtaUrl: e.target.value } }))}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
-                      placeholder="/contact"
-                    />
-                  </div>
+                  <textarea
+                    value={about.content}
+                    onChange={(e) => setAbout((p) => ({ ...p, content: e.target.value }))}
+                    className="h-[420px] w-full rounded-lg border border-[#D9D4C8] px-4 py-3 focus:border-[#E8A835] focus:outline-none"
+                    placeholder="اكتب محتوى من نحن هنا..."
+                  />
                 </div>
               </div>
 
@@ -1175,22 +678,28 @@ export function SiteContentAdminClient({ initialSettings }: { initialSettings: S
             </div>
 
             <div className="rounded-2xl bg-white p-6 shadow-sm space-y-4">
-              <p className="text-lg font-semibold text-[#2B2520]">معاينة (الهيرو + القيم)</p>
-              <div className="rounded-2xl border border-[#E8E2D1] bg-[#F5F1E8] p-6 space-y-5">
-                <p className="text-xs tracking-[0.4em] uppercase text-[#8B6F47]">{aboutPreview.hero.eyebrow}</p>
-                <p className="text-2xl font-bold text-[#2B2520]">
-                  {aboutPreview.hero.title} <span className="text-[#C41E3A]">{aboutPreview.hero.highlight}</span>
-                </p>
-                <p className="text-sm text-[#5C5347] leading-relaxed">{aboutPreview.hero.description}</p>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  {aboutPreview.values.slice(0, 4).map((v) => (
-                    <div key={v.title} className="rounded-xl bg-white p-4 border border-[#E8E2D1]">
-                      <p className="font-bold text-[#2B2520] mb-2">{v.title}</p>
-                      <p className="text-sm text-[#5C5347]">{v.description}</p>
-                    </div>
-                  ))}
-                </div>
+              <p className="text-lg font-semibold text-[#2B2520]">معاينة المقال</p>
+              <div className="rounded-2xl border border-[#E8E2D1] bg-[#F5F1E8] p-6">
+                <article className="rounded-2xl bg-white border border-[#E8E2D1] p-6">
+                  <h2 className="text-2xl font-bold text-[#2B2520] mb-4">{aboutPreview.title || "عنوان المقال"}</h2>
+                  <div className="space-y-4 text-[#5C5347] leading-8">
+                    {(aboutPreview.content || "")
+                      .split(/\n\s*\n/g)
+                      .map((para) => para.trim())
+                      .filter(Boolean)
+                      .slice(0, 8)
+                      .map((para, idx) => (
+                        <p key={idx} className="text-base">
+                          {para.split("\n").map((line, j) => (
+                            <span key={j}>
+                              {line}
+                              {j < para.split("\n").length - 1 ? <br /> : null}
+                            </span>
+                          ))}
+                        </p>
+                      ))}
+                  </div>
+                </article>
               </div>
             </div>
           </div>

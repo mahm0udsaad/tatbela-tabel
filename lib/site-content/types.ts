@@ -50,40 +50,9 @@ export type ContactPagePayload = {
   }
 }
 
-export type AboutIconKey =
-  | "flame"
-  | "recycle"
-  | "handPlatter"
-  | "users"
-  | "leaf"
-  | "rocket"
-  | "award"
-
 export type AboutPagePayload = {
-  hero: {
-    eyebrow: string
-    title: string
-    highlight: string
-    description: string
-    primaryCtaLabel: string
-    primaryCtaUrl: string
-    secondaryCtaLabel: string
-    secondaryCtaUrl: string
-  }
-  stats: { value: string; label: string; detail: string }[]
-  milestones: { year: string; title: string; description: string }[]
-  values: { title: string; description: string; icon: AboutIconKey }[]
-  sourcingHighlights: { region: string; crop: string; note: string }[]
-  team: { name: string; role: string; focus: string; quote: string }[]
-  cta: {
-    eyebrow: string
-    title: string
-    description: string
-    primaryCtaLabel: string
-    primaryCtaUrl: string
-    secondaryCtaLabel: string
-    secondaryCtaUrl: string
-  }
+  title: string
+  content: string
 }
 
 
