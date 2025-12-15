@@ -9,11 +9,26 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { useCart } from "@/components/cart-provider"
 import { SearchAutocomplete } from "@/components/search-autocomplete"
+import type { CategoryRecord } from "@/app/store/category-helpers"
+
+function getCategoryIcon(slug: string) {
+  switch (slug) {
+    case "atara":
+      return Store
+    case "blends":
+      return Blend
+    case "sauces":
+      return Soup
+    default:
+      return Store
+  }
+}
 
 export function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [mainCategories, setMainCategories] = useState<CategoryRecord[]>([])
   const supabase = getSupabaseClient()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -45,14 +60,45 @@ export function Navbar() {
     }
   }, [supabase])
 
-  const navLinks = [
+  // Fetch only main (root) categories for navigation
+  useEffect(() => {
+    const fetchMainCategories = async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name_ar, parent_id, slug, sort_order")
+        .is("parent_id", null)
+        .order("sort_order", { ascending: true })
+
+      if (!error && data) {
+        setMainCategories(data as CategoryRecord[])
+      }
+    }
+
+    fetchMainCategories()
+  }, [supabase])
+
+  const baseNavLinks = [
     { href: "/", label: "الرئيسية", icon: Home, shortLabel: "الرئيسية" },
-    { href: "/store?category=atara", label: "العطارة", icon: Store, shortLabel: "العطارة" },
-    { href: "/store?category=blends", label: "الخلطات", icon: Blend, shortLabel: "الخلطات" },
-    { href: "/sauces", label: "الصوصات", icon: Soup, shortLabel: "الصوصات" },
     { href: "/b2b", label: "منتجات الجمله", icon: ShoppingCart, shortLabel: "جملة" },
     { href: "/offers", label: "العروض", icon: Tag, shortLabel: "العروض" },
     { href: "/contact", label: "تواصل معنا", icon: Phone, shortLabel: "اتصل" },
+  ] as const
+
+  const categoryNavLinks =
+    mainCategories?.map((category) => {
+      const Icon = getCategoryIcon(category.slug)
+      return {
+        href: `/store?category=${category.slug}`,
+        label: category.name_ar,
+        icon: Icon,
+        shortLabel: category.name_ar,
+      }
+    }) ?? []
+
+  const navLinks = [
+    baseNavLinks[0],
+    ...categoryNavLinks,
+    ...baseNavLinks.slice(1),
   ]
 
   const handleSearchSubmit = (searchValue?: string | React.FormEvent) => {
