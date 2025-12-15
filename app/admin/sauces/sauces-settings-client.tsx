@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Loader2, Save, EyeOff, Eye } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
 
@@ -68,6 +69,19 @@ export function SaucesSettingsClient({ initialSettings }: { initialSettings: Set
               {isActive ? <Eye size={16} /> : <EyeOff size={16} />}
               {isActive ? "حالة: ظاهر" : "حالة: مخفي"}
             </button>
+          </div>
+
+          <div className="rounded-xl border border-[#E8E2D1] bg-[#FFF8ED] px-4 py-3">
+            <p className="text-sm font-semibold text-[#2B2520] mb-1">ترتيب منتجات الصوصات</p>
+            <p className="text-xs text-[#8B6F47] mb-3">
+              إذا كانت منتجات الصوصات موجودة ضمن فئة slug: sauces، يمكنك ترتيبها بسحب وإفلات.
+            </p>
+            <Link
+              href="/admin/products/order?client=sauces"
+              className="inline-flex items-center justify-center rounded-lg border border-[#E8A835] px-4 py-2 text-sm font-semibold text-[#E8A835] bg-white hover:bg-[#FFF8ED] transition-colors"
+            >
+              فتح صفحة ترتيب الصوصات
+            </Link>
           </div>
 
           <div className="space-y-2">

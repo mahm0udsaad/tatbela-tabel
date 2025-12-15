@@ -2,36 +2,10 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import type { LucideIcon } from "lucide-react"
 import { Award, Flame, HandPlatter, Leaf, Quote, Recycle, Rocket, Users } from "lucide-react"
-
-const stats = [
-  { value: "15+", label: "عاماً من الحرفية", detail: "نصنع الخلطات منذ بداياتنا العائلية الأولى" },
-  { value: "120+", label: "خلطة حصرية", detail: "وصفات مسجلة تضمن الطعم المصري الأصيل" },
-  { value: "40+", label: "مزارع وشريك", detail: "شبكة توريد شفافة من دلتا النيل إلى أسوان" },
-  { value: "25", label: "مدينة نخدمها", detail: "توصيل مبرد وسريع في أنحاء الجمهورية" },
-]
-
-const milestones = [
-  {
-    year: "2008",
-    title: "البداية من مطبخ العائلة",
-    description: "كانت الخلطات تُجهز يدوياً وتُباع مباشرةً للجيران وأصدقاء العائلة في القاهرة.",
-  },
-  {
-    year: "2014",
-    title: "أول ورشة توابل",
-    description: "افتتحنا مساحة إنتاج صغيرة مع مطاحن مباشرة، ما سمح بالتحكم الكامل في درجات التحميص والطحن.",
-  },
-  {
-    year: "2019",
-    title: "التحول الرقمي",
-    description: "أطلقنا متجرنا الإلكتروني ووفرنا تتبعاً لجودة التوريد من المزرعة إلى العبوة.",
-  },
-  {
-    year: "2024",
-    title: "Tatbeelah & Tabel",
-    description: "دمجنا خبرتنا في الخلطات والصلصات ضمن هوية موحدة لخدمة عشاق الطهي حول العالم.",
-  },
-]
+import { createClient } from "@/lib/supabase/server"
+import { DEFAULT_ABOUT_PAGE } from "@/lib/site-content/defaults"
+import { aboutPagePayloadSchema, coercePayloadOrDefault } from "@/lib/site-content/schemas"
+import type { AboutIconKey, AboutPagePayload } from "@/lib/site-content/types"
 
 type ValueCard = {
   title: string
@@ -40,78 +14,87 @@ type ValueCard = {
   accent: string
 }
 
-const values: ValueCard[] = [
-  {
-    title: "الأصالة أولاً",
-    description: "نوثق كل وصفة ونحافظ على نسب البهارات كما تعلّمناها من أمهاتنا وجداتنا.",
-    icon: Flame,
-    accent: "from-[#C41E3A]/15 to-transparent",
-  },
-  {
-    title: "استدامة التوريد",
-    description: "نعمل مع مزارع معتمدة وندعم الزراعة المتجددة للحفاظ على خصوبة أرض مصر.",
-    icon: Recycle,
-    accent: "from-[#1E5F4D]/15 to-transparent",
-  },
-  {
-    title: "صياغة يدوية",
-    description: "كل دفعة تُطحن وتعبأ بكميات صغيرة لضمان نكهة مركزة وطراوة الحبوب.",
-    icon: HandPlatter,
-    accent: "from-[#E8A835]/20 to-transparent",
-  },
-  {
-    title: "مجتمع الطهاة",
-    description: "نستمع لملاحظات الطهاة المنزليين ونطلق خلطات موسمية بناءً على اقتراحاتهم.",
-    icon: Users,
-    accent: "from-[#8B6F47]/20 to-transparent",
-  },
-]
-
-const sourcingHighlights = [
-  {
-    region: "دلتا النيل",
-    crop: "كمون وكزبرة",
-    note: "حصاد مبكر وتجفيف شمسي للحفاظ على الزيوت العطرية.",
-  },
-  {
-    region: "أسوان والنوبة",
-    crop: "فلفل حار ومسمن",
-    note: "مزارع عائلية تستخدم الري بالتنقيط لزيادة التركيز والنكهة.",
-  },
-  {
-    region: "سيناء",
-    crop: "مريمية وزعتر بري",
-    note: "يُقطف يدوياً في الفجر ويُنقل مباشرةً إلى معاملنا في نفس اليوم.",
-  },
-]
-
-const team = [
-  {
-    name: "أمينة فؤاد",
-    role: "المديرة الإبداعية للخلطات",
-    focus: "تقود تطوير الوصفات وتوثيق التجارب المنزلية.",
-    quote: "أفضل خلطة هي التي تحكي ذكريات سفرة كاملة.",
-  },
-  {
-    name: "خالد عمر",
-    role: "رئيس تجربة العملاء",
-    focus: "يضمن وصول الطلبات بسرعة ويحافظ على تواصلنا مع العملاء.",
-    quote: "الثقة تُبنى بالشحنة الأولى ثم تُحفظ بالشفافية.",
-  },
-  {
-    name: "سلمى شهاب",
-    role: "قائدة الشراكات الزراعية",
-    focus: "تدير العلاقات مع المزارع وتتابع جودة المحاصيل.",
-    quote: "حين ندعم المزارع، ندعم النكهة من جذورها.",
-  },
-]
-
 export const metadata: Metadata = {
   title: "من نحن | Tatbeelah & Tabel",
   description: "تعرف على قصة تتبيلة وتابل، قيمنا، وشركائنا في صناعة التوابل المصرية الأصيلة.",
 }
 
-export default function AboutPage() {
+export const dynamic = "force-dynamic"
+
+type AboutSettingsRow = {
+  is_active: boolean
+  payload: unknown
+}
+
+const ICONS: Record<AboutIconKey, LucideIcon> = {
+  flame: Flame,
+  recycle: Recycle,
+  handPlatter: HandPlatter,
+  users: Users,
+  leaf: Leaf,
+  rocket: Rocket,
+  award: Award,
+}
+
+function accentForIcon(icon: AboutIconKey) {
+  switch (icon) {
+    case "flame":
+      return "from-[#C41E3A]/15 to-transparent"
+    case "recycle":
+      return "from-[#1E5F4D]/15 to-transparent"
+    case "handPlatter":
+      return "from-[#E8A835]/20 to-transparent"
+    case "users":
+      return "from-[#8B6F47]/20 to-transparent"
+    case "leaf":
+      return "from-[#2D6A4F]/15 to-transparent"
+    case "rocket":
+      return "from-[#2B2520]/10 to-transparent"
+    case "award":
+      return "from-[#E8A835]/15 to-transparent"
+  }
+}
+
+function mapValues(payload: AboutPagePayload): ValueCard[] {
+  return payload.values.map((v) => ({
+    title: v.title,
+    description: v.description,
+    icon: ICONS[v.icon],
+    accent: accentForIcon(v.icon),
+  }))
+}
+
+export default async function AboutPage() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("page_settings")
+    .select("is_active, payload")
+    .eq("key", "about_page")
+    .maybeSingle()
+
+  if (error) {
+    console.error("Failed to load about page settings", error)
+  }
+
+  const row = (data ?? null) as AboutSettingsRow | null
+  const isActive = row ? Boolean(row.is_active) : true
+  const payload = coercePayloadOrDefault(aboutPagePayloadSchema, row?.payload, DEFAULT_ABOUT_PAGE)
+
+  if (!isActive) {
+    return (
+      <main className="min-h-screen">
+        <section className="py-24 px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-4xl font-bold text-[#2B2520] mb-4">من نحن</h1>
+            <p className="text-lg text-[#8B6F47]">هذه الصفحة غير متاحة حالياً.</p>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
+  const values = mapValues(payload)
+
   return (
     <main className="min-h-screen">
 
@@ -123,28 +106,26 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 relative z-10">
           <div className="grid gap-12 md:grid-cols-2 items-center">
             <div>
-              <p className="tracking-[0.4em] uppercase text-xs text-[#8B6F47] mb-4">Our Story • قصتنا</p>
+              <p className="tracking-[0.4em] uppercase text-xs text-[#8B6F47] mb-4">{payload.hero.eyebrow}</p>
               <h1 className="text-4xl md:text-5xl font-bold text-[#2B2520] leading-tight mb-6">
-                نعيد تعريف التتبيلة المصرية
-                <span className="text-[#C41E3A]"> منذ 2008</span>
+                {payload.hero.title}
+                <span className="text-[#C41E3A]"> {payload.hero.highlight}</span>
               </h1>
               <p className="text-lg text-[#5C5347] mb-8">
-                بدأنا من مطبخ عائلي صغير، واليوم نخدم مجتمعاً واسعاً من عشاق الطهي الذين يبحثون عن خلطات أصيلة
-                بطابع معاصر. نجمع بين خبرة الأجيال وتقنيات التحميص الحديثة لنقدم منتجات تشعر معها بأن كل وجبة
-                مناسبة للاحتفال.
+                {payload.hero.description}
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link
-                  href="/store"
+                  href={payload.hero.primaryCtaUrl}
                   className="inline-flex items-center justify-center rounded-full bg-[#2B2520] px-8 py-3 text-sm font-semibold text-white hover:bg-[#1b1612] transition-colors"
                 >
-                  استكشف المتجر
+                  {payload.hero.primaryCtaLabel}
                 </Link>
                 <Link
-                  href="/contact"
+                  href={payload.hero.secondaryCtaUrl}
                   className="inline-flex items-center justify-center rounded-full border border-[#2B2520] px-8 py-3 text-sm font-semibold text-[#2B2520] hover:bg-[#2B2520] hover:text-white transition-colors"
                 >
-                  تواصل معنا
+                  {payload.hero.secondaryCtaLabel}
                 </Link>
               </div>
             </div>
@@ -185,7 +166,7 @@ export default function AboutPage() {
       <section className="py-16">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat) => (
+            {payload.stats.map((stat) => (
               <div
                 key={stat.label}
                 className="rounded-2xl border border-[#E8E2D1] bg-white/80 backdrop-blur-sm p-6 text-center shadow-sm hover:shadow-md transition-shadow"
@@ -209,7 +190,7 @@ export default function AboutPage() {
             </p>
           </div>
           <div className="space-y-8">
-            {milestones.map((milestone, index) => (
+            {payload.milestones.map((milestone, index) => (
               <div
                 key={milestone.year}
                 className="relative rounded-3xl border border-[#E8E2D1] bg-white/60 backdrop-blur-sm p-8 shadow-sm"
@@ -264,7 +245,7 @@ export default function AboutPage() {
             </p>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
-            {sourcingHighlights.map((item) => (
+            {payload.sourcingHighlights.map((item) => (
               <div key={item.region} className="rounded-2xl border border-[#E8E2D1] bg-white/60 backdrop-blur-sm p-6">
                 <p className="text-sm font-semibold text-[#8B6F47] mb-2">{item.region}</p>
                 <h3 className="text-xl font-bold text-[#2B2520] mb-3">{item.crop}</h3>
@@ -275,51 +256,23 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-[#2B2520] mb-4">وجوه وراء النكهة</h2>
-            <p className="text-[#5C5347]">فريق صغير متفرغ لإسعاد مائدة كل عميل.</p>
-          </div>
-          <div className="grid gap-8 md:grid-cols-3">
-            {team.map((member) => (
-              <div key={member.name} className="rounded-3xl border border-[#E8E2D1] bg-white/80 backdrop-blur-sm p-8 shadow-sm">
-                <div className="h-16 w-16 rounded-2xl bg-[#2B2520] text-white text-2xl font-bold flex items-center justify-center mb-4">
-                  {member.name.slice(0, 1)}
-                </div>
-                <h3 className="text-2xl font-bold text-[#2B2520]">{member.name}</h3>
-                <p className="text-[#C41E3A] font-semibold mt-1 mb-3">{member.role}</p>
-                <p className="text-sm text-[#8B6F47] mb-4">{member.focus}</p>
-                <div className="relative rounded-2xl bg-[#F5F1E8] p-4 text-[#5C5347] text-sm">
-                  <Quote className="absolute -top-4 left-4 h-8 w-8 text-[#E8A835]" />
-                  <p className="leading-relaxed">{member.quote}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 bg-gradient-to-r from-[#C41E3A] via-[#E8A835] to-[#C41E3A]">
+      <section className="py-16 bg-gradient-to-r from-[#0f2027] via-[#203a43] to-[#2c5364]">
         <div className="max-w-5xl mx-auto px-4 text-center text-white">
-          <p className="text-sm uppercase tracking-[0.5em] mb-4">Join Us</p>
-          <h2 className="text-4xl font-bold mb-6">جاهز لتجربة ألذ أطباقك؟</h2>
-          <p className="text-lg text-white/90 mb-8">
-            سواء كنت شيفاً محترفاً أو هاوياً للطهي المنزلي، فريق Tatbeelah & Tabel جاهز لدعمك بمنتجات أصلية وخدمة لا
-            تُنسى.
-          </p>
+          <p className="text-sm uppercase tracking-[0.5em] mb-4">{payload.cta.eyebrow}</p>
+          <h2 className="text-4xl font-bold mb-6">{payload.cta.title}</h2>
+          <p className="text-lg text-white/90 mb-8">{payload.cta.description}</p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link
-              href="/store"
+              href={payload.cta.primaryCtaUrl}
               className="inline-flex items-center justify-center rounded-full bg-white px-8 py-3 text-sm font-bold text-[#C41E3A] hover:bg-gray-100 transition-colors"
             >
-              تسوق الآن
+              {payload.cta.primaryCtaLabel}
             </Link>
             <Link
-              href="/contact"
+              href={payload.cta.secondaryCtaUrl}
               className="inline-flex items-center justify-center rounded-full border border-white px-8 py-3 text-sm font-bold text-white hover:bg-white/10 transition-colors"
             >
-              احجز تذوقاً خاصاً
+              {payload.cta.secondaryCtaLabel}
             </Link>
           </div>
         </div>

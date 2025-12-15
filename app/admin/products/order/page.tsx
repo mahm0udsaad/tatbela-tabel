@@ -64,6 +64,15 @@ const surfaceConfigs: Record<
     badgeLabel: "عدد العروض:",
     hint: "يظهر فقط المنتجات التي تحتوي على سعر قبل الخصم.",
   },
+  sauces: {
+    title: "ترتيب منتجات الصوصات (/sauces)",
+    description: "اختر ترتيب ظهور منتجات الصوصات داخل صفحة /sauces عند تفعيل عرضها.",
+    boardTitle: "ترتيب منتجات الصوصات",
+    boardDescription: "اسحب وأفلت لتحديد ترتيب منتجات الصوصات.",
+    emptyLabel: "لا توجد منتجات ضمن الصوصات حالياً.",
+    badgeLabel: "عدد منتجات الصوصات:",
+    hint: "يعتمد على الفئات تحت فرع slug: sauces.",
+  },
 }
 
 export const dynamic = "force-dynamic"
@@ -74,18 +83,10 @@ export default async function ProductOrderPage({ searchParams }: { searchParams:
   const selectedSurface = requestedSurface && surfaceConfigs[requestedSurface] ? requestedSurface : null
 
   if (!selectedSurface) {
-    const surfaceKeys: StoreSurfaceKey[] = ["store", "blends", "offers"]
+    const surfaceKeys: StoreSurfaceKey[] = ["store", "blends", "offers", "sauces"]
     return (
       <div className="bg-[#F5F1E8] min-h-screen">
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-          <header className="space-y-2">
-            <p className="text-sm text-[#8B6F47] uppercase tracking-wide">اختر واجهة الترتيب</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#2B2520]">لأي واجهة تريد إعادة ترتيب المنتجات؟</h1>
-            <p className="text-sm text-[#8B6F47]">
-              حدد صفحة المتجر التي تريد ضبط ترتيب المنتجات لها. يمكنك العودة وتغيير الاختيار في أي وقت.
-            </p>
-          </header>
-
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {surfaceKeys.map((key) => {
               const config = surfaceConfigs[key]
@@ -125,6 +126,19 @@ export default async function ProductOrderPage({ searchParams }: { searchParams:
 
   const categories = categoriesData ?? []
 
+  const requiresCategoryBranch = selectedSurface === "store" || selectedSurface === "blends" || selectedSurface === "sauces"
+  let categoryBranchIds: string[] | null = null
+  let hasValidBranch = true
+
+  if (requiresCategoryBranch) {
+    const { categoryIds, rootCategory } = getCategoryBranch(categories, selectedSurface)
+    if (!rootCategory || categoryIds.length === 0) {
+      hasValidBranch = false
+    } else {
+      categoryBranchIds = categoryIds
+    }
+  }
+
   let productsQuery = supabase
     .from("products")
     .select(
@@ -153,34 +167,33 @@ export default async function ProductOrderPage({ searchParams }: { searchParams:
     )
     .eq("is_archived", false)
 
-  if (selectedSurface === "store" || selectedSurface === "blends") {
-    const { categoryIds } = getCategoryBranch(categories, selectedSurface)
-    if (categoryIds.length > 0) {
-      productsQuery = productsQuery.in("category_id", categoryIds)
-    }
+  if (categoryBranchIds?.length) {
+    productsQuery = productsQuery.in("category_id", categoryBranchIds)
   }
 
   if (selectedSurface === "store") {
+    productsQuery = productsQuery.eq("is_b2b", false)
+  } else if (selectedSurface === "sauces") {
     productsQuery = productsQuery.eq("is_b2b", false)
   } else if (selectedSurface === "offers") {
     productsQuery = productsQuery.not("original_price", "is", null)
   }
 
-  const { data: products } = await productsQuery
-    .order("sort_order", { ascending: true })
-    .order("is_primary", { referencedTable: "product_images", ascending: false })
+  const { data: products } = hasValidBranch
+    ? await productsQuery
+        .order("sort_order", { ascending: true })
+        .order("is_primary", { referencedTable: "product_images", ascending: false })
+    : { data: [] as SortableProduct[] }
 
   const config = surfaceConfigs[selectedSurface]
+  const emptyStateLabel = hasValidBranch
+    ? config.emptyLabel
+    : `لا يمكن العثور على فئة مطابقة للـ slug: ${selectedSurface}. تأكد من إنشاء الفئة أولاً ثم أعد المحاولة.`
 
   return (
     <div className="bg-[#F5F1E8] min-h-screen">
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-xs text-[#8B6F47] uppercase tracking-wide">إعادة ترتيب المنتجات</p>
-            <h1 className="text-2xl font-bold text-[#2B2520]">{config.title}</h1>
-            <p className="text-sm text-[#8B6F47]">{config.description}</p>
-          </div>
           <Link
             href="/admin/products/order"
             className="inline-flex items-center justify-center rounded-lg border border-[#E8A835] px-4 py-2 text-sm font-semibold text-[#E8A835] bg-white hover:bg-[#FFF8ED] transition-colors"
@@ -193,7 +206,7 @@ export default async function ProductOrderPage({ searchParams }: { searchParams:
           initialProducts={products ?? []}
           title={config.boardTitle}
           description={config.boardDescription}
-          emptyStateLabel={config.emptyLabel}
+          emptyStateLabel={emptyStateLabel}
           badgeLabel={config.badgeLabel}
         />
       </div>

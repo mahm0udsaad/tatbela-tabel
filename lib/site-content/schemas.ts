@@ -1,0 +1,90 @@
+import { z } from "zod"
+import type { AboutPagePayload, ContactPagePayload, FooterPayload } from "@/lib/site-content/types"
+
+const nonEmptyText = z.string().trim().min(1)
+
+export const footerPayloadSchema: z.ZodType<FooterPayload> = z.object({
+  brand: z.object({
+    name: nonEmptyText,
+    description: z.string().trim().min(1),
+  }),
+  columns: z
+    .array(
+      z.object({
+        title: nonEmptyText,
+        links: z.array(z.object({ label: nonEmptyText, href: nonEmptyText })).min(1),
+      }),
+    )
+    .min(1),
+  contact: z.object({
+    phones: z.array(nonEmptyText).min(1),
+    emails: z.array(nonEmptyText).min(1),
+  }),
+  socials: z.object({
+    facebook: z.string().optional(),
+    instagram: z.string().optional(),
+    twitter: z.string().optional(),
+  }),
+  copyright: nonEmptyText,
+})
+
+export const contactPagePayloadSchema: z.ZodType<ContactPagePayload> = z.object({
+  header: z.object({
+    title: nonEmptyText,
+    subtitle: z.string().trim().min(1),
+  }),
+  phones: z.array(nonEmptyText).min(1),
+  emails: z.array(nonEmptyText).min(1),
+  whatsapp: z.object({
+    phone: nonEmptyText,
+    label: nonEmptyText,
+  }),
+  workHours: z.array(z.object({ label: nonEmptyText, time: nonEmptyText })).min(1),
+  location: z.object({
+    title: nonEmptyText,
+    lines: z.array(nonEmptyText).min(1),
+  }),
+  quickHelp: z.object({
+    title: nonEmptyText,
+    description: z.string().trim().min(1),
+    phone: nonEmptyText,
+    ctaLabel: nonEmptyText,
+  }),
+})
+
+const aboutIconKeySchema = z.enum(["flame", "recycle", "handPlatter", "users", "leaf", "rocket", "award"])
+
+export const aboutPagePayloadSchema: z.ZodType<AboutPagePayload> = z.object({
+  hero: z.object({
+    eyebrow: nonEmptyText,
+    title: nonEmptyText,
+    highlight: nonEmptyText,
+    description: z.string().trim().min(1),
+    primaryCtaLabel: nonEmptyText,
+    primaryCtaUrl: nonEmptyText,
+    secondaryCtaLabel: nonEmptyText,
+    secondaryCtaUrl: nonEmptyText,
+  }),
+  stats: z.array(z.object({ value: nonEmptyText, label: nonEmptyText, detail: nonEmptyText })).min(1),
+  milestones: z.array(z.object({ year: nonEmptyText, title: nonEmptyText, description: nonEmptyText })).min(1),
+  values: z.array(z.object({ title: nonEmptyText, description: nonEmptyText, icon: aboutIconKeySchema })).min(1),
+  sourcingHighlights: z.array(z.object({ region: nonEmptyText, crop: nonEmptyText, note: nonEmptyText })).min(1),
+  team: z.array(z.object({ name: nonEmptyText, role: nonEmptyText, focus: nonEmptyText, quote: nonEmptyText })).min(1),
+  cta: z.object({
+    eyebrow: nonEmptyText,
+    title: nonEmptyText,
+    description: nonEmptyText,
+    primaryCtaLabel: nonEmptyText,
+    primaryCtaUrl: nonEmptyText,
+    secondaryCtaLabel: nonEmptyText,
+    secondaryCtaUrl: nonEmptyText,
+  }),
+})
+
+export function coercePayloadOrDefault<T>(schema: z.ZodType<T>, payload: unknown, fallback: T): T {
+  const parsed = schema.safeParse(payload)
+  if (parsed.success) return parsed.data
+  return fallback
+}
+
+
