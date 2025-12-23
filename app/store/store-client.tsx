@@ -98,7 +98,11 @@ export function StoreClient({
 
   const calculatedBrands = useMemo(() => {
     if (brands) return brands
-    return Array.from(new Set(initialProducts.map(p => p.brand).filter(Boolean)))
+    const uniqueBrands = new Set(initialProducts.map(p => p.brand).filter(Boolean))
+    // Ensure core brands are always available
+    uniqueBrands.add("Tabel")
+    uniqueBrands.add("Tatbeelah")
+    return Array.from(uniqueBrands).sort()
   }, [brands, initialProducts])
 
   const calculatedInitialTotal = initialTotal ?? initialProducts.length
@@ -137,7 +141,9 @@ export function StoreClient({
   }, [selectedCategories, categoryDescendants])
 
   const categoryFilterIds = useMemo(() => {
+    // If user explicitly selects categories, honor them
     if (selectedCategoryIds.length > 0) return selectedCategoryIds
+    // Otherwise keep the current page/category scope
     if (categoryScopeIds.length > 0) return categoryScopeIds
     return []
   }, [selectedCategoryIds, categoryScopeIds])
@@ -711,10 +717,10 @@ function ProductCard({
         ) : null}
         <p className="text-xs text-[#E8A835] font-semibold uppercase mb-2">{product.brand}</p>
         <h3 className="text-lg font-bold text-[#2B2520] mb-2 line-clamp-2 group-hover:text-[#E8A835] transition-colors">
-          <SearchHighlighter text={product.name_ar} searchTerm={searchTerm} />
+          <SearchHighlighter text={product.name_ar} searchTerm={searchTerm ?? ""} />
         </h3>
         <p className="text-sm text-[#8B6F47] line-clamp-2 mb-4">
-          <SearchHighlighter text={product.description_ar || ''} searchTerm={searchTerm} />
+          <SearchHighlighter text={product.description_ar || ''} searchTerm={searchTerm ?? ""} />
         </p>
         <div className="flex items-center gap-2 mb-4">
           <div className="flex">

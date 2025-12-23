@@ -8,7 +8,6 @@ import "./globals.css"
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
-  weight: ["200", "300", "400", "500", "600", "700", "800", "900"],
   variable: "--font-cairo",
   display: "swap",
 })
@@ -46,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" className={cairo.variable}>
-      <body className="font-cairo antialiased">
+      <body className="font-sans antialiased">
         <Suspense fallback={null}>
           <WebsiteLayout>{children}</WebsiteLayout>
         </Suspense>

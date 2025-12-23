@@ -1,11 +1,19 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
 import { Plus, Edit2, Trash2, Upload, BarChart3, ShoppingBag, Users, TrendingUp, CheckCircle, X } from "lucide-react"
 import ReactCrop, { type Crop } from "react-image-crop"
 import "react-image-crop/dist/ReactCrop.css"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination"
 
 interface ProductImage {
   id: string
@@ -62,6 +70,8 @@ function StatCard({
   )
 }
 
+const PAGE_SIZE = 20
+
 export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -77,6 +87,8 @@ export default function AdminDashboard() {
   const [showProductForm, setShowProductForm] = useState(false)
   const [showCategoryForm, setShowCategoryForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalProducts, setTotalProducts] = useState(0)
   const [formData, setFormData] = useState({
     name_ar: "",
     description_ar: "",
@@ -125,22 +137,36 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchData()
     fetchStats()
-  }, [])
+  }, [currentPage])
 
   const fetchData = async () => {
     try {
+      setLoading(true)
+      const from = (currentPage - 1) * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+
       const [productsRes, categoriesRes] = await Promise.all([
-        supabase.from("products").select(`
-          *,
-          product_images(id, image_url, storage_path, is_primary, sort_order)
-        `),
+        supabase
+          .from("products")
+          .select(
+            `
+            *,
+            product_images(id, image_url, storage_path, is_primary, sort_order)
+          `,
+            { count: "exact" }
+          )
+          .order("created_at", { ascending: false })
+          .range(from, to),
         supabase.from("categories").select("*"),
       ])
 
       setProducts(productsRes.data || [])
+      setTotalProducts(productsRes.count || 0)
       setCategories(categoriesRes.data || [])
     } catch (error) {
       console.error("خطأ في جلب البيانات:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -346,7 +372,13 @@ export default function AdminDashboard() {
     try {
       const { error } = await supabase.from("products").delete().eq("id", id)
       if (error) throw error
-      fetchData()
+      
+      // If we deleted the last item on the page and it's not the first page, go back
+      if (products.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1)
+      } else {
+        fetchData()
+      }
     } catch (error) {
       console.error("خطأ في حذف المنتج:", error)
     }
@@ -540,7 +572,12 @@ export default function AdminDashboard() {
       alert(editingProduct ? "تم تحديث المنتج بنجاح!" : "تم إضافة المنتج بنجاح!")
       setShowProductForm(false)
       resetForm()
-      fetchData()
+      // Reset to first page after adding/editing
+      if (!editingProduct) {
+        setCurrentPage(1)
+      } else {
+        fetchData()
+      }
     } catch (error: any) {
       console.error("خطأ في حفظ المنتج:", error)
       alert(`خطأ في حفظ المنتج: ${error.message || "حدث خطأ غير معروف"}`)
@@ -553,7 +590,7 @@ export default function AdminDashboard() {
     <div className="bg-[#F5F1E8] rounded-lg">
       <h1 className="text-3xl font-bold text-[#2B2520] mb-8">ملخص لوحة التحكم</h1>
 
-        {loading ? (
+        {loading && stats.totalOrders === 0 ? (
           <div className="text-center py-12">
             <p className="text-[#8B6F47]">جاري التحميل...</p>
           </div>
@@ -594,16 +631,6 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-xl shadow-lg p-8 mt-8">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-[#2B2520]">إدارة المنتجات</h2>
-            <button
-              onClick={() => {
-                resetForm()
-                setShowProductForm(true)
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors"
-            >
-              <Plus size={20} />
-              إضافة منتج جديد
-            </button>
           </div>
 
           {/* Product Form */}
@@ -888,78 +915,168 @@ export default function AdminDashboard() {
 
           {/* Products Table */}
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-[#F5F1E8] border-b border-[#D9D4C8]">
-                <tr>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-[#2B2520]">الاسم</th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-[#2B2520]">العلامة</th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-[#2B2520]">السعر</th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-[#2B2520]">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr key={product.id} className="border-b border-[#D9D4C8] hover:bg-[#F9F7F3]">
-                    <td className="px-6 py-4 text-[#2B2520]">{product.name_ar}</td>
-                    <td className="px-6 py-4 text-[#8B6F47]">{product.brand}</td>
-                    <td className="px-6 py-4 text-[#C41E3A] font-semibold">{product.price} ج.م</td>
-                    <td className="px-6 py-4 flex gap-2">
-                      <button
-                        onClick={() => {
+            {loading && products.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-[#8B6F47]">جاري التحميل...</p>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-[#8B6F47]">لا توجد منتجات</p>
+              </div>
+            ) : (
+              <>
+                <table className="w-full">
+                  <thead className="bg-[#F5F1E8] border-b border-[#D9D4C8]">
+                    <tr>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-[#2B2520]">الاسم</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-[#2B2520]">العلامة</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-[#2B2520]">السعر</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-[#2B2520]">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map((product) => (
+                      <tr key={product.id} className="border-b border-[#D9D4C8] hover:bg-[#F9F7F3]">
+                        <td className="px-6 py-4 text-[#2B2520]">{product.name_ar}</td>
+                        <td className="px-6 py-4 text-[#8B6F47]">{product.brand}</td>
+                        <td className="px-6 py-4 text-[#C41E3A] font-semibold">{product.price} ج.م</td>
+                        <td className="px-6 py-4 flex gap-2">
+                          <button
+                            onClick={() => {
                           setEditingProduct(product)
                           setFormData({
                             name_ar: product.name_ar,
                             description_ar: product.description_ar ?? "",
                             brand: product.brand,
+                            type: (product as any).type || "",
                             category: product.category,
                             price: product.price,
                             original_price: product.original_price,
                           })
-                          
-                          // Load existing images
-                          if (product.product_images && product.product_images.length > 0) {
-                            const existingImages = product.product_images
-                              .sort((a, b) => a.sort_order - b.sort_order)
-                              .map((img) => ({
-                                id: img.id,
-                                preview: img.image_url,
-                                url: img.image_url,
-                                storage_path: img.storage_path,
-                                isPrimary: img.is_primary,
-                              }))
-                            setUploadedImages(existingImages)
-                          } else if (product.image_url) {
-                            // Fallback to old single image
-                            setUploadedImages([{
-                              id: "existing",
-                              preview: product.image_url,
-                              url: product.image_url,
-                              isPrimary: true,
-                            }])
-                          }
-                          
-                          // Reset deleted images tracker
-                          setDeletedImageIds([])
-                          
-                          setShowProductForm(true)
-                        }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                        title="تعديل المنتج"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        title="حذف المنتج"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                              
+                              // Load existing images
+                              if (product.product_images && product.product_images.length > 0) {
+                                const existingImages = product.product_images
+                                  .sort((a, b) => a.sort_order - b.sort_order)
+                                  .map((img) => ({
+                                    id: img.id,
+                                    preview: img.image_url,
+                                    url: img.image_url,
+                                    storage_path: img.storage_path,
+                                    isPrimary: img.is_primary,
+                                  }))
+                                setUploadedImages(existingImages)
+                              } else if (product.image_url) {
+                                // Fallback to old single image
+                                setUploadedImages([{
+                                  id: "existing",
+                                  preview: product.image_url,
+                                  url: product.image_url,
+                                  isPrimary: true,
+                                }])
+                              }
+                              
+                              // Reset deleted images tracker
+                              setDeletedImageIds([])
+                              
+                              setShowProductForm(true)
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="تعديل المنتج"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(product.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            title="حذف المنتج"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                {totalProducts > PAGE_SIZE && (
+                  <div className="mt-6 flex items-center justify-between">
+                    <div className="text-sm text-[#8B6F47]">
+                      عرض {((currentPage - 1) * PAGE_SIZE) + 1} - {Math.min(currentPage * PAGE_SIZE, totalProducts)} من {totalProducts} منتج
+                    </div>
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              if (currentPage > 1) {
+                                setCurrentPage(currentPage - 1)
+                                window.scrollTo({ top: 0, behavior: "smooth" })
+                              }
+                            }}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: Math.ceil(totalProducts / PAGE_SIZE) }, (_, i) => i + 1)
+                          .filter((page) => {
+                            // Show first page, last page, current page, and pages around current
+                            if (page === 1 || page === Math.ceil(totalProducts / PAGE_SIZE)) return true
+                            if (Math.abs(page - currentPage) <= 1) return true
+                            return false
+                          })
+                          .map((page, index, array) => {
+                            // Add ellipsis if there's a gap
+                            const prevPage = array[index - 1]
+                            const showEllipsisBefore = prevPage && page - prevPage > 1
+                            
+                            return (
+                              <React.Fragment key={page}>
+                                {showEllipsisBefore && (
+                                  <PaginationItem>
+                                    <PaginationEllipsis />
+                                  </PaginationItem>
+                                )}
+                                <PaginationItem>
+                                  <PaginationLink
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      setCurrentPage(page)
+                                      window.scrollTo({ top: 0, behavior: "smooth" })
+                                    }}
+                                    isActive={currentPage === page}
+                                    className="cursor-pointer"
+                                  >
+                                    {page}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              </React.Fragment>
+                            )
+                          })}
+                        
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              if (currentPage < Math.ceil(totalProducts / PAGE_SIZE)) {
+                                setCurrentPage(currentPage + 1)
+                                window.scrollTo({ top: 0, behavior: "smooth" })
+                              }
+                            }}
+                            className={currentPage >= Math.ceil(totalProducts / PAGE_SIZE) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
     </div>

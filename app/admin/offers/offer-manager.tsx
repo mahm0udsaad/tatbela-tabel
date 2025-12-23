@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   DndContext,
   KeyboardSensor,
@@ -36,6 +36,25 @@ export function OfferManager({
   useEffect(() => {
     setSortableOffers(manager.offers)
   }, [manager.offers])
+
+  const visibleOffers = useMemo(() => {
+    const term = manager.searchTerm.trim().toLowerCase()
+    return sortableOffers.filter((offer) => {
+      const matchesSearch =
+        !term ||
+        offer.name_ar.toLowerCase().includes(term) ||
+        (offer.brand && offer.brand.toLowerCase().includes(term))
+      const matchesFeatured = !manager.onlyFeatured || offer.is_featured
+      const matchesStock =
+        manager.stockFilter === "all"
+          ? true
+          : manager.stockFilter === "in_stock"
+            ? offer.stock > 0
+            : offer.stock <= 0
+      const matchesBrand = !manager.brandFilter || offer.brand === manager.brandFilter
+      return matchesSearch && matchesFeatured && matchesStock && matchesBrand
+    })
+  }, [sortableOffers, manager.searchTerm, manager.onlyFeatured, manager.stockFilter, manager.brandFilter])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -105,18 +124,27 @@ export function OfferManager({
 
         <StatusBanner statusMessage={manager.statusMessage} errorMessage={manager.errorMessage} />
 
-        <section className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1">
+        <section className="flex gap-4 gap-6">
+          <div className="">
             <OfferListPanel
-              offers={sortableOffers}
+              offers={visibleOffers}
               selectedOfferId={manager.selectedOfferId}
               onSelectOffer={manager.selectOffer}
               onDeleteOffer={manager.deleteOffer}
               isSavingOrder={isSavingOrder}
+              searchTerm={manager.searchTerm}
+              onSearchChange={manager.setSearchTerm}
+              onlyFeatured={manager.onlyFeatured}
+              onToggleOnlyFeatured={() => manager.setOnlyFeatured((prev) => !prev)}
+              stockFilter={manager.stockFilter}
+              onStockFilterChange={manager.setStockFilter}
+              brandOptions={manager.brandOptions}
+              brandFilter={manager.brandFilter}
+              onBrandFilterChange={manager.setBrandFilter}
             />
           </div>
 
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             <OfferDetailsCard
               offerForm={manager.offerForm}
               onFieldChange={manager.updateOfferFormField}

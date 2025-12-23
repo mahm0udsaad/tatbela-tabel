@@ -52,6 +52,10 @@ export function useOfferManager({ initialOffers }: UseOfferManagerArgs) {
   const [isPending, startTransition] = useTransition()
   const [isCreatingNewOffer, setIsCreatingNewOffer] = useState(false)
   const resetHandledKey = useRef<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [onlyFeatured, setOnlyFeatured] = useState(false)
+  const [stockFilter, setStockFilter] = useState<"all" | "in_stock" | "out_of_stock">("all")
+  const [brandFilter, setBrandFilter] = useState<string>("")
 
   const toGrams = (weight: string, unit: WeightUnit) => {
     const numericWeight = Number(weight)
@@ -73,6 +77,32 @@ export function useOfferManager({ initialOffers }: UseOfferManagerArgs) {
   }
 
   const selectedOffer = useMemo(() => offers.find((offer) => offer.id === selectedOfferId) ?? null, [offers, selectedOfferId])
+  const brandOptions = useMemo(() => {
+    const unique = new Set<string>()
+    offers.forEach((offer) => {
+      if (offer.brand) unique.add(offer.brand)
+    })
+    return Array.from(unique)
+  }, [offers])
+
+  const filteredOffers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    return offers.filter((offer) => {
+      const matchesSearch =
+        !term ||
+        offer.name_ar.toLowerCase().includes(term) ||
+        (offer.brand && offer.brand.toLowerCase().includes(term))
+      const matchesFeatured = !onlyFeatured || offer.is_featured
+      const matchesStock =
+        stockFilter === "all"
+          ? true
+          : stockFilter === "in_stock"
+            ? offer.stock > 0
+            : offer.stock <= 0
+      const matchesBrand = !brandFilter || offer.brand === brandFilter
+      return matchesSearch && matchesFeatured && matchesStock && matchesBrand
+    })
+  }, [offers, searchTerm, onlyFeatured, stockFilter, brandFilter])
 
   useEffect(() => {
     setOffers(initialOffers ?? [])
@@ -396,6 +426,16 @@ export function useOfferManager({ initialOffers }: UseOfferManagerArgs) {
 
   return {
     offers,
+    filteredOffers,
+    searchTerm,
+    setSearchTerm,
+    onlyFeatured,
+    setOnlyFeatured,
+    stockFilter,
+    setStockFilter,
+    brandFilter,
+    setBrandFilter,
+    brandOptions,
     selectedOffer,
     selectedOfferId,
     offerForm,

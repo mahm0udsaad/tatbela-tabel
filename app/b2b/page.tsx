@@ -48,10 +48,10 @@ export default async function B2BStorePage({ searchParams }: { searchParams: Pro
         <div className="max-w-7xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-start justify-between gap-6">
             <div>
-              <p className="text-sm text-[#8B6F47] uppercase tracking-wider mb-2">B2B • منتجات الجمله</p>
-              <h1 className="text-4xl font-bold text-[#2B2520] mb-4">حلول التوريد بالجملة</h1>
+              <p className="text-sm text-[#8B6F47] uppercase tracking-wider mb-2">B2B •</p>
+              <h1 className="text-4xl font-bold text-[#2B2520] mb-4"> منتجات الجملة</h1>
               <p className="text-lg text-[#8B6F47] max-w-2xl">
-                تشكيلة منتجات الجملة مع نفس الجودة والموثوقية. استكشف الفئات واطلب بسهولة مع سلة منفصلة للجملة.
+                  تشكيلة منتجات الجملة مع نفس الجودة والموثوقية. استكشف الفئات واطلب بسهولة.
               </p>
             </div>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md p-4 w-full md:w-auto flex items-center gap-4">

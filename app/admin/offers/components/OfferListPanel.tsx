@@ -1,6 +1,6 @@
 "use client"
 
-import { Edit, Trash2, GripVertical } from "lucide-react"
+import { Edit, Trash2, GripVertical, Search, Star, Filter } from "lucide-react"
 import { formatCurrency, type Offer } from "../types"
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -11,6 +11,15 @@ type OfferListPanelProps = {
   onSelectOffer: (offer: Offer) => void
   onDeleteOffer: (offerId: string) => void
   isSavingOrder?: boolean
+  searchTerm: string
+  onSearchChange: (value: string) => void
+  onlyFeatured: boolean
+  onToggleOnlyFeatured: () => void
+  stockFilter: "all" | "in_stock" | "out_of_stock"
+  onStockFilterChange: (value: "all" | "in_stock" | "out_of_stock") => void
+  brandOptions: string[]
+  brandFilter: string
+  onBrandFilterChange: (value: string) => void
 }
 
 function SortableOfferCard({
@@ -100,12 +109,87 @@ function SortableOfferCard({
   )
 }
 
-export function OfferListPanel({ offers, selectedOfferId, onSelectOffer, onDeleteOffer, isSavingOrder }: OfferListPanelProps) {
+export function OfferListPanel({
+  offers,
+  selectedOfferId,
+  onSelectOffer,
+  onDeleteOffer,
+  isSavingOrder,
+  searchTerm,
+  onSearchChange,
+  onlyFeatured,
+  onToggleOnlyFeatured,
+  stockFilter,
+  onStockFilterChange,
+  brandOptions,
+  brandFilter,
+  onBrandFilterChange,
+}: OfferListPanelProps) {
   return (
     <div className="bg-white rounded-2xl shadow p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-[#2B2520]">قائمة العروض</h2>
-        <span className="text-sm text-[#8B6F47]">{offers.length} عرض</span>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-xl font-bold text-[#2B2520] flex items-center gap-2">
+            <Filter size={18} className="text-[#E8A835]" />
+            قائمة العروض
+          </h2>
+          <span className="text-sm text-[#8B6F47]">{offers.length} عرض</span>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B6F47]" size={16} />
+            <input
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="ابحث بالاسم أو العلامة التجارية"
+              className="w-full rounded-lg border border-[#D9D4C8] px-10 py-2 text-sm focus:border-[#E8A835] focus:ring-2 focus:ring-[#E8A835]/20 outline-none"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={onToggleOnlyFeatured}
+              className={`px-3 py-1.5 rounded-full border text-sm flex items-center gap-1 transition ${
+                onlyFeatured
+                  ? "border-[#E8A835] bg-[#FFF8ED] text-[#2B2520]"
+                  : "border-[#D9D4C8] text-[#8B6F47] hover:border-[#E8A835]/60"
+              }`}
+            >
+              <Star size={14} /> العروض المميزة
+            </button>
+
+            <div className="flex items-center gap-1 text-sm">
+              <span className="text-[#8B6F47]">المخزون:</span>
+              {(["all", "in_stock", "out_of_stock"] as const).map((option) => (
+                <button
+                  key={option}
+                  onClick={() => onStockFilterChange(option)}
+                  className={`px-3 py-1 rounded-full border text-sm transition ${
+                    stockFilter === option
+                      ? "border-[#E8A835] bg-[#FFF8ED] text-[#2B2520]"
+                      : "border-[#D9D4C8] text-[#8B6F47] hover:border-[#E8A835]/60"
+                  }`}
+                >
+                  {option === "all" ? "الكل" : option === "in_stock" ? "متوفر" : "غير متوفر"}
+                </button>
+              ))}
+            </div>
+
+            <select
+              value={brandFilter}
+              onChange={(e) => onBrandFilterChange(e.target.value)}
+              className="rounded-full border border-[#D9D4C8] px-3 py-1.5 text-sm bg-white text-[#2B2520] focus:border-[#E8A835] focus:ring-2 focus:ring-[#E8A835]/20"
+            >
+              <option value="">كل العلامات</option>
+              {brandOptions.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
       {isSavingOrder && (
         <div className="text-sm text-[#8B6F47] text-center py-2">جاري حفظ الترتيب...</div>
