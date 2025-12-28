@@ -17,7 +17,7 @@ export function SearchHighlighter({
   text,
   searchTerm,
   className,
-  highlightClassName = "bg-[#E8A835]/20 rounded px-1"
+  highlightClassName = "bg-primary/20 rounded px-1"
 }: SearchHighlighterProps) {
   if (!searchTerm?.trim() || !text) {
     return <span className={className}>{text}</span>

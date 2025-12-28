@@ -45,7 +45,7 @@ export function ContactForm() {
             value={formData.name}
             onChange={handleChange}
             required
-            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835] text-[#2B2520]"
+            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green text-[#2B2520]"
             placeholder="اسمك الكامل"
           />
         </div>
@@ -58,7 +58,7 @@ export function ContactForm() {
             value={formData.email}
             onChange={handleChange}
             required
-            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835] text-[#2B2520]"
+            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green text-[#2B2520]"
             placeholder="بريدك الإلكتروني"
           />
         </div>
@@ -71,7 +71,7 @@ export function ContactForm() {
             value={formData.subject}
             onChange={handleChange}
             required
-            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835] text-[#2B2520]"
+            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green text-[#2B2520]"
             placeholder="موضوع رسالتك"
           />
         </div>
@@ -84,7 +84,7 @@ export function ContactForm() {
             onChange={handleChange}
             required
             rows={5}
-            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835] text-[#2B2520] resize-none"
+            className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green text-[#2B2520] resize-none"
             placeholder="اكتب رسالتك هنا..."
           />
         </div>
@@ -97,7 +97,7 @@ export function ContactForm() {
 
         <button
           type="submit"
-          className="w-full px-8 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors flex items-center justify-center gap-2"
+          className="w-full px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2"
         >
           <Send size={20} />
           أرسل الرسالة

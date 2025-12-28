@@ -63,9 +63,9 @@ export default async function ContactPage() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <div className="bg-gradient-to-br from-[#F5F1E8] to-[#F5F1E8]/50 p-8 rounded-xl border border-[#E8A835]/20">
+            <div className="bg-gradient-to-br from-[#F5F1E8] to-[#F5F1E8]/50 p-8 rounded-xl border border-brand-green/20">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-[#E8A835] rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-brand-green rounded-lg flex items-center justify-center">
                   <Phone size={24} className="text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-[#2B2520]">الهاتف</h3>
@@ -82,9 +82,9 @@ export default async function ContactPage() {
               ))}
             </div>
 
-            <div className="bg-gradient-to-br from-[#F5F1E8] to-[#F5F1E8]/50 p-8 rounded-xl border border-[#E8A835]/20">
+            <div className="bg-gradient-to-br from-[#F5F1E8] to-[#F5F1E8]/50 p-8 rounded-xl border border-brand-green/20">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-[#E8A835] rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-brand-green rounded-lg flex items-center justify-center">
                   <Mail size={24} className="text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-[#2B2520]">البريد الإلكتروني</h3>
@@ -101,9 +101,9 @@ export default async function ContactPage() {
               ))}
             </div>
 
-            <div className="bg-gradient-to-br from-[#F5F1E8] to-[#F5F1E8]/50 p-8 rounded-xl border border-[#E8A835]/20">
+            <div className="bg-gradient-to-br from-[#F5F1E8] to-[#F5F1E8]/50 p-8 rounded-xl border border-brand-green/20">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-[#E8A835] rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-brand-green rounded-lg flex items-center justify-center">
                   <MessageCircle size={24} className="text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-[#2B2520]">واتساب</h3>
@@ -131,7 +131,7 @@ export default async function ContactPage() {
                 {payload.workHours.map((item) => (
                   <div
                     key={item.label}
-                    className="flex justify-between gap-4 p-4 bg-[#F5F1E8] rounded-lg border border-[#E8A835]/20"
+                    className="flex justify-between gap-4 p-4 bg-[#F5F1E8] rounded-lg border border-brand-green/20"
                   >
                     <span className="font-semibold text-[#2B2520]">{item.label}</span>
                     <span className="text-[#8B6F47]">{item.time}</span>
@@ -140,10 +140,10 @@ export default async function ContactPage() {
               </div>
 
               <h3 className="text-xl font-bold text-[#2B2520] mb-4 flex items-center gap-2">
-                <MapPin size={24} className="text-[#E8A835]" />
+                <MapPin size={24} className="text-brand-green" />
                 موقعنا
               </h3>
-              <div className="bg-[#F5F1E8] p-6 rounded-lg border border-[#E8A835]/20 mb-6">
+              <div className="bg-[#F5F1E8] p-6 rounded-lg border border-brand-green/20 mb-6">
                 <p className="text-[#2B2520] font-semibold mb-2">{payload.location.title}</p>
                 <p className="text-[#8B6F47]">
                   {payload.location.lines.map((line) => (
@@ -155,12 +155,12 @@ export default async function ContactPage() {
                 </p>
               </div>
 
-              <div className="bg-gradient-to-br from-[#C41E3A] to-[#E8A835] p-8 rounded-xl text-white">
+              <div className="bg-gradient-to-br from-brand-green-dark to-brand-green p-8 rounded-xl text-white">
                 <h4 className="font-bold text-lg mb-2">{payload.quickHelp.title}</h4>
                 <p className="mb-4">{payload.quickHelp.description}</p>
                 <a
                   href={`tel:${normalizePhoneForTel(payload.quickHelp.phone)}`}
-                  className="inline-block px-6 py-2 bg-white text-[#C41E3A] rounded-lg font-bold hover:bg-gray-100 transition-colors"
+                  className="inline-block px-6 py-2 bg-white text-brand-green-dark rounded-lg font-bold hover:bg-gray-100 transition-colors"
                 >
                   {payload.quickHelp.ctaLabel}
                 </a>

@@ -3,36 +3,44 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Updated to spice-inspired color palette for Egyptian spices brand */
+/* Green theme color palette matching homepage design */
 :root {
-  /* Warm spice-inspired palette */
-  --saffron: #e8a835; /* Saffron yellow */
-  --paprika: #c41e3a; /* Paprika red */
-  --cumin: #8b6f47; /* Cumin brown */
-  --dark-brown: #2b2520; /* Deep brown */
-  --cream: #f5f1e8; /* Cream beige */
+  /* Brand color palette */
+  --brand-green: #22C55E; /* Primary green - vibrant green for buttons and highlights */
+  --brand-green-dark: #16A34A; /* Darker green for hover states */
+  --brand-green-darker: #1A4D2E; /* Dark green for banners */
+  --brand-red: #C41E3A; /* Red for secondary accents and discount tags */
+  --brand-dark-brown: #2B2520; /* Dark brown for text */
+  --brand-cream: #F5F1E8; /* Cream beige for backgrounds */
+  --brand-cumin: #8B6F47; /* Cumin brown for muted text */
 
-  /* Fixed all oklch values to have proper lightness, chroma, and hue values */
+  /* Theme colors using green as primary */
   --background: oklch(98% 0 0);
   --foreground: oklch(14.5% 0 0);
   --card: oklch(98% 0 0);
   --card-foreground: oklch(14.5% 0 0);
   --popover: oklch(98% 0 0);
   --popover-foreground: oklch(14.5% 0 0);
-  --primary: oklch(20.5% 0 0);
+  /* Primary: Vibrant green for buttons and primary actions */
+  --primary: oklch(65% 0.15 145);
   --primary-foreground: oklch(98.5% 0 0);
-  --secondary: oklch(97% 0 0);
+  /* Secondary: Light cream background */
+  --secondary: oklch(97% 0.01 85);
   --secondary-foreground: oklch(20.5% 0 0);
-  --muted: oklch(97% 0 0);
-  --muted-foreground: oklch(55.6% 0 0);
-  --accent: oklch(97% 0 0);
+  /* Muted: Light cream for subtle backgrounds */
+  --muted: oklch(97% 0.01 85);
+  --muted-foreground: oklch(55.6% 0.02 85);
+  /* Accent: Light green tint */
+  --accent: oklch(95% 0.03 145);
   --accent-foreground: oklch(20.5% 0 0);
+  /* Destructive: Red for errors and discount tags */
   --destructive: oklch(57.7% 0.245 27.325);
   --destructive-foreground: oklch(98% 0 0);
-  --border: oklch(92.2% 0 0);
-  --input: oklch(92.2% 0 0);
-  --ring: oklch(70.8% 0 0);
-  --chart-1: oklch(64.6% 0.222 41.116);
+  --border: oklch(92.2% 0.01 85);
+  --input: oklch(92.2% 0.01 85);
+  /* Ring: Green for focus states */
+  --ring: oklch(65% 0.15 145);
+  --chart-1: oklch(65% 0.15 145);
   --chart-2: oklch(60% 0.118 184.704);
   --chart-3: oklch(39.8% 0.07 227.392);
   --chart-4: oklch(82.8% 0.189 84.429);
@@ -40,48 +48,49 @@
   --radius: 0.625rem;
   --sidebar: oklch(98.5% 0 0);
   --sidebar-foreground: oklch(14.5% 0 0);
-  --sidebar-primary: oklch(20.5% 0 0);
+  --sidebar-primary: oklch(65% 0.15 145);
   --sidebar-primary-foreground: oklch(98.5% 0 0);
-  --sidebar-accent: oklch(97% 0 0);
+  --sidebar-accent: oklch(97% 0.01 85);
   --sidebar-accent-foreground: oklch(20.5% 0 0);
-  --sidebar-border: oklch(92.2% 0 0);
-  --sidebar-ring: oklch(70.8% 0 0);
+  --sidebar-border: oklch(92.2% 0.01 85);
+  --sidebar-ring: oklch(65% 0.15 145);
 }
 
 .dark {
-  /* Fixed all oklch values in dark mode */
+  /* Dark mode with green theme */
   --background: oklch(14.5% 0 0);
   --foreground: oklch(98.5% 0 0);
   --card: oklch(14.5% 0 0);
   --card-foreground: oklch(98.5% 0 0);
   --popover: oklch(14.5% 0 0);
   --popover-foreground: oklch(98.5% 0 0);
-  --primary: oklch(98.5% 0 0);
+  /* Primary: Lighter green for dark mode */
+  --primary: oklch(70% 0.15 145);
   --primary-foreground: oklch(20.5% 0 0);
-  --secondary: oklch(26.9% 0 0);
+  --secondary: oklch(26.9% 0.01 85);
   --secondary-foreground: oklch(98.5% 0 0);
-  --muted: oklch(26.9% 0 0);
-  --muted-foreground: oklch(70.8% 0 0);
-  --accent: oklch(26.9% 0 0);
+  --muted: oklch(26.9% 0.01 85);
+  --muted-foreground: oklch(70.8% 0.02 85);
+  --accent: oklch(26.9% 0.03 145);
   --accent-foreground: oklch(98.5% 0 0);
   --destructive: oklch(39.6% 0.141 25.723);
   --destructive-foreground: oklch(63.7% 0.237 25.331);
-  --border: oklch(26.9% 0 0);
-  --input: oklch(26.9% 0 0);
-  --ring: oklch(43.9% 0 0);
-  --chart-1: oklch(48.8% 0.243 264.376);
+  --border: oklch(26.9% 0.01 85);
+  --input: oklch(26.9% 0.01 85);
+  --ring: oklch(70% 0.15 145);
+  --chart-1: oklch(65% 0.15 145);
   --chart-2: oklch(69.6% 0.17 162.48);
   --chart-3: oklch(76.9% 0.188 70.08);
   --chart-4: oklch(62.7% 0.265 303.9);
   --chart-5: oklch(64.5% 0.246 16.439);
   --sidebar: oklch(20.5% 0 0);
   --sidebar-foreground: oklch(98.5% 0 0);
-  --sidebar-primary: oklch(48.8% 0.243 264.376);
+  --sidebar-primary: oklch(65% 0.15 145);
   --sidebar-primary-foreground: oklch(98.5% 0 0);
-  --sidebar-accent: oklch(26.9% 0 0);
+  --sidebar-accent: oklch(26.9% 0.01 85);
   --sidebar-accent-foreground: oklch(98.5% 0 0);
-  --sidebar-border: oklch(26.9% 0 0);
-  --sidebar-ring: oklch(43.9% 0 0);
+  --sidebar-border: oklch(26.9% 0.01 85);
+  --sidebar-ring: oklch(70% 0.15 145);
 }
 
 @theme inline {
@@ -123,6 +132,14 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  /* Brand colors */
+  --color-brand-green: var(--brand-green);
+  --color-brand-green-dark: var(--brand-green-dark);
+  --color-brand-green-darker: var(--brand-green-darker);
+  --color-brand-red: var(--brand-red);
+  --color-brand-dark-brown: var(--brand-dark-brown);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-cumin: var(--brand-cumin);
 }
 
 @layer base {
@@ -147,6 +164,45 @@
     opacity: 0.5;
     z-index: -1;
     pointer-events: none;
+  }
+  
+  /* Consistent checkbox styling across the website */
+  input[type="checkbox"] {
+    @apply appearance-none cursor-pointer;
+    min-width: 1rem;
+    min-height: 1rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid #22C55E;
+    border-radius: 0.25rem;
+    background-color: white;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  
+  input[type="checkbox"]:checked {
+    background-color: #22C55E;
+    border-color: #22C55E;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L4 12.586l7.793-7.793a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  
+  input[type="checkbox"]:hover:not(:checked) {
+    border-color: #16A34A;
+    background-color: #f0fdf4;
+  }
+  
+  input[type="checkbox"]:focus {
+    outline: 2px solid #22C55E;
+    outline-offset: 2px;
+  }
+  
+  input[type="checkbox"]:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    border-color: #d1d5db;
+    background-color: #f9fafb;
   }
   
   /* Add padding for mobile bottom navigation bar */

@@ -202,7 +202,7 @@ export function ProductDetailClient({
   const reviewFormContent = (
     <div className="space-y-4">
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-[#2B2520]">التقييم</p>
+        <p className="text-sm font-semibold text-foreground">التقييم</p>
         <div className="flex items-center gap-2" role="radiogroup" aria-label="تحديد التقييم">
           {Array.from({ length: 5 }).map((_, index) => {
             const value = index + 1
@@ -212,12 +212,12 @@ export function ProductDetailClient({
                 key={value}
                 type="button"
                 onClick={() => setReviewForm((prev) => ({ ...prev, rating: value }))}
-                className={`p-2 rounded-full border transition ${
-                  isActive ? "bg-[#FFF8ED] border-[#E8A835]" : "border-transparent hover:border-[#E8E2D1]"
+                  className={`p-2 rounded-full border transition ${
+                  isActive ? "bg-primary/10 border-primary" : "border-transparent hover:border-border"
                 }`}
                 aria-label={`${value} نجوم`}
               >
-                <Star size={20} className={isActive ? "text-[#E8A835] fill-[#E8A835]" : "text-gray-300"} />
+                <Star size={20} className={isActive ? "text-primary fill-primary" : "text-gray-300"} />
               </button>
             )
           })}
@@ -225,22 +225,22 @@ export function ProductDetailClient({
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-semibold text-[#2B2520]">اسمك (اختياري)</label>
+        <label className="text-sm font-semibold text-foreground">اسمك (اختياري)</label>
         <input
           type="text"
           value={reviewForm.title}
           onChange={(e) => setReviewForm((prev) => ({ ...prev, title: e.target.value }))}
-          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835]"
+          className="w-full rounded-lg border border-input px-3 py-2 focus:border-primary"
           placeholder="أدخل اسمك ليظهر مع التقييم"
         />
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-semibold text-[#2B2520]">تعليقك (اختياري)</label>
+        <label className="text-sm font-semibold text-foreground">تعليقك (اختياري)</label>
         <textarea
           value={reviewForm.content}
           onChange={(e) => setReviewForm((prev) => ({ ...prev, content: e.target.value }))}
-          className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 h-32 focus:border-[#E8A835]"
+          className="w-full rounded-lg border border-input px-3 py-3 h-32 focus:border-primary"
           placeholder="اكتب تجربتك أو ملاحظاتك إن وجدت..."
         />
       </div>
@@ -259,13 +259,13 @@ export function ProductDetailClient({
       <button
         onClick={handleSubmitReview}
         disabled={isPending}
-        className="w-full py-3 rounded-lg bg-[#E8A835] text-white font-bold hover:bg-[#D9941E] disabled:opacity-60"
+        className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold hover:bg-brand-green-dark disabled:opacity-60"
       >
         {isPending ? "جاري الإرسال..." : "إرسال التقييم"}
       </button>
 
       {!canReview && (
-        <p className="text-xs text-[#C41E3A] font-semibold text-center">سجّل الدخول لكتابة تقييمك.</p>
+        <p className="text-xs text-brand-red font-semibold text-center">سجّل الدخول لكتابة تقييمك.</p>
       )}
     </div>
   )
@@ -275,7 +275,7 @@ export function ProductDetailClient({
       <div className="grid md:grid-cols-2 gap-6 md:gap-10">
         <div className="space-y-4">
           {/* Main Carousel */}
-          <div className="relative rounded-2xl overflow-hidden bg-[#F5F1E8] border border-[#E8E2D1]">
+          <div className="relative rounded-2xl overflow-hidden bg-muted border border-border">
             <div dir="ltr" className="ltr overflow-hidden" ref={emblaRef}>
               <div className="flex">
                 {images.map((image) => (
@@ -323,7 +323,7 @@ export function ProductDetailClient({
                       key={index}
                       onClick={() => scrollTo(index)}
                       className={`w-2 h-2 rounded-full transition-all ${
-                        selectedImageIndex === index ? "bg-[#E8A835] w-6" : "bg-white/60"
+                        selectedImageIndex === index ? "bg-primary w-6" : "bg-white/60"
                       }`}
                       aria-label={`الذهاب للصورة ${index + 1}`}
                     />
@@ -342,8 +342,8 @@ export function ProductDetailClient({
                   onClick={() => scrollTo(index)}
                   className={`rounded-lg border-2 overflow-hidden aspect-square transition-all ${
                     selectedImageIndex === index
-                      ? "border-[#E8A835] scale-95"
-                      : "border-transparent hover:border-[#E8E2D1]"
+                      ? "border-primary scale-95"
+                      : "border-transparent hover:border-border"
                   }`}
                 >
                   <div className="w-full h-full flex items-center justify-center bg-[#F5F1E8]">
@@ -362,8 +362,8 @@ export function ProductDetailClient({
 
         <div className="space-y-4 md:space-y-6">
           <div>
-            <p className="text-xs md:text-sm text-[#E8A835] font-bold uppercase mb-2">{product.brand}</p>
-            <h1 className="text-2xl md:text-4xl font-bold text-[#2B2520] mb-3 md:mb-4">{product.name_ar}</h1>
+            <p className="text-xs md:text-sm text-primary font-bold uppercase mb-2">{product.brand}</p>
+            <h1 className="text-2xl md:text-4xl font-bold text-foreground mb-3 md:mb-4">{product.name_ar}</h1>
             <div className="flex items-center gap-3 md:gap-4">
               <div className="flex">
                 {Array.from({ length: 5 }).map((_, index) => (
@@ -371,19 +371,19 @@ export function ProductDetailClient({
                     key={index}
                     size={16}
                     className={`md:w-5 md:h-5 ${
-                      index < Math.round(product.rating || 0) ? "text-[#E8A835] fill-[#E8A835]" : "text-gray-300"
+                      index < Math.round(product.rating || 0) ? "text-primary fill-primary" : "text-gray-300"
                     }`}
                   />
                 ))}
               </div>
-              <span className="text-xs md:text-sm text-[#8B6F47]">({product.reviews_count || 0} تقييم)</span>
+              <span className="text-xs md:text-sm text-brand-cumin">({product.reviews_count || 0} تقييم)</span>
             </div>
           </div>
 
           <div>
             <div className="flex items-baseline gap-3 md:gap-4">
               {hidePrices ? (
-                <span className="text-lg md:text-xl font-semibold text-[#E8A835]">{contactLabel}</span>
+                <span className="text-lg md:text-xl font-semibold text-primary">{contactLabel}</span>
               ) : (
                 <>
                   <span className="text-3xl md:text-5xl font-bold text-[#C41E3A]">{effectivePrice.toFixed(2)} ج.م</span>
@@ -396,20 +396,20 @@ export function ProductDetailClient({
             {isOutOfStock ? (
               <p className="mt-2 text-xs md:text-sm text-red-600 font-semibold">نفدت الكمية وسيتم التوفير قريباً</p>
             ) : (
-              <p className="mt-2 text-xs md:text-sm text-[#8B6F47]">المخزون المتوفر: {availableStock} عبوة</p>
+              <p className="mt-2 text-xs md:text-sm text-brand-cumin">المخزون المتوفر: {availableStock} عبوة</p>
             )}
           </div>
 
           {variants.length > 0 && (
             <div className="space-y-3">
-              <p className="font-semibold text-[#2B2520]">اختر المتغير</p>
+              <p className="font-semibold text-foreground">اختر المتغير</p>
               <div className="flex flex-wrap gap-3">
                 {variants.map((variant) => (
                   <button
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant.id)}
-                    className={`px-4 py-2 rounded-full border ${
-                      selectedVariant === variant.id ? "border-[#E8A835] bg-[#FFF8ED]" : "border-[#D9D4C8]"
+                      className={`px-4 py-2 rounded-full border ${
+                      selectedVariant === variant.id ? "border-primary bg-primary/10" : "border-border"
                     }`}
                   >
                     {variant.variant_type || variant.size || variant.weight ? (
@@ -428,12 +428,12 @@ export function ProductDetailClient({
           )}
 
           <div className="space-y-3 md:space-y-4">
-            <p className="font-semibold text-sm md:text-base text-[#2B2520]">الكمية</p>
+            <p className="font-semibold text-sm md:text-base text-foreground">الكمية</p>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
-              <div className="flex items-center border border-[#D9D4C8] rounded-lg w-full sm:w-auto">
+              <div className="flex items-center border border-border rounded-lg w-full sm:w-auto">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3 md:px-4 py-2 md:py-3 text-[#2B2520] hover:bg-[#F5F1E8] flex-1 sm:flex-none"
+                  className="px-3 md:px-4 py-2 md:py-3 text-foreground hover:bg-muted flex-1 sm:flex-none"
                 >
                   −
                 </button>
@@ -441,7 +441,7 @@ export function ProductDetailClient({
                 <button
                   onClick={() => setQuantity(quantity + 1)}
                   disabled={quantity >= availableStock}
-                  className="px-3 md:px-4 py-2 md:py-3 text-[#2B2520] hover:bg-[#F5F1E8] disabled:text-gray-400 flex-1 sm:flex-none"
+                  className="px-3 md:px-4 py-2 md:py-3 text-foreground hover:bg-muted disabled:text-gray-400 flex-1 sm:flex-none"
                 >
                   +
                 </button>
@@ -449,7 +449,7 @@ export function ProductDetailClient({
               {hidePrices ? (
                 <Link
                   href={contactUrl}
-                  className="flex-1 py-3 rounded-lg border-2 border-[#E8A835] text-[#E8A835] font-bold flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base hover:bg-[#FFF8ED]"
+                  className="flex-1 py-3 rounded-lg border-2 border-primary text-primary font-bold flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base hover:bg-primary/10"
                 >
                   {contactLabel}
                 </Link>
@@ -459,7 +459,7 @@ export function ProductDetailClient({
                   className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base ${
                     isOutOfStock || isCartLoading || isAddingToCart
                       ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      : "bg-[#E8A835] text-white hover:bg-[#D9941E]"
+                      : "bg-primary text-primary-foreground hover:bg-brand-green-dark"
                   }`}
                   disabled={isOutOfStock || isCartLoading || isAddingToCart}
                 >
@@ -476,7 +476,7 @@ export function ProductDetailClient({
               <button
                 onClick={() => setIsFavorite(!isFavorite)}
                 className={`p-2 md:p-3 rounded-lg border ${
-                  isFavorite ? "border-[#C41E3A] text-[#C41E3A]" : "border-[#D9D4C8] text-[#8B6F47]"
+                  isFavorite ? "border-brand-red text-brand-red" : "border-border text-brand-cumin"
                 }`}
               >
                 <Heart size={20} className={`md:w-6 md:h-6 ${isFavorite ? "fill-current" : ""}`} />
@@ -485,8 +485,8 @@ export function ProductDetailClient({
           </div>
 
           <div>
-            <h3 className="font-bold text-base md:text-lg text-[#2B2520] mb-2">الوصف</h3>
-            <p className="text-sm md:text-base text-[#8B6F47] leading-relaxed">{product.description_ar}</p>
+            <h3 className="font-bold text-base md:text-lg text-foreground mb-2">الوصف</h3>
+            <p className="text-sm md:text-base text-brand-cumin leading-relaxed">{product.description_ar}</p>
           </div>
         </div>
       </div>
@@ -494,12 +494,12 @@ export function ProductDetailClient({
       <section className="mt-8 md:mt-16 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <h3 className="text-xl md:text-2xl font-bold text-[#2B2520]">تقييمات العملاء</h3>
-            <p className="text-sm text-[#8B6F47]">اطّلع على آراء المتسوقين وأضف تجربتك.</p>
+            <h3 className="text-xl md:text-2xl font-bold text-foreground">تقييمات العملاء</h3>
+            <p className="text-sm text-brand-cumin">اطّلع على آراء المتسوقين وأضف تجربتك.</p>
           </div>
           <button
             onClick={openReviewForm}
-            className="self-start inline-flex items-center gap-2 rounded-lg bg-[#E8A835] px-4 py-2 text-white text-sm font-bold hover:bg-[#D9941E] transition"
+            className="self-start inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground text-sm font-bold hover:bg-brand-green-dark transition"
           >
             <Plus size={16} />
             <span>اكتب تقييمك</span>
@@ -508,12 +508,12 @@ export function ProductDetailClient({
 
         <div className="grid lg:grid-cols-2 gap-6 md:gap-10">
           <div className="bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl shadow p-4 md:p-6">
-            <h4 className="text-lg md:text-xl font-bold text-[#2B2520] mb-4 flex items-center gap-2">
-              <Star size={18} className="text-[#E8A835] fill-[#E8A835]" />
+            <h4 className="text-lg md:text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+              <Star size={18} className="text-primary fill-primary" />
               آراء العملاء
             </h4>
             {reviewList.length === 0 ? (
-              <p className="text-sm text-[#8B6F47]">كن أول من يقيّم هذا المنتج.</p>
+              <p className="text-sm text-brand-cumin">كن أول من يقيّم هذا المنتج.</p>
             ) : (
               <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2">
                 {reviewList.map((review) => (
@@ -523,17 +523,17 @@ export function ProductDetailClient({
                         <Star
                           key={index}
                           size={16}
-                          className={index < review.rating ? "text-[#E8A835] fill-[#E8A835]" : "text-gray-300"}
+                          className={index < review.rating ? "text-primary fill-primary" : "text-gray-300"}
                         />
                       ))}
-                      <span className="text-xs text-[#8B6F47]">
+                      <span className="text-xs text-brand-cumin">
                         {new Date(review.created_at).toLocaleDateString("ar-EG")}
                       </span>
                     </div>
-                    <p className="font-semibold text-[#2B2520]">
+                    <p className="font-semibold text-foreground">
                       {review.title?.trim() ? review.title : "عميل المتجر"}
                     </p>
-                    {review.content && <p className="text-sm text-[#8B6F47]">{review.content}</p>}
+                    {review.content && <p className="text-sm text-brand-cumin">{review.content}</p>}
                   </div>
                 ))}
               </div>
@@ -543,26 +543,26 @@ export function ProductDetailClient({
           <div className="bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl shadow p-4 md:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-lg md:text-xl font-bold text-[#2B2520]">شاركنا تجربتك</h4>
-                <p className="text-sm text-[#8B6F47]">حدد التقييم واكتب تعليقاً إذا رغبت.</p>
+                <h4 className="text-lg md:text-xl font-bold text-foreground">شاركنا تجربتك</h4>
+                <p className="text-sm text-brand-cumin">حدد التقييم واكتب تعليقاً إذا رغبت.</p>
               </div>
               <div className="flex items-center gap-2 rounded-lg bg-[#FFF8ED] px-3 py-2">
-                <Star size={18} className="text-[#E8A835] fill-[#E8A835]" />
+                <Star size={18} className="text-primary fill-primary" />
                 <span className="text-sm font-semibold text-[#2B2520]">
                   {product.rating ? product.rating.toFixed(1) : "جديد"}
                 </span>
                 <span className="text-xs text-[#8B6F47]">({product.reviews_count || 0})</span>
               </div>
             </div>
-            <div className="rounded-xl border border-dashed border-[#E8E2D1] bg-[#F5F1E8]/60 p-4 space-y-2">
-              <p className="text-sm text-[#2B2520] font-semibold">كيف كانت تجربتك مع {product.name_ar}؟</p>
-              <p className="text-sm text-[#8B6F47] leading-relaxed">
+            <div className="rounded-xl border border-dashed border-border bg-muted/60 p-4 space-y-2">
+              <p className="text-sm text-foreground font-semibold">كيف كانت تجربتك مع {product.name_ar}؟</p>
+              <p className="text-sm text-brand-cumin leading-relaxed">
                 نستخدم التقييمات لتحسين المنتجات وخدمة ما بعد البيع. مشاركة رأيك تساعد الآخرين أيضاً في اختيار المنتج المناسب.
               </p>
             </div>
             <button
               onClick={openReviewForm}
-              className="w-full py-3 rounded-lg bg-[#E8A835] text-white font-bold hover:bg-[#D9941E] transition"
+              className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold hover:bg-brand-green-dark transition"
             >
               إضافة تقييم جديد
             </button>
@@ -600,8 +600,8 @@ export function ProductDetailClient({
       {similarProducts.length > 0 && (
         <section className="mt-8 md:mt-16">
           <div className="mb-6 md:mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-[#2B2520] mb-2">منتجات مشابهة</h2>
-            <p className="text-sm md:text-base text-[#8B6F47]">من نفس الفئة</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">منتجات مشابهة</h2>
+            <p className="text-sm md:text-base text-brand-cumin">من نفس الفئة</p>
           </div>
           <SimilarProductsRow
             products={similarProducts}
@@ -678,7 +678,7 @@ function SimilarProductsRow({
                   href={productLink}
                   className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all border border-[#E8E2D1] flex flex-col group h-full"
                 >
-                  <div className="relative h-48 bg-[#F5F1E8] overflow-hidden">
+                  <div className="relative h-48 bg-muted overflow-hidden">
                     <img
                       src={primaryImage}
                       alt={product.name_ar}
@@ -696,8 +696,8 @@ function SimilarProductsRow({
                     )}
                   </div>
                   <div className="p-3 md:p-4 flex flex-col flex-1">
-                    <p className="text-xs text-[#E8A835] font-semibold uppercase mb-1">{product.brand}</p>
-                    <h3 className="text-base md:text-lg font-bold text-[#2B2520] mb-2 line-clamp-2 group-hover:text-[#E8A835] transition-colors">
+                    <p className="text-xs text-primary font-semibold uppercase mb-1">{product.brand}</p>
+                    <h3 className="text-base md:text-lg font-bold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
                       {product.name_ar}
                     </h3>
                     <div className="flex items-center gap-2 mb-3">
@@ -708,17 +708,17 @@ function SimilarProductsRow({
                             size={12}
                             className={`${
                               index < Math.round(product.rating || 0)
-                                ? "text-[#E8A835] fill-[#E8A835]"
+                                ? "text-primary fill-primary"
                                 : "text-gray-300"
                             }`}
                           />
                         ))}
                       </div>
-                      <span className="text-xs text-[#8B6F47]">({product.reviews_count || 0})</span>
+                      <span className="text-xs text-brand-cumin">({product.reviews_count || 0})</span>
                     </div>
                     <div className="flex items-baseline gap-2 mb-3">
                       {hidePrice ? (
-                        <span className="text-sm font-semibold text-[#E8A835]">{contactLabel}</span>
+                        <span className="text-sm font-semibold text-primary">{contactLabel}</span>
                       ) : (
                         <>
                           <span className="text-xl md:text-2xl font-bold text-[#C41E3A]">

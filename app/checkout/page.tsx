@@ -438,20 +438,20 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
               <div className="space-y-3">
                 <Link
                   href="/auth/sign-in"
-                  className="block w-full px-6 py-3 bg-[#E8A835] text-white rounded-lg font-semibold hover:bg-[#D9941E] transition-colors"
+                  className="block w-full px-6 py-3 bg-brand-green text-white rounded-lg font-semibold hover:bg-brand-green-dark transition-colors"
                 >
                   تسجيل الدخول
                 </Link>
                 <Link
                   href="/auth/sign-up"
-                  className="block w-full px-6 py-3 border-2 border-[#E8A835] text-[#E8A835] rounded-lg font-semibold hover:bg-[#F5F1E8] transition-colors"
+                  className="block w-full px-6 py-3 border-2 border-brand-green text-brand-green rounded-lg font-semibold hover:bg-[#F5F1E8] transition-colors"
                 >
                   إنشاء حساب جديد
                 </Link>
               </div>
 
               <p className="text-[#8B6F47] mt-8">
-                <Link href="/cart" className="text-[#E8A835] font-semibold hover:underline">
+                <Link href="/cart" className="text-brand-green font-semibold hover:underline">
                   العودة إلى السلة
                 </Link>
               </p>
@@ -481,7 +481,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
                     currentStep === step
-                      ? "bg-[#E8A835] text-white"
+                      ? "bg-brand-green text-white"
                       : index < (["shipping", "payment", "confirmation"] as const).indexOf(currentStep as any)
                         ? "bg-green-500 text-white"
                         : "bg-gray-200 text-gray-600"
@@ -530,7 +530,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                             }
                           }
                         }}
-                        className="w-full px-4 py-2 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835] bg-white text-[#2B2520] mb-2"
+                        className="w-full px-4 py-2 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green bg-white text-[#2B2520] mb-2"
                       >
                         <option value="">إضافة عنوان جديد</option>
                         {savedAddresses.map((addr) => (
@@ -551,7 +551,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                         value={formData.firstName}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green"
                         placeholder="اسمك الأول"
                       />
                     </div>
@@ -563,7 +563,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                         value={formData.lastName}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green"
                         placeholder="اسمك الأخير"
                       />
                     </div>
@@ -578,7 +578,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                         value={formData.email}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green"
                         placeholder="بريدك الإلكتروني"
                       />
                     </div>
@@ -590,7 +590,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                         value={formData.phone}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green"
                         placeholder="رقم هاتفك"
                       />
                     </div>
@@ -616,7 +616,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                         name="governorate"
                         value={formData.governorate}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-[#D9D4C8] focus:border-[#E8A835] focus:outline-none"
+                        className="w-full px-4 py-3 rounded-lg border border-[#D9D4C8] focus:border-brand-green focus:outline-none"
                         required={shippingZones.length > 0}
                       >
                         <option value="">اختر المحافظة</option>
@@ -634,7 +634,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                         name="postalCode"
                         value={formData.postalCode}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835]"
+                        className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green"
                         placeholder="الرمز البريدي"
                       />
                     </div>
@@ -648,7 +648,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                           type="checkbox"
                           checked={saveAddressForLater}
                           onChange={(e) => setSaveAddressForLater(e.target.checked)}
-                          className="w-4 h-4 text-[#E8A835] border-[#D9D4C8] rounded focus:ring-[#E8A835]"
+                          className="w-4 h-4 cursor-pointer"
                         />
                         <span className="text-sm">حفظ هذا العنوان للاستخدام لاحقاً</span>
                       </label>
@@ -657,7 +657,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
                   <button
                     type="submit"
-                    className="w-full px-8 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors flex items-center justify-center gap-2"
+                    className="w-full px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2"
                   >
                     متابعة للدفع
                     <ArrowRight size={20} />
@@ -677,8 +677,8 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                       onClick={() => setPaymentMethod("online")}
                       className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
                         paymentMethod === "online"
-                          ? "border-[#E8A835] bg-[#FFF9F0] text-[#E8A835]"
-                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-[#E8A835]"
+                          ? "border-brand-green bg-brand-green/10 text-brand-green"
+                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-brand-green"
                       }`}
                     >
                       <CreditCard size={32} className="mb-3" />
@@ -689,8 +689,8 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                       onClick={() => setPaymentMethod("cash")}
                       className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
                         paymentMethod === "cash"
-                          ? "border-[#E8A835] bg-[#FFF9F0] text-[#E8A835]"
-                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-[#E8A835]"
+                          ? "border-brand-green bg-brand-green/10 text-brand-green"
+                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-brand-green"
                       }`}
                     >
                       <Banknote size={32} className="mb-3" />
@@ -699,8 +699,8 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                   </div>
 
           {paymentMethod === "online" && (
-            <div className="bg-[#FFF9F0] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300 border border-[#F5D9A3]">
-              <div className="bg-white p-3 rounded-full text-[#E8A835]">
+            <div className="bg-brand-green/10 p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300 border border-brand-green/30">
+              <div className="bg-white p-3 rounded-full text-brand-green">
                 <ShieldCheck size={28} />
               </div>
               <div>
@@ -715,7 +715,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
                   {paymentMethod === "cash" && (
                     <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                      <div className="bg-white p-2 rounded-full text-[#E8A835]">
+                      <div className="bg-white p-2 rounded-full text-brand-green">
                         <Banknote size={24} />
                       </div>
                       <div>
@@ -731,7 +731,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 px-8 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {isLoading ? "جاري المعالجة..." : "إتمام الطلب"}
                       <Check size={20} />
@@ -739,7 +739,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                     <button
                       type="button"
                       onClick={() => setCurrentStep("shipping")}
-                      className="flex-1 px-8 py-3 border-2 border-[#E8A835] text-[#E8A835] rounded-lg font-bold hover:bg-[#F5F1E8] transition-colors"
+                      className="flex-1 px-8 py-3 border-2 border-brand-green text-brand-green rounded-lg font-bold hover:bg-[#F5F1E8] transition-colors"
                     >
                       العودة
                     </button>
@@ -763,7 +763,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                   </div>
                   <Link
                     href="/user/orders"
-                    className="inline-block px-8 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors"
+                    className="inline-block px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors"
                   >
                     عرض طلباتي
                   </Link>

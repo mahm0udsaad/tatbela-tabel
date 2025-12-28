@@ -60,22 +60,22 @@ export function Footer() {
   if (!isActive) return null
 
   return (
-    <footer className="pb-12 bg-black text-white">
+    <footer className="pb-12 bg-brand-green-darker text-white">
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand Info */}
           <div>
-            <h3 className="text-2xl font-bold text-[#E8A835] mb-4">{payload.brand.name}</h3>
-            <p className="text-gray-300 text-sm leading-relaxed">{payload.brand.description}</p>
+            <h3 className="text-2xl font-bold text-primary mb-4">{payload.brand.name}</h3>
+            <p className="text-white/80 text-sm leading-relaxed">{payload.brand.description}</p>
           </div>
 
           {payload.columns.map((col) => (
             <div key={col.title}>
-              <h4 className="font-bold mb-4 text-[#E8A835]">{col.title}</h4>
+              <h4 className="font-bold mb-4 text-primary">{col.title}</h4>
               <ul className="space-y-2 text-sm">
                 {col.links.map((link) => (
                   <li key={`${col.title}-${link.label}-${link.href}`}>
-                    <Link href={link.href} className="text-gray-300 hover:text-[#E8A835] transition-colors">
+                    <Link href={link.href} className="text-white/80 hover:text-white transition-colors">
                       {link.label}
                     </Link>
                   </li>
@@ -86,13 +86,13 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-bold mb-4 text-[#E8A835]">تواصل معنا</h4>
+            <h4 className="font-bold mb-4 text-primary">تواصل معنا</h4>
             <div className="space-y-3 text-sm">
               {payload.contact.phones.slice(0, 2).map((phone) => (
                 <a
                   key={phone}
                   href={`tel:${phone.replace(/[^\d+]/g, "")}`}
-                  className="flex items-center gap-2 text-gray-300 hover:text-[#E8A835] transition-colors"
+                  className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
                 >
                   <Phone size={16} />
                   {phone}
@@ -102,7 +102,7 @@ export function Footer() {
                 <a
                   key={email}
                   href={`mailto:${email}`}
-                  className="flex items-center gap-2 text-gray-300 hover:text-[#E8A835] transition-colors"
+                  className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
                 >
                   <Mail size={16} />
                   {email}
@@ -113,7 +113,7 @@ export function Footer() {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-[#2D6A4F]/50 pt-8">
+        <div className="border-t border-white/20 pt-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
             {/* Social Links */}
             {socialLinks.length > 0 ? (
@@ -125,7 +125,7 @@ export function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={item.label}
-                    className="text-gray-400 hover:text-[#E8A835] transition-colors"
+                    className="text-white/70 hover:text-white transition-colors"
                   >
                     {item.icon}
                   </a>
@@ -136,7 +136,7 @@ export function Footer() {
             )}
 
             {/* Copyright */}
-            <p className="text-gray-400 text-sm">{payload.copyright}</p>
+            <p className="text-white/70 text-sm">{payload.copyright}</p>
           </div>
         </div>
       </div>

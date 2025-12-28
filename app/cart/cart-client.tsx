@@ -97,13 +97,13 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
         <section className="py-20">
           <div className="max-w-7xl mx-auto px-4 text-center">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-[#F5F1E8] rounded-full mb-6">
-              <ShoppingBag size={40} className="text-[#E8A835]" />
+              <ShoppingBag size={40} className="text-brand-green" />
             </div>
             <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{isB2B ? "سلة الجملة فارغة" : "سلتك فارغة"}</h1>
             <p className="text-lg text-[#8B6F47] mb-8">ابدأ التسوق وأضف منتجاتك المفضلة</p>
             <Link
               href={shopPath}
-              className="inline-block px-8 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors"
+              className="inline-block px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors"
             >
               متابعة التسوق <ArrowRight size={20} className="inline mr-2" />
             </Link>
@@ -144,7 +144,7 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                     <div>
                       <div className="flex justify-between items-start gap-4">
                         <div>
-                          <p className="text-xs text-[#E8A835] font-semibold mb-1">{item.product.brand}</p>
+                          <p className="text-xs text-brand-green font-semibold mb-1">{item.product.brand}</p>
                           <h3 className="text-lg font-bold text-[#2B2520]">{item.product.name_ar}</h3>
                         </div>
                         <button
@@ -192,7 +192,7 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
               <h2 className="text-xl font-bold text-[#2B2520] mb-4">{isB2B ? "ملخص طلب الجملة" : "ملخص الطلب"}</h2>
 
               {freeShipping ? (
-                <div className={`mb-4 p-3 rounded-lg ${freeShipping.eligible ? "bg-green-50 text-green-700 border border-green-200" : "bg-[#FFF8ED] text-[#8B6F47] border border-[#E8A835]/40"}`}>
+                <div className={`mb-4 p-3 rounded-lg ${freeShipping.eligible ? "bg-green-50 text-green-700 border border-green-200" : "bg-[#FFF8ED] text-[#8B6F47] border border-brand-green/40"}`}>
                   {freeShipping.eligible ? (
                     <p className="text-sm font-semibold">🎉 تم تفعيل الشحن المجاني لهذا الطلب</p>
                   ) : (
@@ -213,7 +213,7 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                   <select
                     value={selectedAddressId || ""}
                     onChange={(e) => setSelectedAddressId(e.target.value || null)}
-                    className="w-full px-4 py-2 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-[#E8A835] bg-white text-[#2B2520]"
+                    className="w-full px-4 py-2 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green bg-white text-[#2B2520]"
                   >
                     {addresses.map((addr) => (
                       <option key={addr.id} value={addr.id}>
@@ -230,9 +230,9 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
               )}
 
               {!isB2B && addresses.length === 0 && !isLoadingAddresses && (
-                <div className="mb-4 p-3 bg-[#FFF8ED] rounded-lg border border-[#E8A835]/40">
+                <div className="mb-4 p-3 bg-[#FFF8ED] rounded-lg border border-brand-green/40">
                   <p className="text-sm text-[#8B6F47]">
-                    <Link href={checkoutPath} className="text-[#E8A835] font-semibold hover:underline">
+                    <Link href={checkoutPath} className="text-brand-green font-semibold hover:underline">
                       أضف عنوان التوصيل
                     </Link>{" "}
                     لحساب رسوم الشحن
@@ -270,13 +270,13 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
               <Link
                 href={checkoutPath}
-                className="block w-full py-3 bg-[#E8A835] text-white text-center rounded-lg font-bold hover:bg-[#D9941E] transition-colors shadow-lg shadow-[#E8A835]/20"
+                className="block w-full py-3 bg-brand-green text-white text-center rounded-lg font-bold hover:bg-brand-green-dark transition-colors shadow-lg shadow-brand-green/20"
               >
                 إتمام الشراء
               </Link>
               
               <div className="mt-4 text-center">
-                <Link href="/store" className="text-sm text-[#8B6F47] hover:text-[#E8A835] underline">
+                <Link href="/store" className="text-sm text-[#8B6F47] hover:text-brand-green underline">
                   متابعة التسوق
                 </Link>
               </div>

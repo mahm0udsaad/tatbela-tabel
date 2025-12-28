@@ -130,7 +130,7 @@ export function Navbar() {
 
   return (
    <>
-    <nav className="overflow-visible bg-white/80 backdrop-blur-sm border-b border-[#E8A835]/20 fixed top-0 left-0 right-0 z-50">
+    <nav className="overflow-visible bg-white/80 backdrop-blur-sm border-b border-primary/20 fixed top-0 left-0 right-0 z-50">
       <div className="sm:mx-8 sm:px-4 px-1">
         <div className="flex items-center justify-between h-20">
           {/* Left Side - Desktop Menu + Mobile Search */}
@@ -139,7 +139,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setMobileSearchOpen((prev) => !prev)}
-              className="md:hidden p-2 rounded-lg border border-[#E8A835] text-[#2B2520]"
+              className="md:hidden p-2 rounded-lg border border-primary text-foreground"
               aria-label="فتح البحث"
             >
               <Search size={22} />
@@ -151,7 +151,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-[#2B2520] hover:text-[#E8A835] transition-colors lg:text-lg md:text-sm"
+                  className="text-foreground hover:text-primary transition-colors lg:text-lg md:text-sm"
                 >
                   {link.label}
                 </Link>
@@ -167,23 +167,23 @@ export function Navbar() {
           {/* Right Side - Search + Cart + Auth */}
           <div className="flex items-center gap-4 justify-end flex-1">
             {/* Desktop Search */}
-            <div className="hidden md:flex items-center px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-[#E8A835]">
+            <div                 className="hidden md:flex items-center px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-primary">
               <SearchAutocomplete
                 value={searchTerm}
                 onChange={setSearchTerm}
                 onSubmit={handleSearchSubmit}
                 placeholder="ابحث عن منتج أو خلطة"
-                className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-[#2B2520] placeholder:text-[#8B6F47]"
+                className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-foreground placeholder:text-muted-foreground"
                 showRecentSearches={true}
                 showPopularSearches={true}
               />
             </div>
 
             {/* Desktop Cart */}
-            <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors hidden md:flex relative">
-              <ShoppingCart size={24} className="text-[#2B2520]" />
+            <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-muted rounded-lg transition-colors hidden md:flex relative">
+              <ShoppingCart size={24} className="text-foreground" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#C41E3A] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                <span className="absolute -top-1 -right-1 bg-brand-red text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
                   {cartCount}
                 </span>
               )}
@@ -195,25 +195,25 @@ export function Navbar() {
                 <>
                   <Link
                     href="/user/orders"
-                    className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors"
+                    className="p-2 hover:bg-muted rounded-lg transition-colors"
                     title="طلباتي"
                   >
-                    <User size={24} className="text-[#2B2520]" />
+                    <User size={24} className="text-foreground" />
                   </Link>
                   <button
                     onClick={async () => {
                       await supabase.auth.signOut()
                       setUser(null)
                     }}
-                    className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors"
+                    className="p-2 hover:bg-muted rounded-lg transition-colors"
                   >
-                    <LogOut size={24} className="text-[#2B2520]" />
+                    <LogOut size={24} className="text-foreground" />
                   </button>
                 </>
               ) : (
                 <Link
                   href="/auth/sign-in"
-                  className="px-1 py-2 bg-[#E8A835] text-white rounded-lg font-semibold hover:bg-[#D9941E] transition-colors"
+                  className="px-1 py-2 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-brand-green-dark transition-colors"
                 >
                   تسجيل الدخول
                 </Link>
@@ -223,18 +223,18 @@ export function Navbar() {
             {/* Mobile User + Cart */}
             <div className="md:hidden flex items-center gap-2">
               {user ? (
-                <Link href="/user/orders" className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors">
-                  <User size={24} className="text-[#2B2520]" />
+                <Link href="/user/orders" className="p-2 hover:bg-muted rounded-lg transition-colors">
+                  <User size={24} className="text-foreground" />
                 </Link>
               ) : (
-                <Link href="/auth/sign-in" className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors">
-                  <User size={24} className="text-[#2B2520]" />
+                <Link href="/auth/sign-in" className="p-2 hover:bg-muted rounded-lg transition-colors">
+                  <User size={24} className="text-foreground" />
                 </Link>
               )}
-              <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-[#F5F1E8] rounded-lg transition-colors relative">
-                <ShoppingCart size={24} className="text-[#2B2520]" />
+              <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-muted rounded-lg transition-colors relative">
+                <ShoppingCart size={24} className="text-foreground" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#C41E3A] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                  <span className="absolute -top-1 -right-1 bg-brand-red text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
                     {cartCount}
                   </span>
                 )}
@@ -246,8 +246,8 @@ export function Navbar() {
 
       {/* Mobile search drawer */}
       {mobileSearchOpen && (
-        <div className="md:hidden px-4 pb-4 bg-white/80 backdrop-blur-sm border-b border-[#E8A835]/20">
-          <div className="flex items-center gap-3 bg-[#F5F1E8] rounded-2xl px-4 py-3">
+        <div className="md:hidden px-4 pb-4 bg-white/80 backdrop-blur-sm border-b border-primary/20">
+          <div className="flex items-center gap-3 bg-muted rounded-2xl px-4 py-3">
             <SearchAutocomplete
               value={searchTerm}
               onChange={setSearchTerm}
@@ -256,12 +256,12 @@ export function Navbar() {
                 setMobileSearchOpen(false)
               }}
               placeholder="ابحث عن منتجات"
-              className="flex-1 bg-transparent border-none outline-none text-sm text-[#2B2520] placeholder:text-[#8B6F47]"
+              className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
             />
             <button
               type="button"
               onClick={() => setMobileSearchOpen(false)}
-              className="text-sm text-[#8B6F47]"
+              className="text-sm text-muted-foreground"
             >
               إغلاق
             </button>
@@ -271,7 +271,7 @@ export function Navbar() {
 
       {/* Mobile Bottom Navigation Bar */}
     </nav>
-      <div className="md:hidden fixed bottom-0 right-0 left-0 bg-white/80 backdrop-blur-sm border-t border-[#E8A835]/20 pb-safe z-50">
+      <div className="md:hidden fixed bottom-0 right-0 left-0 bg-white/80 backdrop-blur-sm border-t border-primary/20 pb-safe z-50">
         <div className="flex items-center justify-around h-16 px-2">
           {navLinks.map((link) => {
             const Icon = link.icon
@@ -282,8 +282,8 @@ export function Navbar() {
                 href={link.href}
                 className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
                   isActive 
-                    ? 'text-[#E8A835] bg-[#E8A835]/10' 
-                    : 'text-[#2B2520] hover:text-[#E8A835] hover:bg-[#F5F1E8]'
+                    ? 'text-primary bg-primary/10' 
+                    : 'text-foreground hover:text-primary hover:bg-muted'
                 }`}
               >
                 <Icon size={20} />
@@ -295,14 +295,14 @@ export function Navbar() {
             href={isB2BRoute ? "/b2b/cart" : "/cart"}
             className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all relative ${
               pathname === '/cart' || pathname === '/b2b/cart'
-                ? 'text-[#E8A835] bg-[#E8A835]/10'
-                : 'text-[#2B2520] hover:text-[#E8A835] hover:bg-[#F5F1E8]'
+                ? 'text-primary bg-primary/10'
+                : 'text-foreground hover:text-primary hover:bg-muted'
             }`}
           >
             <div className="relative">
               <ShoppingCart size={20} />
               {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-[#C41E3A] text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                <span className="absolute -top-2 -right-2 bg-brand-red text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                   {cartCount}
                 </span>
               )}

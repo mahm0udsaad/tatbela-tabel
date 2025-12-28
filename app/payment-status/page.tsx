@@ -199,13 +199,13 @@ export default async function PaymentStatusPage({ searchParams }: PaymentStatusP
             <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
               <Link
                 href="/user/orders"
-                className="flex-1 px-6 py-3 bg-[#E8A835] text-white rounded-lg font-bold hover:bg-[#D9941E] transition-colors text-center"
+                className="flex-1 px-6 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors text-center"
               >
                 عرض طلباتي
               </Link>
               <Link
                 href="/checkout"
-                className="flex-1 px-6 py-3 border-2 border-[#E8A835] text-[#E8A835] rounded-lg font-bold hover:bg-[#F5F1E8] transition-colors text-center"
+                className="flex-1 px-6 py-3 border-2 border-brand-green text-brand-green rounded-lg font-bold hover:bg-[#F5F1E8] transition-colors text-center"
               >
                 العودة إلى الدفع
               </Link>

@@ -3,11 +3,18 @@ import { OffersClient } from "./offers-client"
 
 export const dynamic = "force-dynamic"
 
-export default async function OffersPage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
+export default async function OffersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; brand?: string }>
+}) {
   const supabase = await createClient()
   const params = await searchParams
+
+  const normalizedBrand =
+    params.brand === "Tabel" || params.brand === "Tatbeelah" ? params.brand : ""
   
-  const { data: offers } = await supabase
+  let offersQuery = supabase
     .from("offers")
     .select(
       `
@@ -30,6 +37,12 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
     .eq("is_archived", false)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
+
+  if (normalizedBrand) {
+    offersQuery = offersQuery.eq("brand", normalizedBrand)
+  }
+
+  const { data: offers } = await offersQuery
 
   return (
     <main className="min-h-screen">
@@ -56,6 +69,7 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
       <OffersClient
         initialOffers={offers ?? []}
         initialSearch={params.search ?? ""}
+        initialBrand={normalizedBrand}
       />
     </main>
   )

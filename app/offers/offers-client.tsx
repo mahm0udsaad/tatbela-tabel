@@ -2,13 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Star, Search, X } from "lucide-react"
+import { Star } from "lucide-react"
 
 import { AddToCartButton } from "@/components/add-to-cart-button"
 import { getSupabaseClient } from "@/lib/supabase"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Button } from "@/components/ui/button"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { SearchAutocomplete } from "@/components/search-autocomplete"
 import { SearchHighlighter } from "@/components/search-highlighter"
 
@@ -41,19 +38,19 @@ type OfferRecord = {
 interface OffersClientProps {
   initialOffers: OfferRecord[]
   initialSearch?: string
+  initialBrand?: string
   pageSize?: number
 }
 
 export function OffersClient({
   initialOffers,
   initialSearch = "",
+  initialBrand = "",
   pageSize = 12,
 }: OffersClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = useMemo(() => getSupabaseClient(), [])
-  const isMobile = useIsMobile()
-  const [filtersOpen, setFiltersOpen] = useState(false)
   
   const calculatedPriceBounds = useMemo(() => {
     if (initialOffers.length === 0) return { min: 0, max: 1000 }
@@ -65,13 +62,20 @@ export function OffersClient({
   }, [initialOffers])
 
   const calculatedBrands = useMemo(() => {
-    return Array.from(new Set(initialOffers.map(p => p.brand).filter(Boolean)))
+    const uniqueBrands = new Set(initialOffers.map(p => p.brand).filter(Boolean))
+    // Ensure core brands are always available
+    uniqueBrands.add("Tabel")
+    uniqueBrands.add("Tatbeelah")
+    return Array.from(uniqueBrands).sort()
   }, [initialOffers])
 
   const [offers, setOffers] = useState<OfferRecord[]>(initialOffers)
   const [totalCount, setTotalCount] = useState(initialOffers.length)
   const [search, setSearch] = useState(initialSearch)
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([])
+  const [selectedBrand, setSelectedBrand] = useState<string>(() => {
+    if (initialBrand === "Tabel" || initialBrand === "Tatbeelah") return initialBrand
+    return ""
+  })
   const [priceRange, setPriceRange] = useState<[number, number]>(() => {
     const min = Number.isFinite(calculatedPriceBounds.min) ? calculatedPriceBounds.min : 0
     const maxCandidate = Number.isFinite(calculatedPriceBounds.max) ? calculatedPriceBounds.max : min
@@ -127,8 +131,8 @@ export function OffersClient({
         query = query.or(`name_ar.ilike.%${search}%,description_ar.ilike.%${search}%`)
       }
 
-      if (selectedBrands.length > 0) {
-        query = query.in("brand", selectedBrands)
+      if (selectedBrand) {
+        query = query.eq("brand", selectedBrand)
       }
 
       if (priceRange[0] > calculatedPriceBounds.min || priceRange[1] < calculatedPriceBounds.max) {
@@ -170,7 +174,7 @@ export function OffersClient({
   useEffect(() => {
     const timer = setTimeout(() => fetchOffers(true), 300)
     return () => clearTimeout(timer)
-  }, [sortBy, selectedBrands, priceRange, search])
+  }, [sortBy, selectedBrand, priceRange, search])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -190,13 +194,29 @@ export function OffersClient({
     }
   }, [hasMore, loading, loadingMore])
 
-  const handleBrandToggle = (brand: string) => {
-    setSelectedBrands((prev) => (prev.includes(brand) ? prev.filter((name) => name !== brand) : [...prev, brand]))
+  const handleBrandChange = (brand: string) => {
+    const next = brand === selectedBrand ? "" : brand
+    setSelectedBrand(next)
+
+    const params = new URLSearchParams(searchParams)
+    if (next) params.set("brand", next)
+    else params.delete("brand")
+    const qs = params.toString()
+    router.replace(qs ? `/offers?${qs}` : "/offers")
   }
 
   useEffect(() => {
     setSearch(initialSearch)
   }, [initialSearch])
+
+  useEffect(() => {
+    // Keep local brand state in sync with server-provided defaults (route change / direct navigation)
+    if (initialBrand === "Tabel" || initialBrand === "Tatbeelah") {
+      setSelectedBrand(initialBrand)
+    } else {
+      setSelectedBrand("")
+    }
+  }, [initialBrand])
 
   useEffect(() => {
     setOffers(initialOffers)
@@ -215,7 +235,7 @@ export function OffersClient({
     router.replace(`/offers?${params.toString()}`)
   }
 
-  const activeFiltersCount = selectedBrands.length + 
+  const activeFiltersCount = (selectedBrand ? 1 : 0) + 
     (priceRange[0] !== calculatedPriceBounds.min || priceRange[1] !== calculatedPriceBounds.max ? 1 : 0)
 
   return (
@@ -228,8 +248,43 @@ export function OffersClient({
             onChange={setSearch}
             onSubmit={handleSearchSubmit}
             placeholder="ابحث عن عرض..."
-            className="w-full rounded-xl border-2 border-[#D9D4C8] px-4 py-4 focus:border-[#E8A835] focus:outline-none text-base bg-white shadow-sm"
+            className="w-full rounded-xl border-2 border-[#D9D4C8] px-4 py-4 focus:border-brand-green focus:outline-none text-base bg-white shadow-sm"
           />
+        </div>
+
+        {/* Brand Switch (always visible, mobile-first) */}
+        <div className="mb-6">
+          <div className="inline-flex items-center rounded-2xl bg-white/80 backdrop-blur-sm shadow p-1 border border-[#E8E2D1]">
+            <button
+              type="button"
+              onClick={() => handleBrandChange("Tabel")}
+              className={[
+                "px-4 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition",
+                selectedBrand === "Tabel"
+                  ? "bg-brand-green text-white shadow hover:bg-brand-green-dark"
+                  : "text-[#2B2520] hover:bg-brand-green/10",
+              ].join(" ")}
+              aria-pressed={selectedBrand === "Tabel"}
+            >
+              Tabel
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBrandChange("Tatbeelah")}
+              className={[
+                "px-4 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition",
+                selectedBrand === "Tatbeelah"
+                  ? "bg-brand-green text-white shadow hover:bg-brand-green-dark"
+                  : "text-[#2B2520] hover:bg-brand-green/10",
+              ].join(" ")}
+              aria-pressed={selectedBrand === "Tatbeelah"}
+            >
+              Tatbeelah
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-[#8B6F47]">
+            {selectedBrand ? `عرض عروض ${selectedBrand}` : "اختر العلامة لعرض العروض الخاصة بها"}
+          </p>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
@@ -242,7 +297,7 @@ export function OffersClient({
                 onChange={setSearch}
                 onSubmit={handleSearchSubmit}
                 placeholder="ابحث عن عرض..."
-                className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835] focus:outline-none"
+                className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-brand-green focus:outline-none"
                 showRecentSearches={false}
                 showPopularSearches={false}
               />
@@ -255,9 +310,9 @@ export function OffersClient({
                   <label key={brand} className="flex items-center gap-2 text-sm text-[#2B2520] cursor-pointer py-1">
                     <input
                       type="checkbox"
-                      checked={selectedBrands.includes(brand)}
-                      onChange={() => handleBrandToggle(brand)}
-                      className="accent-[#E8A835] cursor-pointer"
+                      checked={selectedBrand === brand}
+                      onChange={() => handleBrandChange(brand)}
+                      className="cursor-pointer"
                     />
                     {brand}
                   </label>
@@ -315,7 +370,7 @@ export function OffersClient({
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="flex-1 lg:flex-none rounded-lg border-2 border-[#D9D4C8] px-3 py-2.5 text-sm focus:border-[#E8A835] focus:outline-none bg-white min-h-[44px]"
+                    className="flex-1 lg:flex-none rounded-lg border-2 border-[#D9D4C8] px-3 py-2.5 text-sm focus:border-brand-green focus:outline-none bg-white min-h-[44px]"
                   >
                     <option value="popularity">الأكثر شهرة</option>
                     <option value="price-low">السعر (تصاعدي)</option>

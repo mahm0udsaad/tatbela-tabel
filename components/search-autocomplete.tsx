@@ -182,20 +182,20 @@ export function SearchAutocomplete({
         type="button"
         onClick={() => handleSubmit(text)}
         className={cn(
-          "w-full px-4 py-3 text-right flex items-center justify-between hover:bg-[#F5F1E8] transition-colors",
-          isSelected && "bg-[#E8A835]/10"
+          "w-full px-4 py-3 text-right flex items-center justify-between hover:bg-muted transition-colors",
+          isSelected && "bg-primary/10"
         )}
       >
         <div className="flex items-center gap-3">
-          {type === 'product' && <Search size={16} className="text-[#8B6F47]" />}
-          {type === 'brand' && <span className="text-xs px-2 py-1 bg-[#E8A835]/20 text-[#E8A835] rounded-full">علامة تجارية</span>}
-          {type === 'category' && <span className="text-xs px-2 py-1 bg-[#2B2520]/10 text-[#2B2520] rounded-full">فئة</span>}
-          {isString && recentSearches.includes(item) && <Clock size={16} className="text-[#8B6F47]" />}
-          {isString && popularSearches.includes(item) && <TrendingUp size={16} className="text-[#8B6F47]" />}
-          <span className="text-[#2B2520]">{text}</span>
+          {type === 'product' && <Search size={16} className="text-brand-cumin" />}
+          {type === 'brand' && <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full">علامة تجارية</span>}
+          {type === 'category' && <span className="text-xs px-2 py-1 bg-foreground/10 text-foreground rounded-full">فئة</span>}
+          {isString && recentSearches.includes(item) && <Clock size={16} className="text-brand-cumin" />}
+          {isString && popularSearches.includes(item) && <TrendingUp size={16} className="text-brand-cumin" />}
+          <span className="text-foreground">{text}</span>
         </div>
         {!isString && item.count > 1 && (
-          <span className="text-xs text-[#8B6F47]">({item.count})</span>
+          <span className="text-xs text-brand-cumin">({item.count})</span>
         )}
       </button>
     )
@@ -218,7 +218,7 @@ export function SearchAutocomplete({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={cn(
-            "w-full px-4 py-3 pr-12 rounded-xl border-2 border-[#D9D4C8] focus:border-[#E8A835] focus:outline-none text-base bg-white shadow-sm",
+            "w-full px-4 py-3 pr-12 rounded-xl border-2 border-border focus:border-primary focus:outline-none text-base bg-white shadow-sm",
             className
           )}
           dir="rtl"
@@ -228,19 +228,19 @@ export function SearchAutocomplete({
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 hover:bg-[#F5F1E8] rounded-full transition-colors"
+              className="p-1 hover:bg-muted rounded-full transition-colors"
               aria-label="مسح البحث"
             >
-              <X size={16} className="text-[#8B6F47]" />
+              <X size={16} className="text-brand-cumin" />
             </button>
           )}
           <button
             type="button"
             onClick={() => handleSubmit(value)}
-            className="p-1 hover:bg-[#F5F1E8] rounded-full transition-colors"
+            className="p-1 hover:bg-muted rounded-full transition-colors"
             aria-label="بحث"
           >
-            <Search size={18} className="text-[#8B6F47]" />
+            <Search size={18} className="text-brand-cumin" />
           </button>
         </div>
       </div>
@@ -248,18 +248,18 @@ export function SearchAutocomplete({
       {showDropdown && (
         <div
           ref={dropdownRef}
-          className="w-[22rem] rounded-[5rem] absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#E8E2D1] z-[80] max-h-96 overflow-y-auto"
+          className="w-[22rem] rounded-[5rem] absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-border z-[80] max-h-96 overflow-y-auto"
         >
           {value.trim() ? (
             // Search suggestions
             <>
               {isLoading && (
-                <div className="px-4 py-3 text-center text-[#8B6F47]">
+                <div className="px-4 py-3 text-center text-brand-cumin">
                   جاري البحث...
                 </div>
               )}
               {!isLoading && suggestions.length === 0 && (
-                <div className="px-4 py-3 text-center text-[#8B6F47]">
+                <div className="px-4 py-3 text-center text-brand-cumin">
                   لا توجد اقتراحات
                 </div>
               )}
@@ -270,8 +270,8 @@ export function SearchAutocomplete({
             <>
               {recentSearches.length > 0 && (
                 <div>
-                  <div className="px-4 py-2 bg-[#F5F1E8] border-b border-[#E8E2D1]">
-                    <h4 className="text-sm font-semibold text-[#2B2520] flex items-center gap-2">
+                  <div className="px-4 py-2 bg-muted border-b border-border">
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <Clock size={14} />
                       عمليات البحث الأخيرة
                     </h4>
@@ -281,9 +281,9 @@ export function SearchAutocomplete({
               )}
               {popularSearches.length > 0 && (
                 <div>
-                  {recentSearches.length > 0 && <div className="border-t border-[#E8E2D1]" />}
-                  <div className="px-4 py-2 bg-[#F5F1E8] border-b border-[#E8E2D1]">
-                    <h4 className="text-sm font-semibold text-[#2B2520] flex items-center gap-2">
+                  {recentSearches.length > 0 && <div className="border-t border-border" />}
+                  <div className="px-4 py-2 bg-muted border-b border-border">
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <TrendingUp size={14} />
                       الأكثر بحثاً
                     </h4>

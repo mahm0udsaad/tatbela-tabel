@@ -122,7 +122,7 @@ export function AddToCartButton({
         onClick={handleAddToCart}
         disabled={isButtonDisabled}
         className={cn(
-          'w-full py-2 bg-[#E8A835] text-white rounded-lg font-semibold hover:bg-[#D9941E] transition-colors flex items-center justify-center gap-2',
+          'pt-2 w-full py-2 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2',
           isButtonDisabled && 'opacity-70 cursor-not-allowed',
           className,
         )}
@@ -140,18 +140,18 @@ export function AddToCartButton({
       <Dialog open={showRegisterPrompt} onOpenChange={handlePromptChange}>
         <DialogContent className="max-w-md rounded-2xl border-0 bg-white p-6 shadow-2xl">
           <DialogHeader className="gap-3 text-center">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#E8A835]/10 text-[#E8A835]">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <CheckCircle2 className="size-6" />
             </div>
-            <DialogTitle className="text-xl font-bold text-[#2B2520]">أضفنا المنتج لسلتك</DialogTitle>
-            <DialogDescription className="text-[#6B5B53]">
+            <DialogTitle className="text-xl font-bold text-foreground">أضفنا المنتج لسلتك</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               لإنهاء الطلب بسهولة وحفظ السلة على كل أجهزتك، أنشئ حساباً مجانياً في أقل من دقيقة.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 rounded-xl bg-[#F5F1E8] px-4 py-3 text-sm text-[#4A403B]">
-            <div className="flex items-center gap-2 font-semibold text-[#2B2520]">
-              <Sparkles className="size-4 text-[#E8A835]" />
+          <div className="space-y-2 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 font-semibold text-foreground">
+              <Sparkles className="size-4 text-primary" />
               لماذا التسجيل؟
             </div>
             <ul className="list-disc space-y-1 pr-5">
@@ -164,14 +164,14 @@ export function AddToCartButton({
           <DialogFooter className="gap-3 sm:flex-row sm:gap-2">
             <Link
               href="/auth/sign-up"
-              className="flex-1 rounded-lg bg-[#E8A835] px-4 py-3 text-center text-sm font-bold text-white shadow-lg shadow-[#E8A835]/30 transition hover:-translate-y-0.5 hover:bg-[#D9941E]"
+              className="flex-1 rounded-lg bg-primary px-4 py-3 text-center text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30 transition hover:-translate-y-0.5 hover:bg-brand-green-dark"
             >
               إنشاء حساب الآن
             </Link>
             <button
               type="button"
               onClick={() => setShowRegisterPrompt(false)}
-              className="flex-1 rounded-lg border border-[#E8A835]/40 px-4 py-3 text-sm font-semibold text-[#2B2520] transition hover:bg-[#F5F1E8]"
+              className="flex-1 rounded-lg border border-primary/40 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
             >
               متابعة التسوق كضيف
             </button>

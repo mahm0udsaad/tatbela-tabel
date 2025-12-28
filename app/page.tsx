@@ -324,8 +324,8 @@ export default async function Home() {
       {/* Hero Section */}
       <section className="relative pb-0 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-10 right-20 w-72 h-72 bg-[#E8A835]/5 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-10 left-10 w-96 h-96 bg-[#C41E3A]/5 rounded-full blur-3xl"></div>
+          <div className="absolute top-10 right-20 w-72 h-72 bg-primary/5 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-10 left-10 w-96 h-96 bg-brand-red/5 rounded-full blur-3xl"></div>
         </div>
 
         <div className="max-w-8xl mx-auto px-4 relative z-10">
@@ -364,23 +364,23 @@ export default async function Home() {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className="flex absolute top-1/2 left-3 md:left-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-10 w-10 md:h-12 md:w-12" />
-            <CarouselNext className="flex absolute top-1/2 right-3 md:right-6 -translate-y-1/2 bg-white/80 text-[#2B2520] border border-white shadow-lg h-10 w-10 md:h-12 md:w-12" />
+            <CarouselPrevious className="flex absolute top-1/2 left-3 md:left-6 -translate-y-1/2 bg-white/80 text-foreground border border-white shadow-lg h-10 w-10 md:h-12 md:w-12" />
+            <CarouselNext className="flex absolute top-1/2 right-3 md:right-6 -translate-y-1/2 bg-white/80 text-foreground border border-white shadow-lg h-10 w-10 md:h-12 md:w-12" />
           </Carousel>
         </div>
       </section>
       {featuredProducts.length > 0 && (
         <section className="relative z-10 mb-16 px-4">
-          <div className="max-w-7xl mx-auto rounded-[32px] border border-[#E8E2D1] bg-[#F5F1E8] p-6 md:p-10 shadow-2xl">
+          <div className="max-w-7xl mx-auto rounded-[32px] border border-primary/20 bg-muted p-6 md:p-10 shadow-2xl">
             <div className="mb-10 flex flex-col items-center text-center">
             </div>
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
               {featuredProducts.map((product) => (
                 <div
                   key={`hero-featured-${product.id}`}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E8E2D1] bg-white transition-all duration-300 hover:border-[#E8A835] hover:shadow-xl"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-primary/20 bg-white transition-all duration-300 hover:border-primary hover:shadow-xl"
                 >
-                  <Link href={`/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-[#F5F1E8]">
+                  <Link href={`/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-muted">
                     {product.image_url ? (
                       <img
                         src={product.image_url}
@@ -392,7 +392,7 @@ export default async function Home() {
                       <div className="flex h-full items-center justify-center text-4xl">🌶️</div>
                     )}
                     {product.original_price && product.original_price > product.price && (
-                      <div className="absolute left-2 top-2 rounded-full bg-[#C41E3A] px-2 py-1 text-[10px] font-bold text-white shadow-sm">
+                      <div className="absolute left-2 top-2 rounded-full bg-brand-red px-2 py-1 text-[10px] font-bold text-white shadow-sm">
                         خصم {Math.round(((product.original_price - product.price) / product.original_price) * 100)}%
                       </div>
                     )}
@@ -400,23 +400,23 @@ export default async function Home() {
                   <div className="flex flex-1 flex-col gap-2 p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-[#E8A835]">{product.brand}</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-primary">{product.brand}</p>
                         <Link href={`/product/${product.id}`}>
-                          <h4 className="mt-1 line-clamp-1 text-base font-bold text-[#2B2520] transition-colors hover:text-[#C41E3A]">
+                          <h4 className="mt-1 line-clamp-1 text-base font-bold text-foreground transition-colors hover:text-brand-red">
                             {product.name_ar}
                           </h4>
                         </Link>
                       </div>
-                      <div className="flex items-center gap-1 rounded-md bg-[#F5F1E8] px-2 py-1">
-                        <Star size={12} className="fill-[#E8A835] text-[#E8A835]" />
-                        <span className="text-xs font-bold text-[#2B2520]">
+                      <div className="flex items-center gap-1 rounded-md bg-muted px-2 py-1">
+                        <Star size={12} className="fill-primary text-primary" />
+                        <span className="text-xs font-bold text-foreground">
                           {product.rating ? product.rating.toFixed(1) : "جديد"}
                         </span>
                       </div>
                     </div>
-                    <div className="mt-auto flex items-center justify-between border-t border-[#F5F1E8] pt-3">
+                    <div className="mt-auto items-center justify-between border-t border-muted pt-3">
                       <div className="flex flex-col">
-                        <span className="text-lg font-extrabold text-[#C41E3A]">{product.price} ج.م</span>
+                        <span className="text-lg font-extrabold text-brand-red">{product.price} ج.م</span>
                         {product.original_price && product.original_price > product.price && (
                           <span className="text-xs text-gray-400 line-through">{product.original_price} ج.م</span>
                         )}
@@ -430,7 +430,7 @@ export default async function Home() {
             <div className="mt-10 flex justify-center">
               <Link
                 href="/store?featured=1"
-                className="inline-flex items-center justify-center rounded-full bg-[#2B2520] px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-[#2B2520]/20 transition-all hover:-translate-y-0.5 hover:bg-[#1b1612]"
+                className="inline-flex items-center justify-center rounded-full bg-brand-dark-brown px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-dark-brown/20 transition-all hover:-translate-y-0.5 hover:opacity-90"
               >
                 عرض الكل
                 <ArrowRight className="mr-2 h-4 w-4" />
@@ -444,8 +444,8 @@ export default async function Home() {
       <section className="py-20">
         <div className="max-w-8xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-[#2B2520] mb-4">تسوق حسب الفئة</h2>
-            <p className="text-lg text-[#8B6F47]">اختر من بين مجموعتنا الواسعة من التوابل والخلطات</p>
+            <h2 className="text-4xl font-bold text-foreground mb-4">تسوق حسب الفئة</h2>
+            <p className="text-lg text-brand-cumin">اختر من بين مجموعتنا الواسعة من التوابل والخلطات</p>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
@@ -453,14 +453,14 @@ export default async function Home() {
               <Link
                 key={category.id}
                 href={category.href}
-                className="group p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-[#E8A835]/20 hover:border-[#E8A835] hover:shadow-lg transition-all cursor-pointer"
+                className="group p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-primary/20 hover:border-primary hover:shadow-lg transition-all cursor-pointer"
               >
                 <div className="text-5xl mb-4">{category.icon}</div>
-                <h3 className="text-xl font-bold text-[#2B2520] mb-2 group-hover:text-[#E8A835] transition-colors">
+                <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
                   {category.arabicName}
                 </h3>
-                <p className="text-sm text-[#8B6F47] mb-4">{category.description}</p>
-                <div className="flex items-center gap-2 text-[#E8A835] font-semibold group-hover:gap-3 transition-all">
+                <p className="text-sm text-brand-cumin mb-4">{category.description}</p>
+                <div className="flex items-center gap-2 text-primary font-semibold group-hover:gap-3 transition-all">
                   استكشف <ArrowRight size={16} />
                 </div>
               </Link>
@@ -490,7 +490,7 @@ export default async function Home() {
             {promoContent.cta_url && (
               <Link
                 href={promoContent.cta_url}
-                className="inline-block rounded-lg bg-white px-10 py-4 text-lg font-bold text-[#C41E3A] transition-colors hover:bg-gray-100"
+                className="inline-block rounded-lg bg-white px-10 py-4 text-lg font-bold text-brand-red transition-colors hover:bg-gray-100"
               >
                 {promoContent.cta_label || "تسوق الآن"}
               </Link>
@@ -503,24 +503,24 @@ export default async function Home() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-[#2B2520] mb-4">تقييمات عملائنا</h2>
-            <p className="text-lg text-[#8B6F47]">اعرف ماذا يقول عملاؤنا الراضون</p>
+            <h2 className="text-4xl font-bold text-foreground mb-4">تقييمات عملائنا</h2>
+            <p className="text-lg text-brand-cumin">اعرف ماذا يقول عملاؤنا الراضون</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="p-8 bg-white/60 backdrop-blur-sm rounded-xl border border-[#E8A835]/20">
+              <div key={index} className="p-8 bg-white/60 backdrop-blur-sm rounded-xl border border-primary/20">
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: testimonial.rating }).map((_, i) => (
-                    <Star key={i} size={18} className="fill-[#E8A835] text-[#E8A835]" />
+                    <Star key={i} size={18} className="fill-primary text-primary" />
                   ))}
                 </div>
 
-                <p className="text-[#2B2520] mb-6 leading-relaxed text-lg">"{testimonial.text}"</p>
+                <p className="text-foreground mb-6 leading-relaxed text-lg">"{testimonial.text}"</p>
 
                 <div>
-                  <p className="font-bold text-[#2B2520]">{testimonial.name}</p>
-                  <p className="text-sm text-[#8B6F47]">{testimonial.location}</p>
+                  <p className="font-bold text-foreground">{testimonial.name}</p>
+                  <p className="text-sm text-brand-cumin">{testimonial.location}</p>
                 </div>
               </div>
             ))}

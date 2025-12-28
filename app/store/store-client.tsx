@@ -308,7 +308,7 @@ export function StoreClient({
                     type="checkbox"
                     checked={selectedBrands.includes(brand)}
                     onChange={() => handleBrandToggle(brand)}
-                    className="accent-[#E8A835] size-5 cursor-pointer"
+                    className="size-5 cursor-pointer"
                   />
                   <span className="flex-1">{brand}</span>
                 </label>
@@ -401,7 +401,7 @@ export function StoreClient({
                       type="checkbox"
                       checked={selectedBrands.includes(brand)}
                       onChange={() => handleBrandToggle(brand)}
-                      className="accent-[#E8A835] cursor-pointer"
+                      className="cursor-pointer"
                     />
                     {brand}
                   </label>
