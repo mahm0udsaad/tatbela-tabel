@@ -21,7 +21,7 @@ export type FooterPayload = {
   socials: {
     facebook?: string
     instagram?: string
-    twitter?: string
+    tiktok?: string
   }
   copyright: string
 }

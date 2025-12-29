@@ -3,6 +3,8 @@ import { getCategoryBranch } from "@/app/store/category-helpers"
 import { createClient } from "@/lib/supabase/server"
 import { ProductSortBoard } from "../components/ProductSortBoard"
 import type { Product } from "../types"
+import { OfferSortBoard } from "@/app/admin/offers/components/OfferSortBoard"
+import type { Offer } from "@/app/admin/offers/types"
 
 type SortableProduct = Pick<
   Product,
@@ -23,7 +25,25 @@ type SortableProduct = Pick<
   product_variants?: { stock: number | null }[] | null
 }
 
-type StoreSurfaceKey = "store" | "blends" | "offers"
+type SortableOffer = Pick<
+  Offer,
+  | "id"
+  | "name_ar"
+  | "description_ar"
+  | "brand"
+  | "price"
+  | "original_price"
+  | "stock"
+  | "is_featured"
+  | "sort_order"
+  | "offer_images"
+> & {
+  rating?: number | null
+  reviews_count?: number | null
+  offer_variants?: { stock: number | null }[] | null
+}
+
+type StoreSurfaceKey = "atara" | "blends" | "offers" | "sauces"
 
 const surfaceConfigs: Record<
   StoreSurfaceKey,
@@ -37,7 +57,7 @@ const surfaceConfigs: Record<
     hint: string
   }
 > = {
-  store: {
+  atara: {
     title: "ترتيب منتجات متجر العطارة (/store)",
     description: "اختر ترتيب ظهور كل منتجات المتجر الرئيسي الموجهة لعملاء التجزئة.",
     boardTitle: "ترتيب منتجات المتجر",
@@ -57,12 +77,12 @@ const surfaceConfigs: Record<
   },
   offers: {
     title: "ترتيب منتجات صفحة العروض (/offers)",
-    description: "رتب المنتجات التي تحتوي على سعر أصلي لعرضها ضمن قسم العروض.",
-    boardTitle: "ترتيب منتجات العروض",
-    boardDescription: "اسحب وأفلت لتحديد ترتيب منتجات /offers.",
-    emptyLabel: "لا توجد عروض نشطة حالياً.",
+    description: "رتب العروض التي تنشئها من لوحة التحكم ضمن /admin/offers.",
+    boardTitle: "ترتيب العروض",
+    boardDescription: "اسحب وأفلت لتحديد ترتيب العروض في صفحة /offers.",
+    emptyLabel: "لا توجد عروض حالياً.",
     badgeLabel: "عدد العروض:",
-    hint: "يظهر فقط المنتجات التي تحتوي على سعر قبل الخصم.",
+    hint: "يعتمد على جدول offers (وليس products).",
   },
   sauces: {
     title: "ترتيب منتجات الصوصات (/sauces)",
@@ -79,11 +99,13 @@ export const dynamic = "force-dynamic"
 
 export default async function ProductOrderPage({ searchParams }: { searchParams: Promise<{ client?: string }> }) {
   const params = await searchParams
-  const requestedSurface = params.client as StoreSurfaceKey | undefined
+  // Backwards compatibility: historically this used `client=store`, but the actual category slug is `atara`.
+  const rawSurface = params.client
+  const requestedSurface = (rawSurface === "store" ? "atara" : rawSurface) as StoreSurfaceKey | undefined
   const selectedSurface = requestedSurface && surfaceConfigs[requestedSurface] ? requestedSurface : null
 
   if (!selectedSurface) {
-    const surfaceKeys: StoreSurfaceKey[] = ["store", "blends", "offers", "sauces"]
+    const surfaceKeys: StoreSurfaceKey[] = ["atara", "blends", "offers", "sauces"]
     return (
       <div className="bg-[#F5F1E8] min-h-screen">
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -126,7 +148,7 @@ export default async function ProductOrderPage({ searchParams }: { searchParams:
 
   const categories = categoriesData ?? []
 
-  const requiresCategoryBranch = selectedSurface === "store" || selectedSurface === "blends" || selectedSurface === "sauces"
+  const requiresCategoryBranch = selectedSurface === "atara" || selectedSurface === "blends" || selectedSurface === "sauces"
   let categoryBranchIds: string[] | null = null
   let hasValidBranch = true
 
@@ -137,6 +159,62 @@ export default async function ProductOrderPage({ searchParams }: { searchParams:
     } else {
       categoryBranchIds = categoryIds
     }
+  }
+
+  if (selectedSurface === "offers") {
+    const { data: offers } = await supabase
+      .from("offers")
+      .select(
+        `
+        id,
+        name_ar,
+        description_ar,
+        brand,
+        price,
+        original_price,
+        stock,
+        is_featured,
+        rating,
+        reviews_count,
+        sort_order,
+        offer_images (
+          id,
+          image_url,
+          is_primary
+        ),
+        offer_variants (
+          stock
+        )
+      `,
+      )
+      .eq("is_archived", false)
+      .order("sort_order", { ascending: true })
+      .order("is_primary", { referencedTable: "offer_images", ascending: false })
+
+    const config = surfaceConfigs[selectedSurface]
+
+    return (
+      <div className="bg-[#F5F1E8] min-h-screen">
+        <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Link
+              href="/admin/products/order"
+              className="inline-flex items-center justify-center rounded-lg border border-[#E8A835] px-4 py-2 text-sm font-semibold text-[#E8A835] bg-white hover:bg-[#FFF8ED] transition-colors"
+            >
+              تغيير الواجهة
+            </Link>
+          </div>
+
+          <OfferSortBoard
+            initialOffers={(offers ?? []) as SortableOffer[]}
+            title={config.boardTitle}
+            description={config.boardDescription}
+            emptyStateLabel={config.emptyLabel}
+            badgeLabel={config.badgeLabel}
+          />
+        </div>
+      </div>
+    )
   }
 
   let productsQuery = supabase
@@ -166,18 +244,13 @@ export default async function ProductOrderPage({ searchParams }: { searchParams:
     `,
     )
     .eq("is_archived", false)
+    .eq("is_b2b", false)
 
   if (categoryBranchIds?.length) {
     productsQuery = productsQuery.in("category_id", categoryBranchIds)
   }
 
-  if (selectedSurface === "store") {
-    productsQuery = productsQuery.eq("is_b2b", false)
-  } else if (selectedSurface === "sauces") {
-    productsQuery = productsQuery.eq("is_b2b", false)
-  } else if (selectedSurface === "offers") {
-    productsQuery = productsQuery.not("original_price", "is", null)
-  }
+  // offers is handled by the offers table above.
 
   const { data: products } = hasValidBranch
     ? await productsQuery

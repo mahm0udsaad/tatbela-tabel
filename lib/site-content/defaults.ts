@@ -30,7 +30,7 @@ export const DEFAULT_FOOTER: FooterPayload = {
   socials: {
     facebook: "",
     instagram: "",
-    twitter: "",
+    tiktok: "",
   },
   copyright: "© 2025 تتبيلة & تابل. جميع الحقوق محفوظة.",
 }

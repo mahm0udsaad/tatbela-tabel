@@ -46,6 +46,7 @@ export default async function AdminProductsPage() {
       `,
       )
       .eq("is_archived", false) // Exclude archived products
+      .eq("is_b2b", false) // B2C products only (B2B managed under /admin/b2b)
       .order("sort_order", { ascending: true })
       .order("sort_order", { referencedTable: "product_images", ascending: true })
       .order("is_primary", { referencedTable: "product_images", ascending: false }),

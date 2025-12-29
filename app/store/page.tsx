@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { StoreClient } from "./store-client"
 import { getCategoryBranch } from "./category-helpers"
+import { ComingSoon } from "@/components/coming-soon"
 
 export const dynamic = "force-dynamic"
 
@@ -16,6 +17,50 @@ export default async function StorePage({
     .from("categories")
     .select("id, name_ar, parent_id, slug, sort_order")
     .order("sort_order", { ascending: true })
+
+  // Check for sauces special page settings
+  const { data: saucesSettings } = await supabase
+    .from("page_settings")
+    .select("is_active, payload")
+    .eq("key", "sauces_page")
+    .single()
+
+  const saucesSlugs = new Set(["sauces", "sauses"])
+  const isSaucesCategory = saucesSlugs.has(targetSlug)
+  // Desired behavior:
+  // - is_active = true  => page/category is visible normally (show products / empty state)
+  // - is_active = false => "hidden" => show Coming Soon component/message instead
+  const isHidden = saucesSettings ? !saucesSettings.is_active : false
+  
+  if (isSaucesCategory && isHidden && !params.search) {
+    const message = saucesSettings?.payload?.message ?? "قريبا أقوى أنواع الصوصات"
+    const categoryTitle =
+      (categoriesData ?? []).find((c) => saucesSlugs.has(c.slug))?.name_ar ?? "الصوصات"
+
+    // Hidden => Coming Soon state
+    return (
+      <main className="min-h-screen">
+        <section className="border-y border-[#E8E2D1]">
+          <div className="max-w-7xl mx-auto px-4 py-10">
+            <div className="flex flex-col md:flex-row items-start justify-between gap-6">
+              <div>
+                <p className="text-sm text-[#8B6F47] uppercase tracking-wider mb-2">Tatbeelah & Tabel</p>
+                <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{categoryTitle}</h1>
+                <p className="text-lg text-[#8B6F47] max-w-2xl">
+                  {message}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <ComingSoon 
+          message={message}
+          description="نعمل على تقديم تشكيلة مميزة من الصوصات الشهية التي ستضيف نكهة استثنائية لأطباقك"
+        />
+      </main>
+    )
+  }
 
   const allCategories = categoriesData ?? []
   let { rootCategory, categoryIds } = getCategoryBranch(allCategories, targetSlug)

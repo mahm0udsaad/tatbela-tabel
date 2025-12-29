@@ -122,7 +122,7 @@ export function AddToCartButton({
         onClick={handleAddToCart}
         disabled={isButtonDisabled}
         className={cn(
-          'pt-2 w-full py-2 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2',
+          'pt-2 w-full py-2 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2',
           isButtonDisabled && 'opacity-70 cursor-not-allowed',
           className,
         )}

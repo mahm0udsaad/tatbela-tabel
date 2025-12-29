@@ -23,7 +23,7 @@ export const footerPayloadSchema: z.ZodType<FooterPayload> = z.object({
   socials: z.object({
     facebook: z.string().optional(),
     instagram: z.string().optional(),
-    twitter: z.string().optional(),
+    tiktok: z.string().optional(),
   }),
   copyright: nonEmptyText,
 })

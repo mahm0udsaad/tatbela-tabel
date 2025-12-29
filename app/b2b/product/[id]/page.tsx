@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { ProductDetailClient } from "@/app/product/[id]/product-detail-client"
+import { fetchB2BApprovedReviews, fetchB2BProductById, fetchB2BSimilarProducts } from "@/lib/b2b/products"
 
 export const dynamic = "force-dynamic"
 
@@ -8,70 +9,23 @@ export default async function B2BProductDetailPage({ params }: { params: Promise
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: product, error }, { data: b2bSettings }, { data: reviews }] = await Promise.all([
-    supabase
-      .from("products")
-      .select(
-        `
-        id,
-        name_ar,
-        description_ar,
-        brand,
-        price,
-        price_per_kilo,
-        pricing_mode,
-        original_price,
-        rating,
-        reviews_count,
-        stock,
-        category_id,
-        is_featured,
-        b2b_price_hidden,
-        product_images (id, image_url, is_primary),
-        product_variants (id, sku, size, weight, variant_type, price, stock)
-      `,
-      )
-      .eq("id", id)
-      .eq("is_b2b", true)
-      .single(),
+  let product: any = null
+  let reviews: any[] = []
+  try {
+    ;[product, reviews] = await Promise.all([fetchB2BProductById(id), fetchB2BApprovedReviews(id)])
+  } catch {
+    // handled below as notFound
+  }
+
+  const [{ data: b2bSettings }] = await Promise.all([
     supabase.from("b2b_settings").select("price_hidden, contact_label, contact_url").maybeSingle(),
-    supabase
-      .from("product_reviews")
-      .select("id, rating, title, content, created_at")
-      .eq("product_id", id)
-      .eq("status", "approved")
-      .order("created_at", { ascending: false }),
   ])
 
-  const { data: similarProducts } = product?.category_id
-    ? await supabase
-        .from("products")
-        .select(
-          `
-          id,
-          name_ar,
-          description_ar,
-          brand,
-          price,
-          original_price,
-          rating,
-          reviews_count,
-          stock,
-          is_featured,
-          b2b_price_hidden,
-          product_images (id, image_url, is_primary),
-          product_variants (id, sku, size, weight, variant_type, price, stock)
-        `,
-        )
-        .eq("category_id", product.category_id)
-        .eq("is_archived", false)
-        .eq("is_b2b", true)
-        .neq("id", id)
-        .limit(8)
-        .order("created_at", { ascending: false })
-    : { data: null }
+  const similarProducts = product?.category_id
+    ? await fetchB2BSimilarProducts({ categoryId: product.category_id, excludeId: id, limit: 8 })
+    : []
 
-  if (error || !product) {
+  if (!product) {
     return notFound()
   }
 

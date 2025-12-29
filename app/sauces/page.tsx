@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
+import { ComingSoon } from "@/components/coming-soon"
+import { redirect } from "next/navigation"
 
 export const dynamic = "force-dynamic"
 
@@ -27,7 +29,10 @@ async function getSaucesSettings(): Promise<SaucesSettings | null> {
 export default async function SaucesPage() {
   const supabase = await createClient()
   const settings = await getSaucesSettings()
-  const isComingSoon = settings ? settings.is_active : true
+  // Desired behavior:
+  // - is_active = true  => visible normally (send user to store listing)
+  // - is_active = false => hidden => show Coming Soon component
+  const isHidden = settings ? !settings.is_active : false
   const message = settings?.payload?.message ?? DEFAULT_MESSAGE
 
   // Get category name from database
@@ -39,17 +44,8 @@ export default async function SaucesPage() {
 
   const categoryTitle = saucesCategory?.name_ar ?? "الصوصات"
 
-  if (!isComingSoon) {
-    return (
-      <main className="min-h-screen">
-        <section className="py-24 px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{categoryTitle}</h1>
-            <p className="text-lg text-[#8B6F47]">تم إخفاء هذه الصفحة مؤقتاً لحين نشر المنتجات.</p>
-          </div>
-        </section>
-      </main>
-    )
+  if (!isHidden) {
+    redirect("/store?category=sauces")
   }
 
   return (
@@ -68,44 +64,10 @@ export default async function SaucesPage() {
         </div>
       </section>
 
-      {/* Coming Soon Section */}
-      <section className="py-24 px-4">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-[#F5F1E8] to-[#E8E2D1] shadow-lg">
-              <span className="text-6xl">🍲</span>
-            </div>
-          </div>
-
-          <h2 className="text-4xl md:text-5xl font-bold text-[#2B2520] mb-6 leading-tight">
-            قريباً...
-          </h2>
-          <p className="text-2xl md:text-3xl font-bold text-[#C41E3A] mb-4">
-            {message}
-          </p>
-          <p className="text-lg text-[#8B6F47] mb-12 max-w-md mx-auto">
-            نعمل على تقديم تشكيلة مميزة من الصوصات الشهية التي ستضيف نكهة استثنائية لأطباقك
-          </p>
-
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="w-16 h-0.5 bg-gradient-to-r from-transparent to-[#E8A835]"></div>
-            <span className="text-2xl">✨</span>
-            <div className="w-16 h-0.5 bg-gradient-to-l from-transparent to-[#E8A835]"></div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <span className="px-4 py-2 rounded-full bg-[#F5F1E8] text-[#8B6F47] text-sm font-medium">
-              مكونات طبيعية 100%
-            </span>
-            <span className="px-4 py-2 rounded-full bg-[#F5F1E8] text-[#8B6F47] text-sm font-medium">
-              وصفات أصلية
-            </span>
-            <span className="px-4 py-2 rounded-full bg-[#F5F1E8] text-[#8B6F47] text-sm font-medium">
-              جودة عالية
-            </span>
-          </div>
-        </div>
-      </section>
+      <ComingSoon 
+        message={message}
+        description="نعمل على تقديم تشكيلة مميزة من الصوصات الشهية التي ستضيف نكهة استثنائية لأطباقك"
+      />
     </main>
   )
 }

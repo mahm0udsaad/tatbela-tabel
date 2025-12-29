@@ -62,24 +62,53 @@ class SearchService {
     sortBy?: string
   }): Promise<{ data: SearchResult[] | null, count: number, analytics?: SearchAnalytics }> {
     try {
-      const { data, error } = await this.supabase.rpc('search_products_enhanced', {
-        search_query: query || null,
-        category_ids: categoryIds || null,
-        brand_filter: brands || null,
-        price_min: priceMin || null,
-        price_max: priceMax || null,
-        b2b_mode: isB2B,
-        limit_count: limit,
-        offset_count: offset,
-        sort_by: sortBy
-      })
+      // B2B product reads are server-enforced (service role) to prevent cross-leaks.
+      // B2C can use direct RPC via anon/auth clients.
+      let data: any = null
 
-      if (error) throw error
+      if (isB2B) {
+        const res = await fetch('/api/b2b/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: query || null,
+            categoryIds: categoryIds || null,
+            brands: brands || null,
+            priceMin: priceMin || null,
+            priceMax: priceMax || null,
+            limit,
+            offset,
+            sortBy,
+          }),
+        })
+
+        if (!res.ok) {
+          throw new Error(`B2B search failed (${res.status})`)
+        }
+
+        const json = await res.json()
+        data = json?.data ?? []
+      } else {
+        const { data: rpcData, error } = await this.supabase.rpc('search_products_enhanced', {
+          search_query: query || null,
+          category_ids: categoryIds || null,
+          brand_filter: brands || null,
+          price_min: priceMin || null,
+          price_max: priceMax || null,
+          b2b_mode: false,
+          limit_count: limit,
+          offset_count: offset,
+          sort_by: sortBy
+        })
+
+        if (error) throw error
+        data = rpcData
+      }
 
       // Track search analytics if there's a query
       let analytics: SearchAnalytics | undefined
       if (query?.trim()) {
-        analytics = await this.trackSearch(query.trim(), data?.length || 0, 'store')
+        analytics = await this.trackSearch(query.trim(), data?.length || 0, isB2B ? 'b2b' : 'store')
       }
 
       return {
@@ -96,13 +125,29 @@ class SearchService {
   /**
    * Get search suggestions for autocomplete
    */
-  async getSuggestions(query: string, limit = 10): Promise<SearchSuggestion[]> {
+  async getSuggestions(query: string, limit = 10, options?: { isB2B?: boolean }): Promise<SearchSuggestion[]> {
     if (!query?.trim()) return []
 
     try {
+      if (options?.isB2B) {
+        const res = await fetch('/api/b2b/suggestions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query.trim(), limit }),
+        })
+
+        if (!res.ok) {
+          throw new Error(`B2B suggestions failed (${res.status})`)
+        }
+
+        const json = await res.json()
+        return (json?.data as SearchSuggestion[]) || []
+      }
+
       const { data, error } = await this.supabase.rpc('get_search_suggestions', {
         query_prefix: query.trim(),
-        limit_count: limit
+        limit_count: limit,
+        b2b_mode: false,
       })
 
       if (error) throw error

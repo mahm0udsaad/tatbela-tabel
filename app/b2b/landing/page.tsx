@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Star, ArrowRight } from "lucide-react"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { createClient as createServerClient } from "@/lib/supabase/server"
+import { getSupabaseAdminClient } from "@/lib/supabase/admin"
 import { AddToCartButton } from "@/components/add-to-cart-button"
 
 export const dynamic = "force-dynamic"
@@ -221,7 +222,7 @@ async function getB2BFeaturedProducts(): Promise<FeaturedProductCard[]> {
   `
 
   try {
-    const supabase = await createServerClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from("products")
       .select(baseSelect)

@@ -54,6 +54,7 @@ export default async function FeaturedProductOrderPage() {
     )
     .eq("is_featured", true)
     .eq("is_archived", false)
+    .eq("is_b2b", false)
     .order("sort_order", { ascending: true })
     .order("is_primary", { referencedTable: "product_images", ascending: false })
 

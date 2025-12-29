@@ -6,7 +6,6 @@ import Link from "next/link"
 import { Star, ChevronDown, Filter, Search, X } from "lucide-react"
 
 import { AddToCartButton } from "@/components/add-to-cart-button"
-import { getSupabaseClient } from "@/lib/supabase"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -80,7 +79,6 @@ export function StoreClient({
 }: StoreClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = useMemo(() => getSupabaseClient(), [])
   const isB2B = mode === "b2b"
   const isMobile = useIsMobile()
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -284,6 +282,7 @@ export function StoreClient({
             onChange={setSearch}
             onSubmit={handleSearchSubmit}
             placeholder="ابحث عن منتج..."
+            mode={mode}
             className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 focus:border-[#E8A835] focus:outline-none text-base"
           />
         </div>
@@ -369,6 +368,7 @@ export function StoreClient({
             onChange={setSearch}
             onSubmit={handleSearchSubmit}
             placeholder="ابحث عن منتج..."
+            mode={mode}
             className="w-full rounded-xl border-2 border-[#D9D4C8] px-4 py-4 focus:border-[#E8A835] focus:outline-none text-base bg-white shadow-sm"
           />
         </div>
@@ -383,6 +383,7 @@ export function StoreClient({
                 onChange={setSearch}
                 onSubmit={handleSearchSubmit}
                 placeholder="ابحث عن منتج..."
+                mode={mode}
                 className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835] focus:outline-none"
                 showRecentSearches={false}
                 showPopularSearches={false}

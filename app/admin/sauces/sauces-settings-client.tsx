@@ -12,6 +12,9 @@ type SettingsRecord = {
 
 export function SaucesSettingsClient({ initialSettings }: { initialSettings: SettingsRecord | null }) {
   const supabase = getSupabaseClient()
+  // Desired meaning:
+  // - is_active = true  => visible normally (no special "coming soon" override)
+  // - is_active = false => hidden => show "coming soon" message on store sauces category
   const [isActive, setIsActive] = useState<boolean>(initialSettings?.is_active ?? true)
   const [message, setMessage] = useState<string>(initialSettings?.payload?.message ?? "قريبا أقوى أنواع الصوصات")
   const [isSaving, setIsSaving] = useState(false)
@@ -56,7 +59,7 @@ export function SaucesSettingsClient({ initialSettings }: { initialSettings: Set
             <div>
               <p className="text-sm font-semibold text-[#2B2520]">حالة الصفحة</p>
               <p className="text-xs text-[#8B6F47]">
-                {isActive ? "ظاهرة للعملاء برسالة قريبا" : "مخفية بعد إيقاف وضع قريبا"}
+                {isActive ? "ظاهرة للعملاء (عرض المنتجات بشكل طبيعي)" : "مخفية (سيظهر تنبيه: قريباً) بدل المنتجات"}
               </p>
             </div>
             <button
@@ -67,7 +70,7 @@ export function SaucesSettingsClient({ initialSettings }: { initialSettings: Set
               }`}
             >
               {isActive ? <Eye size={16} /> : <EyeOff size={16} />}
-              {isActive ? "حالة: ظاهر" : "حالة: مخفي"}
+              {isActive ? "حالة: ظاهر" : "حالة: مخفي (قريباً)"}
             </button>
           </div>
 
@@ -85,7 +88,7 @@ export function SaucesSettingsClient({ initialSettings }: { initialSettings: Set
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-[#2B2520]">نص رسالة \"قريباً\"</label>
+            <label className="text-sm font-semibold text-[#2B2520]">نص رسالة \"قريباً\" (تظهر فقط عند الإخفاء)</label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -111,12 +114,14 @@ export function SaucesSettingsClient({ initialSettings }: { initialSettings: Set
               <span className="text-5xl">🍲</span>
             </div>
             {isActive ? (
+              <p className="text-lg text-[#8B6F47]">
+                سيتم عرض المنتجات في صفحة المتجر (وإذا لم توجد منتجات سيظهر \"لا توجد منتجات مطابقة حالياً\").
+              </p>
+            ) : (
               <>
-                <p className="text-lg text-[#8B6F47]">سيظهر النص التالي:</p>
+                <p className="text-lg text-[#8B6F47]">سيظهر تنبيه \"قريباً\" بالنص التالي:</p>
                 <h3 className="text-2xl font-bold text-[#C41E3A]">{message || "قريبا أقوى أنواع الصوصات"}</h3>
               </>
-            ) : (
-              <p className="text-lg text-[#8B6F47]">سيتم إخفاء صفحة الصوصات للزوار.</p>
             )}
           </div>
         </div>

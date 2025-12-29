@@ -276,7 +276,7 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
               </Link>
               
               <div className="mt-4 text-center">
-                <Link href="/store" className="text-sm text-[#8B6F47] hover:text-brand-green underline">
+                <Link href={shopPath} className="text-sm text-[#8B6F47] hover:text-brand-green underline">
                   متابعة التسوق
                 </Link>
               </div>

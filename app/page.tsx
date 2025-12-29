@@ -138,7 +138,7 @@ const categories = [
     name: "الخلطات",
     arabicName: "الخلطات",
     description: "خلطات مصرية أصلية",
-    icon: "🥘",
+    icon: "🧂", // أو 🥄 أو 🫙
     href: "/store?category=blends",
   },
   {
@@ -146,7 +146,7 @@ const categories = [
     name: "الصوصات",
     arabicName: "الصوصات",
     description: "صوصات لذيذة وشهية",
-    icon: "🍲",
+    icon: "🫕", // أو 🍅 أو 🍯
     href: "/sauces",
   },
   {
@@ -166,6 +166,7 @@ const categories = [
     href: "/b2b",
   }
 ];
+
 
 
 type FeaturedProductImage = {
@@ -453,7 +454,7 @@ export default async function Home() {
               <Link
                 key={category.id}
                 href={category.href}
-                className="group p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-primary/20 hover:border-primary hover:shadow-lg transition-all cursor-pointer"
+                className="flex flex-col items-center justify-center group p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-primary/20 hover:border-primary hover:shadow-lg transition-all cursor-pointer"
               >
                 <div className="text-5xl mb-4">{category.icon}</div>
                 <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">

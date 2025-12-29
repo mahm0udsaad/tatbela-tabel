@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
+import { getSupabaseAdminClient } from '@/lib/supabase/admin'
 
 export type CartProductImage = {
   image_url: string | null
@@ -70,39 +71,55 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
   const cartId = cookieStore.get(cartCookieKey)?.value
   const { data: { user } } = await supabase.auth.getUser()
 
-  let query = supabase.from('carts').select(`
-    id,
-    channel,
-    cart_items (
-      id,
-      product_id,
-      product_variant_id,
-      unit_price,
-      quantity,
-      product_variants (
+  // NOTE: B2B product data is fetched via service role on the server to guarantee isolation
+  // after tightening public RLS. So we avoid joining products/product_variants for the b2b cart.
+  let query = supabase.from('carts').select(
+    channel === 'b2b'
+      ? `
         id,
-        weight,
-        size,
-        variant_type,
-        price
-      ),
-      products (
-        id,
-        name,
-        name_ar,
-        price,
-        image_url,
-        brand,
-        category,
-        is_b2b,
-        product_images (
-          image_url,
-          is_primary,
-          sort_order
+        channel,
+        cart_items (
+          id,
+          product_id,
+          product_variant_id,
+          unit_price,
+          quantity
         )
-      )
-    )
-  `)
+      `
+      : `
+        id,
+        channel,
+        cart_items (
+          id,
+          product_id,
+          product_variant_id,
+          unit_price,
+          quantity,
+          product_variants (
+            id,
+            weight,
+            size,
+            variant_type,
+            price
+          ),
+          products (
+            id,
+            name,
+            name_ar,
+            price,
+            image_url,
+            brand,
+            category,
+            is_b2b,
+            product_images (
+              image_url,
+              is_primary,
+              sort_order
+            )
+          )
+        )
+      `,
+  )
 
   if (user) {
     query = query.eq('user_id', user.id).eq('status', 'active').eq('channel', channel)
@@ -118,25 +135,103 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
     return null
   }
 
-  const items = data.cart_items
-    .filter((item: any) => {
-      if (!item.products) return false
-      if (channel === 'b2c' && item.products.is_b2b) return false
-      if (channel === 'b2b' && item.products.is_b2b === false) return false
-      return true
-    })
-    .map((item: any) => ({
-      id: item.id,
-      product_id: item.product_id,
-      product_variant_id: item.product_variant_id ?? null,
-      unit_price: item.unit_price ?? item.product_variants?.price ?? item.products.price,
-      quantity: item.quantity,
-      variant: item.product_variants ?? null,
-      product: {
-        ...item.products,
-        product_images: item.products.product_images ?? null
-      }
-    }))
+  let items: CartItem[] = []
+
+  if (channel === 'b2b') {
+    const rawItems = (data.cart_items ?? []) as Array<{
+      id: string
+      product_id: string
+      product_variant_id?: string | null
+      unit_price?: number | null
+      quantity: number
+    }>
+
+    const productIds = Array.from(new Set(rawItems.map((i) => i.product_id).filter(Boolean)))
+    const variantIds = Array.from(
+      new Set(rawItems.map((i) => i.product_variant_id).filter((v): v is string => Boolean(v))),
+    )
+
+    const admin = getSupabaseAdminClient()
+    const [{ data: productsData, error: productsError }, { data: variantsData, error: variantsError }] =
+      await Promise.all([
+        productIds.length
+          ? admin
+              .from('products')
+              .select(
+                `
+                id,
+                name,
+                name_ar,
+                price,
+                image_url,
+                brand,
+                category,
+                is_b2b,
+                b2b_price_hidden,
+                product_images (
+                  image_url,
+                  is_primary,
+                  sort_order
+                )
+              `,
+              )
+              .in('id', productIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        variantIds.length
+          ? admin
+              .from('product_variants')
+              .select('id, weight, size, variant_type, price')
+              .in('id', variantIds)
+          : Promise.resolve({ data: [], error: null } as any),
+      ])
+
+    if (productsError) throw productsError
+    if (variantsError) throw variantsError
+
+    const productsById = new Map((productsData ?? []).map((p: any) => [p.id, p]))
+    const variantsById = new Map((variantsData ?? []).map((v: any) => [v.id, v]))
+
+    items = rawItems
+      .map((item) => {
+        const product = productsById.get(item.product_id)
+        if (!product) return null
+        if (product.is_b2b !== true) return null
+        const variant = item.product_variant_id ? variantsById.get(item.product_variant_id) ?? null : null
+        return {
+          id: item.id,
+          product_id: item.product_id,
+          product_variant_id: item.product_variant_id ?? null,
+          unit_price: item.unit_price ?? variant?.price ?? product.price,
+          quantity: item.quantity,
+          variant,
+          product: {
+            ...product,
+            product_images: product.product_images ?? null,
+          },
+        } as CartItem
+      })
+      .filter((x): x is CartItem => Boolean(x))
+  } else {
+    items = (data.cart_items ?? [])
+      .filter((item: any) => {
+        if (!item.products) return false
+        if (channel === 'b2c' && item.products.is_b2b) return false
+        if (channel === 'b2b' && item.products.is_b2b === false) return false
+        return true
+      })
+      .map((item: any) => ({
+        id: item.id,
+        product_id: item.product_id,
+        product_variant_id: item.product_variant_id ?? null,
+        unit_price: item.unit_price ?? item.product_variants?.price ?? item.products.price,
+        quantity: item.quantity,
+        variant: item.product_variants ?? null,
+        product: {
+          ...item.products,
+          product_images: item.products.product_images ?? null,
+        },
+      }))
+  }
 
   const subtotal = items.reduce((sum: number, item: CartItem) => {
     const priceToUse = item.unit_price ?? item.variant?.price ?? item.product.price
@@ -230,11 +325,14 @@ export async function addToCart(
   }
 
   // Fetch product and optional variant to snapshot price and validate stock
-  const { data: product } = await supabase
-    .from('products')
-    .select('id, price, stock, is_b2b, b2b_price_hidden')
-    .eq('id', productId)
-    .single()
+  const { data: product } =
+    channel === 'b2b'
+      ? await getSupabaseAdminClient()
+          .from('products')
+          .select('id, price, stock, is_b2b, b2b_price_hidden')
+          .eq('id', productId)
+          .single()
+      : await supabase.from('products').select('id, price, stock, is_b2b, b2b_price_hidden').eq('id', productId).single()
 
   if (!product) {
     throw new Error('المنتج غير متوفر')
@@ -254,12 +352,20 @@ export async function addToCart(
 
   let variantData: { id: string; price: number | null; stock: number | null } | null = null
   if (productVariantId) {
-    const { data: variant } = await supabase
-      .from('product_variants')
-      .select('id, price, stock')
-      .eq('id', productVariantId)
-      .eq('product_id', productId)
-      .single()
+    const { data: variant } =
+      channel === 'b2b'
+        ? await getSupabaseAdminClient()
+            .from('product_variants')
+            .select('id, price, stock')
+            .eq('id', productVariantId)
+            .eq('product_id', productId)
+            .single()
+        : await supabase
+            .from('product_variants')
+            .select('id, price, stock')
+            .eq('id', productVariantId)
+            .eq('product_id', productId)
+            .single()
 
     if (!variant) {
       throw new Error('هذا المتغير غير متاح')

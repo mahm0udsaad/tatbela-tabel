@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { StoreClient } from "../store/store-client"
+import { fetchB2BStoreProducts } from "@/lib/b2b/products"
 
 export const dynamic = "force-dynamic"
 
@@ -7,33 +8,8 @@ export default async function B2BStorePage({ searchParams }: { searchParams: Pro
   const supabase = await createClient()
   const params = await searchParams
 
-  const [{ data: products }, { data: categories }, { data: b2bSettings }] = await Promise.all([
-    supabase
-      .from("products")
-      .select(
-        `
-        id,
-        name_ar,
-        description_ar,
-        brand,
-        type,
-        price,
-        original_price,
-        rating,
-        reviews_count,
-        stock,
-        category_id,
-        created_at,
-        is_featured,
-        is_b2b,
-        b2b_price_hidden,
-        product_images (image_url, is_primary),
-        product_variants (stock)
-      `,
-      )
-      .eq("is_archived", false)
-      .eq("is_b2b", true)
-      .order("sort_order", { ascending: true }),
+  const [products, { data: categories }, { data: b2bSettings }] = await Promise.all([
+    fetchB2BStoreProducts(),
     supabase.from("categories").select("id, name_ar, parent_id, slug, sort_order").order("sort_order", { ascending: true }),
     supabase.from("b2b_settings").select("price_hidden, contact_label, contact_url").maybeSingle(),
   ])

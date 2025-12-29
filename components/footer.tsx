@@ -3,7 +3,21 @@
 import Link from "next/link"
 import type React from "react"
 import { useEffect, useMemo, useState } from "react"
-import { Facebook, Twitter, Instagram, Mail, Phone } from "lucide-react"
+import { Facebook, Instagram, Mail, Phone } from "lucide-react"
+
+function TikTokIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a4.83 4.83 0 0 0-1-.1 4.85 4.85 0 0 0 0 9.7 4.84 4.84 0 0 0 4.83-4.83V7.84a6.27 6.27 0 0 0 3.77 1.26v-3.4a4.85 4.85 0 0 1-1.13-.01z" />
+    </svg>
+  )
+}
 import { getSupabaseClient } from "@/lib/supabase"
 import { DEFAULT_FOOTER } from "@/lib/site-content/defaults"
 import { coercePayloadOrDefault, footerPayloadSchema } from "@/lib/site-content/schemas"
@@ -52,10 +66,10 @@ export function Footer() {
   const socialLinks = useMemo(() => {
     const items: { key: string; href: string; icon: React.ReactNode; label: string }[] = []
     if (payload.socials.facebook?.trim()) items.push({ key: "facebook", href: payload.socials.facebook, icon: <Facebook size={20} />, label: "Facebook" })
-    if (payload.socials.twitter?.trim()) items.push({ key: "twitter", href: payload.socials.twitter, icon: <Twitter size={20} />, label: "Twitter/X" })
+    if (payload.socials.tiktok?.trim()) items.push({ key: "tiktok", href: payload.socials.tiktok, icon: <TikTokIcon size={20} />, label: "TikTok" })
     if (payload.socials.instagram?.trim()) items.push({ key: "instagram", href: payload.socials.instagram, icon: <Instagram size={20} />, label: "Instagram" })
     return items
-  }, [payload.socials.facebook, payload.socials.instagram, payload.socials.twitter])
+  }, [payload.socials.facebook, payload.socials.instagram, payload.socials.tiktok])
 
   if (!isActive) return null
 

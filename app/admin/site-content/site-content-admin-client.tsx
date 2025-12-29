@@ -202,7 +202,7 @@ export function SiteContentAdminClient({ initialSettings }: { initialSettings: S
 
                 <div className="space-y-4">
                   {footer.columns.map((col, colIndex) => (
-                    <div key={`${col.title}-${colIndex}`} className="rounded-xl border border-[#E8E2D1] p-4 space-y-3">
+                    <div key={colIndex} className="rounded-xl border border-[#E8E2D1] p-4 space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <input
                           value={col.title}
@@ -244,7 +244,7 @@ export function SiteContentAdminClient({ initialSettings }: { initialSettings: S
 
                       <div className="space-y-2">
                         {col.links.map((link, linkIndex) => (
-                          <div key={`${link.label}-${linkIndex}`} className="grid gap-2 md:grid-cols-2">
+                          <div key={`${colIndex}-${linkIndex}`} className="grid gap-2 md:grid-cols-2">
                             <input
                               value={link.label}
                               onChange={(e) =>
@@ -364,12 +364,12 @@ export function SiteContentAdminClient({ initialSettings }: { initialSettings: S
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-[#2B2520]">Twitter/X URL</label>
+                  <label className="mb-2 block text-sm font-semibold text-[#2B2520]">TikTok URL</label>
                   <input
-                    value={footer.socials.twitter ?? ""}
-                    onChange={(e) => setFooter((p) => ({ ...p, socials: { ...p.socials, twitter: e.target.value } }))}
+                    value={footer.socials.tiktok ?? ""}
+                    onChange={(e) => setFooter((p) => ({ ...p, socials: { ...p.socials, tiktok: e.target.value } }))}
                     className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 text-sm focus:border-[#E8A835] focus:outline-none"
-                    placeholder="https://x.com/..."
+                    placeholder="https://tiktok.com/@..."
                   />
                 </div>
               </div>
@@ -509,7 +509,7 @@ export function SiteContentAdminClient({ initialSettings }: { initialSettings: S
                 </div>
                 <div className="space-y-2">
                   {contact.workHours.map((wh, i) => (
-                    <div key={`${wh.label}-${i}`} className="grid gap-2 md:grid-cols-2">
+                    <div key={i} className="grid gap-2 md:grid-cols-2">
                       <input
                         value={wh.label}
                         onChange={(e) =>

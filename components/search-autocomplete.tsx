@@ -11,6 +11,7 @@ interface SearchAutocompleteProps {
   onSubmit: (value: string) => void
   placeholder?: string
   className?: string
+  mode?: 'b2c' | 'b2b'
   showRecentSearches?: boolean
   showPopularSearches?: boolean
   maxSuggestions?: number
@@ -23,6 +24,7 @@ export function SearchAutocomplete({
   onSubmit,
   placeholder = "ابحث عن منتج...",
   className,
+  mode = 'b2c',
   showRecentSearches = true,
   showPopularSearches = true,
   maxSuggestions = 8,
@@ -64,7 +66,7 @@ export function SearchAutocomplete({
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const results = await searchService.getSuggestions(value.trim(), maxSuggestions)
+        const results = await searchService.getSuggestions(value.trim(), maxSuggestions, { isB2B: mode === 'b2b' })
         setSuggestions(results)
       } catch (error) {
         console.error('Failed to fetch suggestions:', error)
