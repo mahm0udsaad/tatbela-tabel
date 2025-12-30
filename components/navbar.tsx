@@ -79,7 +79,7 @@ export function Navbar() {
 
   const baseNavLinks = [
     { href: "/", label: "الرئيسية", icon: Home, shortLabel: "الرئيسية" },
-    { href: "/b2b", label: "منتجات الجمله", icon: ShoppingCart, shortLabel: "جملة" },
+    { href: "/b2b", label: "الجمله", icon: ShoppingCart, shortLabel: "جملة" },
     { href: "/offers", label: "العروض", icon: Tag, shortLabel: "العروض" },
     { href: "/contact", label: "تواصل معنا", icon: Phone, shortLabel: "اتصل" },
   ] as const
@@ -131,7 +131,7 @@ export function Navbar() {
   return (
    <>
     <nav className="overflow-visible bg-white/80 backdrop-blur-sm border-b border-primary/20 fixed top-0 left-0 right-0 z-50">
-      <div className="sm:mx-8 sm:px-4 px-1">
+      <div className="sm:mx-2 sm:px-2">
         <div className="flex items-center justify-between h-20">
           {/* Left Side - Desktop Menu + Mobile Search */}
           <div className="flex items-center gap-4 flex-1">
@@ -146,15 +146,23 @@ export function Navbar() {
             </button>
 
             {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-foreground hover:text-primary transition-colors lg:text-lg md:text-sm"
-                >
-                  {link.label}
-                </Link>
+            <div className="hidden md:flex items-center gap-0">
+              {navLinks.map((link, index) => (
+                <div key={link.href} className="flex items-center">
+                  <Link
+                    href={link.href}
+                    className="text-foreground hover:text-primary transition-colors px-4 py-2"
+                  >
+                    {link.label}
+                  </Link>
+                  {index < navLinks.length - 1 && (
+                    <div
+                      className={`h-5 w-[1px] ${
+                        index === 0 ? 'bg-primary' : 'bg-gray-400'
+                      }`}
+                    />
+                  )}
+                </div>
               ))}
             </div>
           </div>

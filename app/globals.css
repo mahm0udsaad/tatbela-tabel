@@ -165,7 +165,9 @@
     z-index: -1;
     pointer-events: none;
   }
-  
+  .font-large{
+    font-size: 1.2rem !important;
+  }
   /* Consistent checkbox styling across the website */
   input[type="checkbox"] {
     @apply appearance-none cursor-pointer;
@@ -223,4 +225,23 @@ html[dir="rtl"] {
 
 html[dir="rtl"] body {
   text-align: right;
+}
+
+/* Infinite scroll animation for categories carousel (RTL - moves to right) */
+@keyframes scroll-rtl {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(33.333%);
+  }
+}
+
+.animate-scroll-rtl {
+  animation: scroll-rtl 20s linear infinite;
+  will-change: transform;
+}
+
+.animate-scroll-rtl:hover {
+  animation-play-state: paused;
 }

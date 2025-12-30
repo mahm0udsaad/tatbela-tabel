@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { Star, ArrowRight } from "lucide-react"
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { createClient as createServerClient } from "@/lib/supabase/server"
+import { HeroCarousel } from "@/components/hero-carousel"
+import { CategoriesCarousel } from "@/components/categories-carousel"
 
 export const dynamic = "force-dynamic"
 
@@ -329,47 +330,12 @@ export default async function Home() {
           <div className="absolute bottom-10 left-10 w-96 h-96 bg-brand-red/5 rounded-full blur-3xl"></div>
         </div>
 
-        <div className="max-w-8xl mx-auto px-4 relative z-10">
-          <Carousel className="relative" opts={{ loop: true, direction: "rtl" }}>
-            <CarouselContent>
-              {heroSlides.map((slide) => (
-                <CarouselItem key={slide.id} className="w-full">
-                  {slide.link_url ? (
-                    <Link
-                      href={slide.link_url}
-                      className="block relative w-full aspect-[1850/820] overflow-hidden rounded-[32px] bg-[#1f1b16] cursor-pointer group"
-                    >
-                      <img
-                        src={slide.image_url}
-                        alt={slide.alt_text ?? "صورة السلايدر"}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
-                      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 flex flex-col gap-4 text-white">
-                        {slide.alt_text && <p className="text-2xl font-bold">{slide.alt_text}</p>}
-                      </div>
-                    </Link>
-                  ) : (
-                    <div className="relative w-full aspect-[1850/820] overflow-hidden rounded-[32px] bg-[#1f1b16]">
-                      <img
-                        src={slide.image_url}
-                        alt={slide.alt_text ?? "صورة السلايدر"}
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
-                      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 flex flex-col gap-4 text-white">
-                        {slide.alt_text && <p className="text-2xl font-bold">{slide.alt_text}</p>}
-                      </div>
-                    </div>
-                  )}
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="flex absolute top-1/2 left-3 md:left-6 -translate-y-1/2 bg-white/80 text-foreground border border-white shadow-lg h-10 w-10 md:h-12 md:w-12" />
-            <CarouselNext className="flex absolute top-1/2 right-3 md:right-6 -translate-y-1/2 bg-white/80 text-foreground border border-white shadow-lg h-10 w-10 md:h-12 md:w-12" />
-          </Carousel>
-        </div>
+        <HeroCarousel slides={heroSlides} />
       </section>
+
+      {/* Categories Section */}
+      <CategoriesCarousel categories={categories} />
+      
       {featuredProducts.length > 0 && (
         <section className="relative z-10 mb-16 px-4">
           <div className="max-w-7xl mx-auto rounded-[32px] border border-primary/20 bg-muted p-6 md:p-10 shadow-2xl">
@@ -416,11 +382,13 @@ export default async function Home() {
                       </div>
                     </div>
                     <div className="mt-auto items-center justify-between border-t border-muted pt-3">
-                      <div className="flex flex-col">
-                        <span className="text-lg font-extrabold text-brand-red">{product.price} ج.م</span>
+                      <div className="flex flex-col gap-4">
+                       <div className="flex gap-4 items-center">
+                       <span className="text-lg font-extrabold text-brand-red">{product.price} ج.م</span>
                         {product.original_price && product.original_price > product.price && (
-                          <span className="text-xs text-gray-400 line-through">{product.original_price} ج.م</span>
+                          <span className=" text-gray-400 line-through">{product.original_price} ج.م</span>
                         )}
+                       </div>
                       <AddToCartButton productId={product.id} className="h-9 px-2 text-xs" />
                       </div>
                     </div>
@@ -441,34 +409,6 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Categories Section */}
-      <section className="py-20">
-        <div className="max-w-8xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">تسوق حسب الفئة</h2>
-            <p className="text-lg text-brand-cumin">اختر من بين مجموعتنا الواسعة من التوابل والخلطات</p>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-            {categories.map((category) => (
-              <Link
-                key={category.id}
-                href={category.href}
-                className="flex flex-col items-center justify-center group p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-primary/20 hover:border-primary hover:shadow-lg transition-all cursor-pointer"
-              >
-                <div className="text-5xl mb-4">{category.icon}</div>
-                <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                  {category.arabicName}
-                </h3>
-                <p className="text-sm text-brand-cumin mb-4">{category.description}</p>
-                <div className="flex items-center gap-2 text-primary font-semibold group-hover:gap-3 transition-all">
-                  استكشف <ArrowRight size={16} />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Promotional Section */}
       {shouldRenderPromotion && (

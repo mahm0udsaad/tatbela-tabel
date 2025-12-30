@@ -28,13 +28,6 @@ type ShippingZone = {
   sort_order?: number | null
 }
 
-type FreeShippingRule = {
-  id?: string
-  threshold_amount: number
-  expires_at: string | null
-  is_active: boolean
-}
-
 const emptyForm: Partial<ShippingZone> = {
   governorate: "",
   base_rate: 0,
@@ -44,10 +37,8 @@ const emptyForm: Partial<ShippingZone> = {
 
 export function ShippingAdminClient({
   initialZones,
-  initialFreeShippingRule,
 }: {
   initialZones: ShippingZone[]
-  initialFreeShippingRule?: FreeShippingRule | null
 }) {
   const supabase = getSupabaseClient()
   const [zones, setZones] = useState<ShippingZone[]>(initialZones)
@@ -57,13 +48,6 @@ export function ShippingAdminClient({
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [freeShippingRule, setFreeShippingRule] = useState<FreeShippingRule | null>(initialFreeShippingRule ?? null)
-  const [freeShippingForm, setFreeShippingForm] = useState<FreeShippingRule>(() => ({
-    id: initialFreeShippingRule?.id,
-    threshold_amount: Number(initialFreeShippingRule?.threshold_amount ?? 0),
-    expires_at: initialFreeShippingRule?.expires_at ?? null,
-    is_active: Boolean(initialFreeShippingRule?.is_active ?? false),
-  }))
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -95,18 +79,6 @@ export function ShippingAdminClient({
   useEffect(() => {
     setZones(initialZones)
   }, [initialZones])
-
-  useEffect(() => {
-    if (initialFreeShippingRule) {
-      setFreeShippingRule(initialFreeShippingRule)
-      setFreeShippingForm({
-        id: initialFreeShippingRule.id,
-        threshold_amount: Number(initialFreeShippingRule.threshold_amount ?? 0),
-        expires_at: initialFreeShippingRule.expires_at,
-        is_active: Boolean(initialFreeShippingRule.is_active),
-      })
-    }
-  }, [initialFreeShippingRule])
 
   const handleSave = async () => {
     if (!form.governorate?.trim()) {
@@ -144,43 +116,6 @@ export function ShippingAdminClient({
         fetchZones()
       }
       resetForm()
-    }
-    setIsSaving(false)
-  }
-
-  const handleSaveFreeShipping = async () => {
-    setIsSaving(true)
-    setError(null)
-    setStatus(null)
-
-    const payload = {
-      id: freeShippingForm.id,
-      applies_to: "b2c",
-      threshold_amount: Number(freeShippingForm.threshold_amount) || 0,
-      expires_at: freeShippingForm.expires_at ? new Date(freeShippingForm.expires_at).toISOString() : null,
-      is_active: Boolean(freeShippingForm.is_active),
-    }
-
-    const { data, error: upsertError } = await supabase
-      .from("free_shipping_rules")
-      .upsert(payload, { onConflict: "applies_to" })
-      .select()
-      .maybeSingle()
-
-    if (upsertError) {
-      console.error("Failed to save free shipping rule", upsertError)
-      setError("تعذر حفظ عرض الشحن المجاني")
-    } else {
-      setStatus("تم تحديث عرض الشحن المجاني")
-      if (data) {
-        setFreeShippingRule(data as FreeShippingRule)
-        setFreeShippingForm({
-          id: data.id,
-          threshold_amount: Number(data.threshold_amount ?? 0),
-          expires_at: data.expires_at,
-          is_active: Boolean(data.is_active),
-        })
-      }
     }
     setIsSaving(false)
   }
@@ -297,60 +232,6 @@ export function ShippingAdminClient({
 
       {status && <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">{status}</div>}
       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div>}
-
-      <div className="rounded-2xl bg-white p-5 shadow-sm space-y-4 border border-[#E8E2D1]">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-[#2B2520]">عرض الشحن المجاني (B2C)</h2>
-            <p className="text-sm text-[#8B6F47]">حد الإنفاق + تاريخ انتهاء الاختيارية.</p>
-          </div>
-          <label className="flex items-center gap-2 text-sm text-[#2B2520]">
-            <input
-              type="checkbox"
-              checked={freeShippingForm.is_active}
-              onChange={(e) => setFreeShippingForm((prev) => ({ ...prev, is_active: e.target.checked }))}
-              className="accent-[#E8A835] w-5 h-5"
-            />
-            تفعيل
-          </label>
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-[#2B2520] mb-1">الحد الأدنى للطلب (ج.م)</label>
-            <input
-              type="number"
-              min={0}
-              value={freeShippingForm.threshold_amount}
-              onChange={(e) =>
-                setFreeShippingForm((prev) => ({ ...prev, threshold_amount: Number(e.target.value) || 0 }))
-              }
-              className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835]"
-              placeholder="مثال: 500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-[#2B2520] mb-1">تاريخ الانتهاء (اختياري)</label>
-            <input
-              type="datetime-local"
-              value={freeShippingForm.expires_at ? freeShippingForm.expires_at.slice(0, 16) : ""}
-              onChange={(e) =>
-                setFreeShippingForm((prev) => ({ ...prev, expires_at: e.target.value ? e.target.value : null }))
-              }
-              className="w-full rounded-lg border border-[#D9D4C8] px-3 py-2 focus:border-[#E8A835]"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <button
-            onClick={handleSaveFreeShipping}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#E8A835] text-white px-5 py-3 font-semibold hover:bg-[#D9941E] disabled:opacity-60"
-          >
-            {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-            حفظ العرض
-          </button>
-        </div>
-      </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 rounded-2xl bg-white p-5 shadow-sm">
