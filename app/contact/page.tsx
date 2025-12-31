@@ -73,6 +73,7 @@ export default async function ContactPage() {
               <p className="text-[#8B6F47] mb-3">اتصل بنا في أوقات العمل</p>
               {payload.phones.map((phone) => (
                 <a
+                  dir="ltr"
                   key={phone}
                   href={`tel:${normalizePhoneForTel(phone)}`}
                   className="block text-[#C41E3A] font-semibold hover:underline mt-2 first:mt-0"

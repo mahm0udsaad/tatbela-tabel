@@ -151,7 +151,7 @@ export function Navbar() {
                 <div key={link.href} className="flex items-center">
                   <Link
                     href={link.href}
-                    className="text-foreground hover:text-primary transition-colors px-4 py-2"
+                    className="text-foreground hover:text-primary transition-colors px-4 py-2 text-sm"
                   >
                     {link.label}
                   </Link>

@@ -109,7 +109,7 @@ export function Footer() {
                   className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
                 >
                   <Phone size={16} />
-                  {phone}
+                  <span dir="ltr">{phone}</span>
                 </a>
               ))}
               {payload.contact.emails.slice(0, 2).map((email) => (
@@ -153,6 +153,18 @@ export function Footer() {
             <p className="text-white/70 text-sm">{payload.copyright}</p>
           </div>
         </div>
+    <div className="flex justify-end items-center gap-2 mt-4">
+      <img
+        src="/icons/kh01.png"
+        alt="KH Logo 01"
+        className="h-24 w-auto"
+      />
+      <img
+        src="/icons/KH02.png"
+        alt="KH Logo 02"
+        className="h-24 w-auto"
+      />
+    </div>
       </div>
     </footer>
   )

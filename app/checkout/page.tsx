@@ -150,8 +150,8 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       : 50
   const isFreeShipping = !isB2B && Boolean(cart?.freeShipping?.eligible)
   const shipping = isFreeShipping ? 0 : baseShipping
-  const tax = Math.round(subtotal * 0.14)
-  const total = subtotal + shipping + tax
+  const tax = 0
+  const total = subtotal + shipping
 
   const formatValidationIssues = (issues: ZodIssue[]) => {
     if (!issues.length) return "يرجى التحقق من بيانات التوصيل"
@@ -336,15 +336,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
           price: shipping,
           quantity: 1,
           description: "تكلفة التوصيل",
-        })
-      }
-
-      if (tax > 0) {
-        paymobItemsPayload.push({
-          name: "الضريبة",
-          price: tax,
-          quantity: 1,
-          description: "ضريبة القيمة المضافة",
         })
       }
 
@@ -803,10 +794,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 {isFreeShipping && (
                   <p className="text-xs text-green-700 text-right">تم تفعيل الشحن المجاني على هذا الطلب</p>
                 )}
-                <div className="flex justify-between text-[#8B6F47]">
-                  <span>الضريبة (14%)</span>
-                  <span>{tax} ج.م</span>
-                </div>
               </div>
 
               <div className="flex justify-between items-center">
