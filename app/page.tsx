@@ -337,17 +337,19 @@ export default async function Home() {
       <CategoriesCarousel categories={categories} />
       
       {featuredProducts.length > 0 && (
-        <section className="relative z-10 mb-16 px-4">
-          <div className="max-w-7xl mx-auto rounded-[32px] border border-primary/20 bg-muted p-6 md:p-10 shadow-2xl">
-            <div className="mb-10 flex flex-col items-center text-center">
-            </div>
-            <div className="grid gap-6 grid-cols-2 xl:grid-cols-4">
+        <section className="relative z-10 mb-16 px-2 sm:px-4">
+          <div className="max-w-7xl mx-auto rounded-2xl md:rounded-[32px] border border-primary/20 bg-muted p-3 sm:p-6 md:p-10 shadow-2xl">
+            <div className="mb-6 md:mb-10 flex flex-col items-center text-center" />
+            <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-2 xl:grid-cols-4">
               {featuredProducts.map((product) => (
                 <div
                   key={`hero-featured-${product.id}`}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-primary/20 bg-white transition-all duration-300 hover:border-primary hover:shadow-xl"
+                  className="group relative flex flex-col overflow-hidden rounded-xl md:rounded-2xl border border-primary/20 bg-white transition-all duration-300 hover:border-primary hover:shadow-xl"
                 >
-                  <Link href={`/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-muted">
+                  <Link
+                    href={`/product/${product.id}`}
+                    className="relative block aspect-[4/3] overflow-hidden bg-muted"
+                  >
                     {product.image_url ? (
                       <img
                         src={product.image_url}
@@ -356,53 +358,59 @@ export default async function Home() {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-4xl">🌶️</div>
+                      <div className="flex h-full items-center justify-center text-2xl sm:text-4xl">🌶️</div>
                     )}
                     {product.original_price && product.original_price > product.price && (
-                      <div className="absolute left-2 top-2 rounded-full bg-brand-red px-2 py-1 text-[10px] font-bold text-white shadow-sm">
+                      <div className="absolute left-1 top-1 md:left-2 md:top-2 rounded-full bg-brand-red px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold text-white shadow-sm">
                         خصم {Math.round(((product.original_price - product.price) / product.original_price) * 100)}%
                       </div>
                     )}
                   </Link>
-                  <div className="flex flex-1 flex-col gap-2 p-4">
-                    <div className="flex items-start justify-between">
+                  <div className="flex flex-1 flex-col gap-1.5 sm:gap-2 p-2 sm:p-4">
+                    <div className="flex items-start justify-between gap-1">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-primary">{product.brand}</p>
+                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-primary">
+                          {product.brand}
+                        </p>
                         <Link href={`/product/${product.id}`}>
-                          <h4 className="mt-1 line-clamp-1 text-base font-bold text-foreground transition-colors hover:text-brand-red">
+                          <h4 className="mt-0.5 sm:mt-1 line-clamp-1 text-[13px] sm:text-base font-bold text-foreground transition-colors hover:text-brand-red">
                             {product.name_ar}
                           </h4>
                         </Link>
                       </div>
-                      <div className="flex items-center gap-1 rounded-md bg-muted px-2 py-1">
-                        <Star size={12} className="fill-primary text-primary" />
-                        <span className="text-xs font-bold text-foreground">
+                      <div className="flex items-center gap-0.5 sm:gap-1 rounded-md bg-muted px-1.5 py-0.5 sm:px-2 sm:py-1">
+                        <Star size={11} className="fill-primary text-primary" />
+                        <span className="text-[11px] sm:text-xs font-bold text-foreground">
                           {product.rating ? product.rating.toFixed(1) : "جديد"}
                         </span>
                       </div>
                     </div>
-                    <div className="mt-auto items-center justify-between border-t border-muted pt-3">
-                      <div className="flex flex-col gap-4">
-                       <div className="flex gap-4 items-center">
-                       <span className="text-lg font-extrabold text-brand-red">{product.price} ج.م</span>
-                        {product.original_price && product.original_price > product.price && (
-                          <span className=" text-gray-400 line-through">{product.original_price} ج.م</span>
-                        )}
-                       </div>
-                      <AddToCartButton productId={product.id} className="h-9 px-2 text-xs" />
+                    <div className="mt-auto items-center justify-between border-t border-muted pt-2 sm:pt-3">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2 items-center">
+                          <span className="text-base sm:text-lg font-extrabold text-brand-red">
+                            {product.price} ج.م
+                          </span>
+                          {product.original_price && product.original_price > product.price && (
+                            <span className="text-xs sm:text-sm text-gray-400 line-through">
+                              {product.original_price} ج.م
+                            </span>
+                          )}
+                        </div>
+                        <AddToCartButton productId={product.id} className="h-8 sm:h-9 px-1.5 sm:px-2 text-[11px] sm:text-xs" />
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-10 flex justify-center">
+            <div className="mt-6 md:mt-10 flex justify-center">
               <Link
                 href="/store?featured=1"
-                className="inline-flex items-center justify-center rounded-full bg-brand-dark-brown px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-dark-brown/20 transition-all hover:-translate-y-0.5 hover:opacity-90"
+                className="inline-flex items-center justify-center rounded-full bg-brand-dark-brown px-6 md:px-8 py-2.5 md:py-3 text-xs md:text-sm font-semibold text-white shadow-lg shadow-brand-dark-brown/20 transition-all hover:-translate-y-0.5 hover:opacity-90"
               >
                 عرض الكل
-                <ArrowRight className="mr-2 h-4 w-4" />
+                <ArrowRight className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" />
               </Link>
             </div>
           </div>

@@ -19,17 +19,30 @@ type CategoriesCarouselProps = {
 
 export function CategoriesCarousel({ categories }: CategoriesCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % categories.length)
-    }, 2000)
+    }, 3000)
 
     return () => clearInterval(interval)
   }, [categories.length])
 
   // Create extended array for seamless loop
   const extendedCategories = [...categories, ...categories, ...categories]
+  const cardWidth = isMobile ? 50 : 33.33
 
   return (
     <section className="py-20">
@@ -45,14 +58,14 @@ export function CategoriesCarousel({ categories }: CategoriesCarouselProps) {
               <div 
                 className="flex gap-6 transition-transform duration-700 ease-in-out"
                 style={{
-                  transform: `translateX(${currentIndex * 33.33}%)`
+                  transform: `translateX(${currentIndex * cardWidth}%)`
                 }}
               >
                 {extendedCategories.map((category, index) => (
                   <div
                     key={`${category.id}-${index}`}
-                    className="flex-shrink-0 w-[calc(33.33%-16px)]"
-                    style={{ minWidth: 'calc(33.33% - 16px)' }}
+                    className="flex-shrink-0 w-[calc(50%-12px)] md:w-[calc(33.33%-16px)]"
+                    style={{ minWidth: isMobile ? 'calc(50% - 12px)' : 'calc(33.33% - 16px)' }}
                   >
                     <Link
                       href={category.href}

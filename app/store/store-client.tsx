@@ -637,16 +637,16 @@ function CategoryNodeItem({
 
 function ProductCard({
   product,
-  mode = "b2c",
+  mode = 'b2c',
   priceHidden = false,
-  contactLabel = "تواصل مع المبيعات",
-  contactUrl = "/contact",
+  contactLabel = 'تواصل مع المبيعات',
+  contactUrl = '/contact',
   searchTerm,
   position,
   searchAnalytics,
 }: {
   product: ProductRecord
-  mode?: "b2c" | "b2b"
+  mode?: 'b2c' | 'b2b'
   priceHidden?: boolean
   contactLabel?: string
   contactUrl?: string
@@ -667,11 +667,13 @@ function ProductCard({
 
   const discount =
     product.original_price && product.original_price > product.price
-      ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+      ? Math.round(
+          ((product.original_price - product.price) / product.original_price) * 100,
+        )
       : 0
 
-  const hidePrices = mode === "b2b" && (priceHidden || product.b2b_price_hidden)
-  const productLink = mode === "b2b" ? `/b2b/product/${product.id}` : `/product/${product.id}`
+  const hidePrices = mode === 'b2b' && (priceHidden || product.b2b_price_hidden)
+  const productLink = mode === 'b2b' ? `/b2b/product/${product.id}` : `/product/${product.id}`
 
   const handleProductClick = () => {
     if (searchAnalytics?.queryId && position) {
@@ -683,68 +685,143 @@ function ProductCard({
     <Link
       href={productLink}
       onClick={handleProductClick}
-      className="bg-white rounded-2xl overflow-hidden shadow hover:shadow-lg transition border border-[#E8E2D1] flex flex-col group"
+      className="
+        bg-white
+        rounded-xl
+        sm:rounded-2xl
+        overflow-hidden
+        shadow
+        hover:shadow-lg
+        transition
+        border border-[#E8E2D1]
+        flex flex-col
+        group
+        min-h-[322px]
+        sm:min-h-[380px]
+        "
     >
-      <div className="relative h-64 bg-[#F5F1E8] overflow-hidden">
+      <div className="
+        relative
+        h-40 sm:h-64
+        bg-[#F5F1E8]
+        overflow-hidden
+        ">
         {primaryImage ? (
           <img
             src={primaryImage}
             alt={product.name_ar}
-            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 bg-white"
+            className="
+              w-full h-full
+              object-contain
+              bg-white
+              transition-transform
+              duration-300
+              group-hover:scale-105
+            "
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-5xl">🌶️</div>
+          <div className="w-full h-full flex items-center justify-center text-3xl sm:text-5xl">🌶️</div>
         )}
         {discount > 0 && (
-          <span className="absolute top-4 left-4 bg-[#C41E3A] text-white px-3 py-1 rounded-full text-sm font-bold z-10">
+          <span className="
+            absolute top-2 sm:top-4 left-2 sm:left-4
+            bg-[#C41E3A] text-white
+            px-2.5 sm:px-3 py-0.5 sm:py-1
+            rounded-full
+            text-xs sm:text-sm
+            font-bold
+            z-10
+          ">
             -{discount}%
           </span>
         )}
         {isOutOfStock && (
-          <span className="absolute top-4 right-4 bg-gray-900/80 text-white px-3 py-1 rounded-full text-sm font-bold z-10">
+          <span className="
+            absolute top-2 sm:top-4 right-2 sm:right-4
+            bg-gray-900/80 text-white
+            px-2.5 sm:px-3 py-0.5 sm:py-1
+            rounded-full
+            text-xs sm:text-sm
+            font-bold
+            z-10
+          ">
             غير متوفر
           </span>
         )}
       </div>
-      <div className="p-4 flex flex-col flex-1">
-        {mode === "b2b" ? (
-          <span className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full bg-[#2B2520]/5 text-[#2B2520] text-xs font-bold">
+      <div className="p-2 sm:p-4 flex flex-col flex-1">
+        {mode === 'b2b' ? (
+          <span className="
+            inline-flex items-center gap-1 sm:gap-2
+            px-2 sm:px-3 py-0.5 sm:py-1 mb-1 sm:mb-2
+            rounded-full
+            bg-[#2B2520]/5 text-[#2B2520]
+            text-[10px] sm:text-xs font-bold
+          ">
             منتجات الجمله
           </span>
         ) : product.is_featured ? (
-          <span className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full bg-[#E8A835]/10 text-[#E8A835] text-xs font-bold">
+          <span className="
+            inline-flex items-center gap-1 sm:gap-2
+            px-2 sm:px-3 py-0.5 sm:py-1 mb-1 sm:mb-2
+            rounded-full
+            bg-[#E8A835]/10 text-[#E8A835]
+            text-[10px] sm:text-xs font-bold
+          ">
             ⭐ منتج مميز
           </span>
         ) : null}
-        <p className="text-xs text-[#E8A835] font-semibold uppercase mb-2">{product.brand}</p>
-        <h3 className="text-lg font-bold text-[#2B2520] mb-2 line-clamp-2 group-hover:text-[#E8A835] transition-colors">
-          <SearchHighlighter text={product.name_ar} searchTerm={searchTerm ?? ""} />
-        </h3>
-        <p className="text-sm text-[#8B6F47] line-clamp-2 mb-4">
-          <SearchHighlighter text={product.description_ar || ''} searchTerm={searchTerm ?? ""} />
+        <p className="
+          text-[10px] sm:text-xs
+          text-[#E8A835]
+          font-semibold
+          uppercase
+          mb-1 sm:mb-2
+        ">
+          {product.brand}
         </p>
-        <div className="flex items-center gap-2 mb-4">
+        <h3 className="
+          text-base sm:text-lg
+          font-bold
+          text-[#2B2520]
+          mb-1 sm:mb-2
+          line-clamp-2
+          group-hover:text-[#E8A835]
+          transition-colors
+        ">
+          <SearchHighlighter text={product.name_ar} searchTerm={searchTerm ?? ''} />
+        </h3>
+        <p className="text-xs sm:text-sm text-[#8B6F47] line-clamp-2 mb-2 sm:mb-4">
+          <SearchHighlighter text={product.description_ar || ''} searchTerm={searchTerm ?? ''} />
+        </p>
+        <div className="flex items-center gap-1 sm:gap-2 mb-2 sm:mb-4">
           <div className="flex">
             {Array.from({ length: 5 }).map((_, index) => (
               <Star
                 key={index}
-                size={14}
+                size={12}
                 className={
-                  index < Math.round(product.rating || 0) ? "text-[#E8A835] fill-[#E8A835]" : "text-gray-300"
+                  index < Math.round(product.rating || 0) ? 'text-[#E8A835] fill-[#E8A835]' : 'text-gray-300'
                 }
               />
             ))}
           </div>
-          <span className="text-xs text-[#8B6F47]">({product.reviews_count || 0})</span>
+          <span className="text-[10px] sm:text-xs text-[#8B6F47]">
+            ({product.reviews_count || 0})
+          </span>
         </div>
-        <div className="flex items-baseline gap-2 mb-4">
+        <div className="flex items-baseline gap-1.5 sm:gap-2 mb-2 sm:mb-4">
           {hidePrices ? (
-            <span className="text-base font-semibold text-[#E8A835]">{contactLabel}</span>
+            <span className="text-xs sm:text-base font-semibold text-[#E8A835]">{contactLabel}</span>
           ) : (
             <>
-              <span className="text-2xl font-bold text-[#C41E3A]">{product.price.toFixed(2)} ج.م</span>
+              <span className="text-lg sm:text-2xl font-bold text-[#C41E3A]">
+                {product.price.toFixed(2)} ج.م
+              </span>
               {product.original_price && product.original_price > product.price && (
-                <span className="text-sm text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
+                <span className="text-xs sm:text-sm text-gray-400 line-through">
+                  {product.original_price.toFixed(2)} ج.م
+                </span>
               )}
             </>
           )}
@@ -752,23 +829,35 @@ function ProductCard({
         {hidePrices ? (
           <Link
             href={contactUrl}
-            className="mt-auto inline-flex items-center justify-center px-4 py-2 rounded-lg border border-[#E8A835] text-[#E8A835] font-semibold hover:bg-[#FFF8ED]"
+            className="
+              mt-auto
+              inline-flex items-center justify-center
+              px-3 sm:px-4 py-1.5 sm:py-2
+              rounded-md sm:rounded-lg
+              border border-[#E8A835]
+              text-[11px] sm:text-base
+              text-[#E8A835]
+              font-semibold
+              hover:bg-[#FFF8ED]
+              transition
+            "
           >
             {contactLabel}
           </Link>
         ) : (
-          <AddToCartButton 
-            productId={product.id} 
+          <AddToCartButton
+            productId={product.id}
             disabled={isOutOfStock}
-            className="mt-auto"
+            className="mt-auto h-8 sm:h-10 px-2 sm:px-4 text-xs sm:text-base"
           >
-            {isOutOfStock ? "سيعود قريباً" : "أضف إلى السلة"}
+            {isOutOfStock ? 'سيعود قريباً' : 'أضف إلى السلة'}
           </AddToCartButton>
         )}
       </div>
     </Link>
   )
 }
+
 
 function buildCategoryTree(categories: CategoryRecord[]): CategoryNode[] {
   const map = new Map<string, CategoryNode>()
