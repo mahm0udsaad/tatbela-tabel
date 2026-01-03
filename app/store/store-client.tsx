@@ -484,7 +484,7 @@ export function StoreClient({
             </div>
 
             <div className="rounded-2xl md:rounded-3xl bg-[#F5F1E8] p-4 md:p-6 lg:p-8">
-              <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {products.map((product, index) => (
                   <ProductCard
                     key={product.id}

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 
 type Category = {
   id: number
@@ -18,10 +18,18 @@ type CategoriesCarouselProps = {
 }
 
 export function CategoriesCarousel({ categories }: CategoriesCarouselProps) {
-  // Duplicate categories multiple times for seamless infinite loop
-  const duplicatedCategories = useMemo(() => {
-    return [...categories, ...categories, ...categories]
-  }, [categories])
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % categories.length)
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [categories.length])
+
+  // Create extended array for seamless loop
+  const extendedCategories = [...categories, ...categories, ...categories]
 
   return (
     <section className="py-20">
@@ -32,26 +40,52 @@ export function CategoriesCarousel({ categories }: CategoriesCarouselProps) {
         </div>
 
         <div className="relative overflow-hidden">
-          <div className="flex animate-scroll-rtl gap-6">
-            {duplicatedCategories.map((category, index) => (
-              <div
-                key={`${category.id}-${index}`}
-                className="flex-shrink-0 w-[280px] md:w-[300px]"
+          <div className="flex justify-center items-center min-h-[320px]">
+            <div className="overflow-hidden w-full max-w-6xl">
+              <div 
+                className="flex gap-6 transition-transform duration-700 ease-in-out"
+                style={{
+                  transform: `translateX(${currentIndex * 33.33}%)`
+                }}
               >
-                <Link
-                  href={category.href}
-                  className="flex flex-col items-center justify-center group p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-primary/20 hover:border-primary hover:shadow-lg transition-all cursor-pointer h-full"
-                >
-                  <div className="text-5xl mb-4">{category.icon}</div>
-                  <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                    {category.arabicName}
-                  </h3>
-                  <p className="text-sm text-brand-cumin mb-4 text-center">{category.description}</p>
-                  <div className="flex items-center gap-2 text-primary font-semibold group-hover:gap-3 transition-all">
-                    استكشف <ArrowRight size={16} />
+                {extendedCategories.map((category, index) => (
+                  <div
+                    key={`${category.id}-${index}`}
+                    className="flex-shrink-0 w-[calc(33.33%-16px)]"
+                    style={{ minWidth: 'calc(33.33% - 16px)' }}
+                  >
+                    <Link
+                      href={category.href}
+                      className="flex flex-col items-center justify-center group p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-primary/20 hover:border-primary hover:shadow-lg transition-all cursor-pointer h-full"
+                    >
+                      <div className="text-5xl mb-4">{category.icon}</div>
+                      <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                        {category.arabicName}
+                      </h3>
+                      <p className="text-sm text-brand-cumin mb-4 text-center">{category.description}</p>
+                      <div className="flex items-center gap-2 text-primary font-semibold group-hover:gap-3 transition-all">
+                        استكشف <ArrowRight size={16} />
+                      </div>
+                    </Link>
                   </div>
-                </Link>
+                ))}
               </div>
+            </div>
+          </div>
+
+          {/* Indicator dots */}
+          <div className="flex justify-center gap-2 mt-6">
+            {categories.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === currentIndex 
+                    ? 'bg-primary w-8' 
+                    : 'bg-primary/30 hover:bg-primary/50'
+                }`}
+                aria-label={`Go to category ${index + 1}`}
+              />
             ))}
           </div>
         </div>
@@ -59,4 +93,3 @@ export function CategoriesCarousel({ categories }: CategoriesCarouselProps) {
     </section>
   )
 }
-

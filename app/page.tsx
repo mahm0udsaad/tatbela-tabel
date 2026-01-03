@@ -341,7 +341,7 @@ export default async function Home() {
           <div className="max-w-7xl mx-auto rounded-[32px] border border-primary/20 bg-muted p-6 md:p-10 shadow-2xl">
             <div className="mb-10 flex flex-col items-center text-center">
             </div>
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-6 grid-cols-2 xl:grid-cols-4">
               {featuredProducts.map((product) => (
                 <div
                   key={`hero-featured-${product.id}`}
