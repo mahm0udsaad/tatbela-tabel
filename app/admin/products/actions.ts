@@ -28,6 +28,7 @@ const productInputSchema = z.object({
   is_featured: z.boolean().default(false),
   is_b2b: z.boolean().default(false),
   b2b_price_hidden: z.boolean().optional(),
+  has_tax: z.boolean().default(false),
 })
 
 const variantInputSchema = z.object({
@@ -70,6 +71,7 @@ export async function upsertProductAction(input: {
   is_featured?: boolean
   is_b2b?: boolean
   b2b_price_hidden?: boolean
+  has_tax?: boolean
 }) {
   const supabase = await createClient()
   const payload = productInputSchema.parse(input)
@@ -95,6 +97,7 @@ export async function upsertProductAction(input: {
     is_featured: payload.is_featured ?? false,
     is_b2b: payload.is_b2b ?? false,
     b2b_price_hidden: payload.b2b_price_hidden ?? false,
+    has_tax: payload.has_tax ?? false,
     updated_at: new Date().toISOString(),
   }
 

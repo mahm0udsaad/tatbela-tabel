@@ -59,7 +59,12 @@ function SortableProductCard({
         <GripVertical size={20} />
       </button>
       
-      <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-[#F5F1E8]">
+      <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-[#F5F1E8]">
+        {product.has_tax && (
+          <div className="absolute top-0 left-0 right-0 z-10 bg-[#C41E3A] text-white text-[9px] font-bold text-center py-0.5 px-1 shadow-sm">
+            ضريبة 14%
+          </div>
+        )}
         {thumbnail ? (
           <img src={thumbnail.image_url} alt={product.name_ar} className="w-full h-full object-contain" loading="lazy" />
         ) : (
@@ -82,7 +87,14 @@ function SortableProductCard({
         </div>
         <p className="text-xs text-[#8B6F47] mb-2">{product.brand}</p>
         <div className="flex items-center justify-between text-sm">
-          <span className="font-bold text-[#C41E3A]">{formatCurrency(product.price)}</span>
+          <div className="flex flex-col gap-1">
+            <span className="font-bold text-[#C41E3A]">{formatCurrency(product.price)}</span>
+            {product.has_tax && (
+              <span className="text-[10px] text-[#C41E3A] font-medium">
+                خاضع للضريبة. 14%
+              </span>
+            )}
+          </div>
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${product.stock > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
           >

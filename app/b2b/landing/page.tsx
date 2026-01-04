@@ -218,6 +218,7 @@ async function getB2BFeaturedProducts(): Promise<FeaturedProductCard[]> {
     original_price,
     rating,
     reviews_count,
+    has_tax,
     product_images (image_url, is_primary)
   `
 

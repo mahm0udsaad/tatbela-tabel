@@ -150,8 +150,20 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       : 50
   const isFreeShipping = !isB2B && Boolean(cart?.freeShipping?.eligible)
   const shipping = isFreeShipping ? 0 : baseShipping
-  const tax = 0
-  const total = subtotal + shipping
+  
+  // Calculate tax (14%) for products with has_tax = true
+  const tax = orderItems.reduce((taxTotal, item) => {
+    const itemHasTax = item.product.has_tax ?? false
+    if (itemHasTax) {
+      const priceToUse = item.unit_price ?? item.product.price
+      const itemSubtotal = priceToUse * item.quantity
+      const itemTax = itemSubtotal * 0.14 // 14% tax
+      return taxTotal + itemTax
+    }
+    return taxTotal
+  }, 0)
+  
+  const total = subtotal + tax + shipping
 
   const formatValidationIssues = (issues: ZodIssue[]) => {
     if (!issues.length) return "يرجى التحقق من بيانات التوصيل"
@@ -336,6 +348,15 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
           price: shipping,
           quantity: 1,
           description: "تكلفة التوصيل",
+        })
+      }
+
+      if (tax > 0) {
+        paymobItemsPayload.push({
+          name: "الضريبة (14%)",
+          price: tax,
+          quantity: 1,
+          description: "ضريبة على بعض المنتجات",
         })
       }
 
@@ -775,8 +796,13 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                         <p className="font-semibold text-[#2B2520]">{item.product.name}</p>
                         <p className="text-sm text-[#8B6F47]">{item.product.brand}</p>
                         <p className="text-xs text-[#8B6F47] mt-1">الكمية: {item.quantity}</p>
+                        {item.product.has_tax && (
+                          <p className="text-xs text-[#C41E3A] font-medium mt-1">
+                            خاضع للضريبة. 14%
+                          </p>
+                        )}
                       </div>
-                      <p className="font-bold text-[#C41E3A]">{linePrice} ج.م</p>
+                      <p className="font-bold text-[#C41E3A]">{linePrice.toFixed(2)} ج.م</p>
                     </div>
                   )
                 })}
@@ -785,11 +811,20 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
               <div className="space-y-3 mb-6 pb-6 border-b border-[#D9D4C8]">
                 <div className="flex justify-between text-[#8B6F47]">
                   <span>المجموع الفرعي</span>
-                  <span>{subtotal} ج.م</span>
+                  <span>{subtotal.toFixed(2)} ج.م</span>
                 </div>
+                {tax > 0 && (
+                  <div className="flex justify-between text-[#C41E3A]">
+                    <span className="flex items-center gap-1">
+                      الضريبة (14%)
+                      <span className="text-xs text-[#8B6F47]">على بعض المنتجات</span>
+                    </span>
+                    <span className="font-semibold">{tax.toFixed(2)} ج.م</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-[#8B6F47]">
                   <span>الشحن</span>
-                  <span>{shipping === 0 ? "مجاني" : `${shipping} ج.م`}</span>
+                  <span>{shipping === 0 ? "مجاني" : `${shipping.toFixed(2)} ج.م`}</span>
                 </div>
                 {isFreeShipping && (
                   <p className="text-xs text-green-700 text-right">تم تفعيل الشحن المجاني على هذا الطلب</p>
@@ -798,7 +833,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
               <div className="flex justify-between items-center">
                 <span className="text-lg font-bold text-[#2B2520]">الإجمالي</span>
-                <span className="text-3xl font-bold text-[#C41E3A]">{total} ج.م</span>
+                <span className="text-3xl font-bold text-[#C41E3A]">{total.toFixed(2)} ج.م</span>
               </div>
               {isB2B && (
                 <p className="text-xs text-[#8B6F47] mt-4 text-center">

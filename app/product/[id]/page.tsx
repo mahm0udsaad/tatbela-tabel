@@ -28,6 +28,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         is_featured,
         is_b2b,
         b2b_price_hidden,
+        has_tax,
         product_images (id, image_url, is_primary),
         product_variants (id, sku, size, weight, variant_type, price, stock)
       `,
@@ -59,6 +60,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           reviews_count,
           stock,
           is_featured,
+          has_tax,
           product_images (id, image_url, is_primary),
           product_variants (id, sku, size, weight, variant_type, price, stock)
         `,

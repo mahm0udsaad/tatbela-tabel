@@ -34,6 +34,7 @@ export type CartItem = {
     brand: string
     category: string
     is_b2b?: boolean
+    has_tax?: boolean
     product_images: CartProductImage[] | null
   }
 }
@@ -111,6 +112,7 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
             brand,
             category,
             is_b2b,
+            has_tax,
             product_images (
               image_url,
               is_primary,
@@ -168,6 +170,7 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
                 category,
                 is_b2b,
                 b2b_price_hidden,
+                has_tax,
                 product_images (
                   image_url,
                   is_primary,

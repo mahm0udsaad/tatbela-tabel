@@ -276,6 +276,11 @@ export function ProductDetailClient({
         <div className="space-y-4">
           {/* Main Carousel */}
           <div className="relative rounded-2xl overflow-hidden bg-muted border border-border">
+            {product.has_tax && (
+              <div className="absolute top-0 left-0 right-0 z-20 bg-[#C41E3A] text-white text-center px-3 py-2 text-xs md:text-sm font-bold shadow-md">
+                خاضع للضريبة. 14%
+              </div>
+            )}
             <div dir="ltr" className="ltr overflow-hidden" ref={emblaRef}>
               <div className="flex">
                 {images.map((image) => (
@@ -393,6 +398,11 @@ export function ProductDetailClient({
                 </>
               )}
             </div>
+            {product.has_tax && !hidePrices && (
+              <p className="mt-2 text-xs md:text-sm text-[#C41E3A] font-semibold bg-[#C41E3A]/10 inline-block px-3 py-1 rounded-full">
+                خاضع للضريبة. 14%
+              </p>
+            )}
             {isOutOfStock ? (
               <p className="mt-2 text-xs md:text-sm text-red-600 font-semibold">نفدت الكمية وسيتم التوفير قريباً</p>
             ) : (

@@ -340,6 +340,7 @@ export function useProductManager({ initialProducts, categories }: UseProductMan
       category_id: productForm.category_id || null,
       is_featured: productForm.is_featured,
       is_b2b: Boolean(productForm.is_b2b),
+      has_tax: Boolean(productForm.has_tax),
     }
 
     startTransition(async () => {

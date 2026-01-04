@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { Edit2, Plus, Star, Building2, Package, Tag, DollarSign, Box } from "lucide-react"
+import { Edit2, Plus, Star, Building2, Package, Tag, DollarSign, Box, Receipt } from "lucide-react"
 import type { CategoryOption, ProductFormState } from "../types"
 
 type ProductDetailsCardProps = {
@@ -330,6 +330,33 @@ export function ProductDetailsCard({
                 </div>
                 <p className="text-xs text-[#8B6F47] leading-relaxed">
                   تعيين كمنتج جملة - لن يظهر في متجر B2C، فقط في صفحة منتجات الجملة
+                </p>
+              </div>
+            </label>
+
+            {/* Tax Product */}
+            <label
+              className={`flex items-start gap-3 rounded-xl border-2 p-4 cursor-pointer transition-all ${
+                productForm.has_tax
+                  ? "border-[#E8A835] bg-[#FFF8ED]"
+                  : "border-[#D9D4C8] hover:border-[#E8A835]/50 hover:bg-[#FFF8ED]/30"
+              }`}
+            >
+              <div className="mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={productForm.has_tax}
+                  onChange={(e) => onFieldChange("has_tax", e.target.checked)}
+                  className="accent-[#E8A835] w-5 h-5 cursor-pointer"
+                />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Receipt size={16} className={`${productForm.has_tax ? "text-[#E8A835]" : "text-[#8B6F47]"}`} />
+                  <p className="text-sm font-semibold text-[#2B2520]">خاضع للضريبة</p>
+                </div>
+                <p className="text-xs text-[#8B6F47] leading-relaxed">
+                  تطبيق ضريبة 14% على المنتج - سيتم عرض علامة "خاضع للضريبة. 14%" على المنتج
                 </p>
               </div>
             </label>

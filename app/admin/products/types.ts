@@ -30,6 +30,7 @@ export type Product = {
   is_featured: boolean
   is_b2b: boolean
   b2b_price_hidden?: boolean | null
+  has_tax: boolean
   category_id: string | null
   sort_order: number | null
   product_images: ProductImage[] | null
@@ -56,6 +57,7 @@ export type ProductFormState = {
   category_id: string
   is_featured: boolean
   is_b2b: boolean
+  has_tax: boolean
 }
 
 export type WeightUnit = "g" | "kg"
@@ -91,6 +93,7 @@ export const emptyProductForm: ProductFormState = {
   category_id: "",
   is_featured: false,
   is_b2b: false,
+  has_tax: false,
 }
 
 export const emptyVariantForm: VariantFormState = {
@@ -118,6 +121,7 @@ export function mapProductToForm(product: Product): ProductFormState {
     category_id: product.category_id ?? "",
     is_featured: Boolean(product.is_featured),
     is_b2b: Boolean(product.is_b2b),
+    has_tax: Boolean(product.has_tax),
   }
 }
 

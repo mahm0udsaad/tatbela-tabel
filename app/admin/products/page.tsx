@@ -25,6 +25,7 @@ export default async function AdminProductsPage() {
         is_featured,
         is_b2b,
         b2b_price_hidden,
+        has_tax,
         category_id,
         is_archived,
         sort_order,

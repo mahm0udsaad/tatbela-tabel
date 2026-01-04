@@ -18,6 +18,7 @@ const B2B_STORE_SELECT = `
   is_featured,
   is_b2b,
   b2b_price_hidden,
+  has_tax,
   product_images (image_url, is_primary),
   product_variants (stock)
 `
@@ -38,6 +39,7 @@ const B2B_PRODUCT_SELECT = `
   is_featured,
   is_b2b,
   b2b_price_hidden,
+  has_tax,
   product_images (id, image_url, is_primary),
   product_variants (id, sku, size, weight, variant_type, price, stock)
 `

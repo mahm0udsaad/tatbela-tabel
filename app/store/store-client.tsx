@@ -722,6 +722,20 @@ function ProductCard({
         ) : (
           <div className="w-full h-full flex items-center justify-center text-3xl sm:text-5xl">🌶️</div>
         )}
+        {product.has_tax && (
+          <div className="
+            absolute top-0 left-0 right-0
+            bg-[#C41E3A] text-white
+            text-center
+            px-2 py-1
+            text-[10px] sm:text-xs
+            font-bold
+            z-10
+            shadow-sm
+          ">
+            خاضع للضريبة. 14%
+          </div>
+        )}
         {discount > 0 && (
           <span className="
             absolute top-2 sm:top-4 left-2 sm:left-4
@@ -810,20 +824,27 @@ function ProductCard({
             ({product.reviews_count || 0})
           </span>
         </div>
-        <div className="flex items-baseline gap-1.5 sm:gap-2 mb-2 sm:mb-4">
-          {hidePrices ? (
-            <span className="text-xs sm:text-base font-semibold text-[#E8A835]">{contactLabel}</span>
-          ) : (
-            <>
-              <span className="text-lg sm:text-2xl font-bold text-[#C41E3A]">
-                {product.price.toFixed(2)} ج.م
-              </span>
-              {product.original_price && product.original_price > product.price && (
-                <span className="text-xs sm:text-sm text-gray-400 line-through">
-                  {product.original_price.toFixed(2)} ج.م
+        <div className="mb-2 sm:mb-4">
+          <div className="flex items-baseline gap-1.5 sm:gap-2">
+            {hidePrices ? (
+              <span className="text-xs sm:text-base font-semibold text-[#E8A835]">{contactLabel}</span>
+            ) : (
+              <>
+                <span className="text-lg sm:text-2xl font-bold text-[#C41E3A]">
+                  {product.price.toFixed(2)} ج.م
                 </span>
-              )}
-            </>
+                {product.original_price && product.original_price > product.price && (
+                  <span className="text-xs sm:text-sm text-gray-400 line-through">
+                    {product.original_price.toFixed(2)} ج.م
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+          {product.has_tax && !hidePrices && (
+            <p className="text-[10px] sm:text-xs text-[#C41E3A] font-medium mt-1">
+              خاضع للضريبة. 14%
+            </p>
           )}
         </div>
         {hidePrices ? (

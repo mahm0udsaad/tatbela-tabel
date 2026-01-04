@@ -25,6 +25,20 @@ const getProductImageUrl = (item: CartItem) => {
   return sorted[0]?.image_url || item.product.image_url || null
 }
 
+// Calculate tax for items with has_tax = true (14% tax rate)
+const calculateTax = (items: CartItem[]): number => {
+  return items.reduce((taxTotal, item) => {
+    const itemHasTax = item.product.has_tax ?? false
+    if (itemHasTax) {
+      const priceToUse = item.unit_price ?? item.variant?.price ?? item.product.price
+      const itemSubtotal = priceToUse * item.quantity
+      const itemTax = itemSubtotal * 0.14 // 14% tax
+      return taxTotal + itemTax
+    }
+    return taxTotal
+  }, 0)
+}
+
 export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   const { cart, isLoading, removeItem, updateQuantity } = useCart()
   const isB2B = mode === "b2b"
@@ -41,6 +55,9 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   const [shippingFee, setShippingFee] = useState<number>(0)
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true)
   const supabase = getSupabaseClient()
+
+  // Calculate tax (14%) for products with has_tax = true
+  const taxAmount = cart?.items ? calculateTax(cart.items) : 0
 
   useEffect(() => {
     const loadAddresses = async () => {
@@ -156,6 +173,11 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                         </button>
                       </div>
                       <p className="text-[#C41E3A] font-bold mt-1">{priceToUse.toFixed(2)} ج.م</p>
+                      {item.product.has_tax && (
+                        <p className="text-xs text-[#C41E3A] font-medium mt-1">
+                          خاضع للضريبة. 14%
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between mt-4">
@@ -245,6 +267,15 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                   <span>المجموع الفرعي</span>
                   <span>{cart.subtotal.toFixed(2)} ج.م</span>
                 </div>
+                {taxAmount > 0 && (
+                  <div className="flex justify-between text-[#C41E3A]">
+                    <span className="flex items-center gap-1">
+                      الضريبة (14%)
+                      <span className="text-xs text-[#8B6F47]">على بعض المنتجات</span>
+                    </span>
+                    <span className="font-semibold">{taxAmount.toFixed(2)} ج.م</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-[#8B6F47]">
                   <span>الشحن</span>
                   <span>
@@ -261,8 +292,8 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                   <span>الإجمالي</span>
                   <span className="text-[#C41E3A]">
                     {isB2B || !selectedAddressId || isLoadingAddresses
-                      ? cart.subtotal.toFixed(2)
-                      : (cart.subtotal + (freeShipping?.eligible ? 0 : shippingFee)).toFixed(2)}{" "}
+                      ? (cart.subtotal + taxAmount).toFixed(2)
+                      : (cart.subtotal + taxAmount + (freeShipping?.eligible ? 0 : shippingFee)).toFixed(2)}{" "}
                     ج.م
                   </span>
                 </div>

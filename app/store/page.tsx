@@ -107,6 +107,7 @@ export default async function StorePage({
           is_featured,
           is_b2b,
           b2b_price_hidden,
+          has_tax,
           product_images (image_url, is_primary),
           product_variants (stock)
         `,
