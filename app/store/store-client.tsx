@@ -82,6 +82,32 @@ export function StoreClient({
   const isB2B = mode === "b2b"
   const isMobile = useIsMobile()
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const requestSeqRef = useRef(0)
+  const [priceTouched, setPriceTouched] = useState(false)
+
+  // #region agent log - mount snapshot (hypothesis A/E)
+  useEffect(() => {
+    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A',location:'app/store/store-client.tsx:mount',message:'StoreClient mount snapshot',data:{initialProductsLen:initialProducts.length,initialTotal,calculatedInitialTotal,initialSearch,categoryScopeIdsLen:categoryScopeIds.length,initialSelectedCategories,mode,priceHidden},timestamp:Date.now()}
+    fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+    try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
+  }, [])
+  // #endregion agent log
+
+  // #region agent log - relay smoke test (hypothesis Z)
+  useEffect(() => {
+    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'Z',location:'app/store/store-client.tsx:relay-mount',message:'Relay smoke test (same-origin)',data:{ua:typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'},timestamp:Date.now()}
+    fetch('/api/agent-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+    try { navigator.sendBeacon?.('/api/agent-log', JSON.stringify(payload)) } catch {}
+  }, [])
+  // #endregion agent log
+
+  // #region agent log - post-fix version marker (hypothesis Z)
+  useEffect(() => {
+    const payload = {sessionId:'debug-session',runId:'post-fix',hypothesisId:'Z',location:'app/store/store-client.tsx:version',message:'StoreClient version marker',data:{version:'2026-01-06-priceTouched-v1'},timestamp:Date.now()}
+    fetch('/api/agent-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+    try { navigator.sendBeacon?.('/api/agent-log', JSON.stringify(payload)) } catch {}
+  }, [])
+  // #endregion agent log
   
   // Calculate defaults from initialProducts if not provided
   const calculatedPriceBounds = useMemo(() => {
@@ -93,6 +119,8 @@ export function StoreClient({
       max: Math.max(...prices),
     }
   }, [priceBounds, initialProducts])
+
+  const [uiPriceBounds, setUiPriceBounds] = useState(() => calculatedPriceBounds)
 
   const calculatedBrands = useMemo(() => {
     if (brands) return brands
@@ -163,12 +191,32 @@ export function StoreClient({
     const to = from + pageSize - 1
 
     try {
+      const reqId = (requestSeqRef.current += 1)
+      // #region agent log - fetch entry (hypothesis A/B/D)
+      const payloadEntry = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D',location:'app/store/store-client.tsx:fetchProducts:entry',message:'fetchProducts entry',data:{reqId,reset,search,categoryFilterIds,selectedCategories,selectedBrands,priceRange,pageSize,from,to,sortBy,isB2B,productsLen:products.length,hasMore,loading,loadingMore},timestamp:Date.now()}
+      fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadEntry)}).catch(()=>{});
+      try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payloadEntry)) } catch {}
+      // #endregion agent log
+
+      const effectivePriceMin = priceTouched ? priceRange[0] : undefined
+      const effectivePriceMax = priceTouched ? priceRange[1] : undefined
+      // #region agent log - effective search params (hypothesis A)
+      const payloadEffective = {sessionId:'debug-session',runId:'post-fix',hypothesisId:'A',location:'app/store/store-client.tsx:fetchProducts:effectiveParams',message:'effective search params (post-fix)',data:{reqId,reset,categoryFilterIdsLen:categoryFilterIds.length,priceTouched,effectivePriceMin,effectivePriceMax,priceRange},timestamp:Date.now()}
+      fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadEffective)}).catch(()=>{});
+      try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payloadEffective)) } catch {}
+      // #endregion agent log
+
+      // #region agent log - post-fix effective params via relay (hypothesis Z)
+      fetch('/api/agent-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadEffective)}).catch(()=>{});
+      try { navigator.sendBeacon?.('/api/agent-log', JSON.stringify(payloadEffective)) } catch {}
+      // #endregion agent log
+
       const searchResult = await searchService.searchProducts({
         query: search,
         categoryIds: categoryFilterIds.length > 0 ? categoryFilterIds : undefined,
         brands: selectedBrands.length > 0 ? selectedBrands : undefined,
-        priceMin: priceRange[0],
-        priceMax: priceRange[1],
+        priceMin: effectivePriceMin,
+        priceMax: effectivePriceMax,
         isB2B,
         limit: pageSize,
         offset: from,
@@ -193,6 +241,27 @@ export function StoreClient({
       } else {
         setHasMore(received === pageSize)
       }
+
+      // If the user hasn't explicitly set a price filter, keep the UI bounds
+      // aligned with the newly loaded dataset so category switches don't show
+      // stale Atara bounds when viewing Blends.
+      if (reset && !priceTouched && (searchResult.data?.length ?? 0) > 0) {
+        const prices = (searchResult.data ?? [])
+          .map((p) => p.price)
+          .filter((n) => Number.isFinite(n))
+        if (prices.length > 0) {
+          const nextMin = Math.min(...prices)
+          const nextMax = Math.max(...prices)
+          setUiPriceBounds({ min: nextMin, max: nextMax })
+          setPriceRange([nextMin, nextMax])
+        }
+      }
+
+      // #region agent log - fetch response (hypothesis A/B/D)
+      const payloadResponse = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B',location:'app/store/store-client.tsx:fetchProducts:response',message:'fetchProducts response',data:{reqId:requestSeqRef.current,reset,received,count:searchResult.count,hasAnalytics:!!searchResult.analytics,totalLoaded,computedHasMore:reset && searchResult.analytics ? totalLoaded < searchResult.count : reset ? received === pageSize : received === pageSize},timestamp:Date.now()}
+      fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadResponse)}).catch(()=>{});
+      try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payloadResponse)) } catch {}
+      // #endregion agent log
     } catch (error) {
       console.error("خطأ في جلب المنتجات:", error)
     } finally {
@@ -207,14 +276,36 @@ export function StoreClient({
       filtersInitializedRef.current = true
       return
     }
+    // #region agent log - filters change triggers fetch (hypothesis A/E)
+    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A',location:'app/store/store-client.tsx:filtersEffect',message:'filters/search/sort changed -> will reset fetch',data:{sortBy,selectedCategories,selectedBrands,priceRange,priceTouched,search,categoryFilterIds,selectedCategoryIds,categoryScopeIds},timestamp:Date.now()}
+    fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+    try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
+    // #endregion agent log
     const timer = setTimeout(() => fetchProducts(true), 300)
     return () => clearTimeout(timer)
-  }, [sortBy, selectedCategories, selectedBrands, priceRange, search])
+  }, [
+    sortBy,
+    selectedCategories,
+    selectedBrands,
+    search,
+    // Only treat price changes as filter changes after the user has explicitly edited it.
+    priceTouched ? `${priceRange[0]}-${priceRange[1]}` : "price:not-touched",
+  ])
 
   useEffect(() => {
+    // #region agent log - observer setup/teardown (hypothesis C)
+    const payloadSetup = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C',location:'app/store/store-client.tsx:observerEffect',message:'observer effect run (setup)',data:{hasMore,loading,loadingMore,productsLen:products.length,targetExists:!!loadMoreRef.current},timestamp:Date.now()}
+    fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadSetup)}).catch(()=>{});
+    try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payloadSetup)) } catch {}
+    // #endregion agent log
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          // #region agent log - intersection triggers load more (hypothesis C/B)
+          const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C',location:'app/store/store-client.tsx:intersection',message:'IntersectionObserver fired (attempt load more)',data:{isIntersecting:entries[0].isIntersecting,hasMore,loading,loadingMore,productsLen:products.length},timestamp:Date.now()}
+          fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+          try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
+          // #endregion agent log
           fetchProducts()
         }
       },
@@ -226,13 +317,24 @@ export function StoreClient({
 
     return () => {
       if (target) observer.unobserve(target)
+      // #region agent log - observer cleanup (hypothesis C)
+      const payloadCleanup = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C',location:'app/store/store-client.tsx:observerEffect',message:'observer cleanup (unobserve)',data:{targetExists:!!target},timestamp:Date.now()}
+      fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadCleanup)}).catch(()=>{});
+      try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payloadCleanup)) } catch {}
+      // #endregion agent log
     }
   }, [hasMore, loading, loadingMore])
 
   const handleCategoryToggle = (categoryId: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
-    )
+    setSelectedCategories((prev) => {
+      const next = prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
+      // #region agent log - category toggle (hypothesis A/E)
+      const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'E',location:'app/store/store-client.tsx:handleCategoryToggle',message:'Category toggled',data:{categoryId,prevSelected:prev,nextSelected:next},timestamp:Date.now()}
+      fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+      try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
+      // #endregion agent log
+      return next
+    })
   }
 
   const handleBrandToggle = (brand: string) => {
@@ -244,10 +346,23 @@ export function StoreClient({
     // but never "fight" user interaction by re-applying defaults on every toggle.
     // Only update if the arrays are actually different (deep comparison)
     if (!arraysEqual(prevInitialSelectedCategoriesRef.current, initialSelectedCategories)) {
+      // #region agent log - prop sync selected categories (hypothesis E)
+      const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'E',location:'app/store/store-client.tsx:syncInitialSelectedCategories',message:'initialSelectedCategories prop changed -> overwrite selectedCategories',data:{prevInitialSelectedCategories:prevInitialSelectedCategoriesRef.current,nextInitialSelectedCategories:initialSelectedCategories},timestamp:Date.now()}
+      fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+      try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
+      // #endregion agent log
       prevInitialSelectedCategoriesRef.current = initialSelectedCategories
       setSelectedCategories(initialSelectedCategories)
     }
   }, [initialSelectedCategories])
+
+  // #region agent log - relay on category changes (hypothesis Z/E)
+  useEffect(() => {
+    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'Z',location:'app/store/store-client.tsx:relay-selectedCategories',message:'selectedCategories changed (relay)',data:{selectedCategories},timestamp:Date.now()}
+    fetch('/api/agent-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+    try { navigator.sendBeacon?.('/api/agent-log', JSON.stringify(payload)) } catch {}
+  }, [selectedCategories])
+  // #endregion agent log
 
   // Sync search state with URL/prop changes (e.g., navbar search navigation)
   useEffect(() => {
@@ -258,6 +373,14 @@ export function StoreClient({
     setProducts(initialProducts)
     setTotalCount(calculatedInitialTotal)
     setHasMore(initialProducts.length < calculatedInitialTotal)
+    // #region agent log - prop sync initialProducts (hypothesis E/B)
+    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'E',location:'app/store/store-client.tsx:syncInitialProducts',message:'initialProducts/calculatedInitialTotal changed -> overwrite products/hasMore',data:{initialProductsLen:initialProducts.length,calculatedInitialTotal,computedHasMore:initialProducts.length < calculatedInitialTotal},timestamp:Date.now()}
+    fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+    try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
+    // #endregion agent log
+    setUiPriceBounds(calculatedPriceBounds)
+    setPriceRange([calculatedPriceBounds.min, calculatedPriceBounds.max])
+    setPriceTouched(false)
   }, [initialProducts, calculatedInitialTotal])
 
   const handleSearchSubmit = (searchValue: string) => {
@@ -320,9 +443,9 @@ export function StoreClient({
           <FilterSection title="السعر" accordion>
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47] px-1">
-                <span>{calculatedPriceBounds.min.toFixed(0)} ج.م</span>
+                <span>{uiPriceBounds.min.toFixed(0)} ج.م</span>
                 <ChevronDown size={16} className="text-[#E8A835]" />
-                <span>{calculatedPriceBounds.max.toFixed(0)} ج.م</span>
+                <span>{uiPriceBounds.max.toFixed(0)} ج.م</span>
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
@@ -330,9 +453,12 @@ export function StoreClient({
                   <input
                     type="number"
                     value={priceRange[0]}
-                    min={calculatedPriceBounds.min}
+                    min={uiPriceBounds.min}
                     max={priceRange[1]}
-                    onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                    onChange={(e) => {
+                      setPriceTouched(true)
+                      setPriceRange([Number(e.target.value), priceRange[1]])
+                    }}
                     className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
                   />
                 </div>
@@ -342,8 +468,11 @@ export function StoreClient({
                     type="number"
                     value={priceRange[1]}
                     min={priceRange[0]}
-                    max={calculatedPriceBounds.max}
-                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                    max={uiPriceBounds.max}
+                    onChange={(e) => {
+                      setPriceTouched(true)
+                      setPriceRange([priceRange[0], Number(e.target.value)])
+                    }}
                     className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
                   />
                 </div>
@@ -355,8 +484,10 @@ export function StoreClient({
     </div>
   )
 
-  const activeFiltersCount = selectedCategories.length + selectedBrands.length + 
-    (priceRange[0] !== calculatedPriceBounds.min || priceRange[1] !== calculatedPriceBounds.max ? 1 : 0)
+  const activeFiltersCount =
+    selectedCategories.length +
+    selectedBrands.length +
+    (priceTouched && (priceRange[0] !== uiPriceBounds.min || priceRange[1] !== uiPriceBounds.max) ? 1 : 0)
 
   return (
     <section className="py-6 md:py-12">
@@ -413,25 +544,31 @@ export function StoreClient({
             <FilterSection title="السعر">
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47]">
-                  <span>{calculatedPriceBounds.min.toFixed(0)} ج.م</span>
+                  <span>{uiPriceBounds.min.toFixed(0)} ج.م</span>
                   <ChevronDown size={16} className="text-[#E8A835]" />
-                  <span>{calculatedPriceBounds.max.toFixed(0)} ج.م</span>
+                  <span>{uiPriceBounds.max.toFixed(0)} ج.م</span>
                 </div>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     value={priceRange[0]}
-                    min={calculatedPriceBounds.min}
+                    min={uiPriceBounds.min}
                     max={priceRange[1]}
-                    onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                    onChange={(e) => {
+                      setPriceTouched(true)
+                      setPriceRange([Number(e.target.value), priceRange[1]])
+                    }}
                     className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
                   />
                   <input
                     type="number"
                     value={priceRange[1]}
                     min={priceRange[0]}
-                    max={calculatedPriceBounds.max}
-                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                    max={uiPriceBounds.max}
+                    onChange={(e) => {
+                      setPriceTouched(true)
+                      setPriceRange([priceRange[0], Number(e.target.value)])
+                    }}
                     className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
                   />
                 </div>
