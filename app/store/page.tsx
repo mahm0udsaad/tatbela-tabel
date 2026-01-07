@@ -109,7 +109,7 @@ export default async function StorePage({
           b2b_price_hidden,
           has_tax,
           product_images (image_url, is_primary),
-          product_variants (stock)
+          product_variants (id, weight, size, variant_type, stock)
         `,
       )
       .eq("is_archived", false)

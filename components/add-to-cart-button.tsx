@@ -56,14 +56,19 @@ export function AddToCartButton({
     if (typeof window === 'undefined') return
     try {
       const raw = window.localStorage.getItem('guestCartItems')
-      const parsed: Array<{ productId: string; quantity: number; updatedAt: string }> = raw ? JSON.parse(raw) : []
-      const existing = parsed.find((item) => item.productId === productId)
+      const parsed: Array<{ productId: string; productVariantId?: string | null; quantity: number; updatedAt: string }> =
+        raw ? JSON.parse(raw) : []
+
+      const normalizedVariantId = productVariantId ?? null
+      const existing = parsed.find(
+        (item) => item.productId === productId && (item.productVariantId ?? null) === normalizedVariantId,
+      )
 
       if (existing) {
         existing.quantity += 1
         existing.updatedAt = new Date().toISOString()
       } else {
-        parsed.push({ productId, quantity: 1, updatedAt: new Date().toISOString() })
+        parsed.push({ productId, productVariantId: normalizedVariantId, quantity: 1, updatedAt: new Date().toISOString() })
       }
 
       window.localStorage.setItem('guestCartItems', JSON.stringify(parsed))

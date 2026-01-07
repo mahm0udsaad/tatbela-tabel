@@ -44,6 +44,7 @@ type ProductRecord = {
   reviews_count: number | null
   stock: number
   b2b_price_hidden?: boolean | null
+  has_tax?: boolean | null
   product_images: ProductImage[] | null
   product_variants: ProductVariant[] | null
 }
@@ -130,7 +131,7 @@ export function ProductDetailClient({
     [emblaApi]
   )
 
-  const variants = product.product_variants || []
+  const variants = useMemo(() => product.product_variants ?? [], [product.product_variants])
   const activeVariant = variants.find((variant) => variant.id === selectedVariant) || null
   const availableStock = activeVariant ? activeVariant.stock : product.stock
   const effectivePrice = activeVariant?.price ?? product.price
@@ -146,6 +147,14 @@ export function ProductDetailClient({
     window.addEventListener("resize", updateDeviceMode)
     return () => window.removeEventListener("resize", updateDeviceMode)
   }, [])
+
+  // Default select first available variant (mobile-first UX: no "empty" variant state)
+  useEffect(() => {
+    if (variants.length === 0) return
+    if (selectedVariant) return
+    const firstAvailable = variants.find((v) => (v.stock ?? 0) > 0) ?? variants[0]
+    setSelectedVariant(firstAvailable?.id ?? null)
+  }, [variants, selectedVariant])
 
   const handleSubmitReview = () => {
     if (!canReview) {
@@ -193,7 +202,8 @@ export function ProductDetailClient({
     }
     setIsAddingToCart(true)
     try {
-      await addItem(product.id, quantity)
+      const variantIdToUse = variants.length > 0 ? selectedVariant : null
+      await addItem(product.id, quantity, variantIdToUse)
     } finally {
       setIsAddingToCart(false)
     }

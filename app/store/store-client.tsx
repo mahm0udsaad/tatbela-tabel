@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Star, ChevronDown, Filter, Search, X } from "lucide-react"
 
 import { AddToCartButton } from "@/components/add-to-cart-button"
+import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -21,6 +22,10 @@ type ProductImage = {
 }
 
 type ProductVariant = {
+  id?: string
+  weight?: number | null
+  size?: string | null
+  variant_type?: string | null
   stock: number
 }
 
@@ -811,6 +816,21 @@ function ProductCard({
 
   const hidePrices = mode === 'b2b' && (priceHidden || product.b2b_price_hidden)
   const productLink = mode === 'b2b' ? `/b2b/product/${product.id}` : `/product/${product.id}`
+  const variantBadges = useMemo(() => {
+    const variants = product.product_variants ?? []
+    if (variants.length === 0) return []
+
+    const labelFor = (variant: ProductVariant) => {
+      if (typeof variant.weight === 'number' && Number.isFinite(variant.weight)) return `${variant.weight} جم`
+      if (variant.size) return variant.size
+      if (variant.variant_type) return variant.variant_type
+      return 'متغير'
+    }
+
+    const labels = variants.map(labelFor).filter(Boolean)
+    const unique = Array.from(new Set(labels))
+    return unique.slice(0, 4)
+  }, [product.product_variants])
 
   const handleProductClick = () => {
     if (searchAnalytics?.queryId && position) {
@@ -942,6 +962,28 @@ function ProductCard({
         ">
           <SearchHighlighter text={product.name_ar} searchTerm={searchTerm ?? ''} />
         </h3>
+        {(product.product_variants?.length ?? 0) > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {variantBadges.length > 0 ? (
+              variantBadges.map((label) => (
+                <Badge
+                  key={label}
+                  variant="secondary"
+                  className="bg-[#F5F1E8] text-[#2B2520] border-[#E8E2D1] text-[10px] sm:text-xs"
+                >
+                  {label}
+                </Badge>
+              ))
+            ) : (
+              <Badge
+                variant="secondary"
+                className="bg-[#F5F1E8] text-[#2B2520] border-[#E8E2D1] text-[10px] sm:text-xs"
+              >
+                متوفر بأحجام متعددة
+              </Badge>
+            )}
+          </div>
+        )}
         <p className="text-xs sm:text-sm text-[#8B6F47] line-clamp-2 mb-2 sm:mb-4">
           <SearchHighlighter text={product.description_ar || ''} searchTerm={searchTerm ?? ''} />
         </p>
