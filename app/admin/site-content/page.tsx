@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { SiteContentAdminClient } from "./site-content-admin-client"
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-dynamic"  
 
 type PageSettingsRow = {
   key: string
