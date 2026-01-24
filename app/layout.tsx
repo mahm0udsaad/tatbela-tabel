@@ -45,6 +45,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" className={cairo.variable}>
+    <head>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    </head>
       <body className="font-sans antialiased">
         <Suspense fallback={null}>
           <WebsiteLayout>{children}</WebsiteLayout>

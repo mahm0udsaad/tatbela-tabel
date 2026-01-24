@@ -13,7 +13,7 @@ type PageSettingsRow = {
 export default async function AdminSiteContentPage() {
   const supabase = await createClient()
 
-  const keys = ["footer", "contact_page", "about_page"]
+  const keys = ["footer", "contact_page", "about_page", "privacy_policy", "terms", "shipping_policy", "refund_policy"]
 
   const { data, error } = await supabase
     .from("page_settings")

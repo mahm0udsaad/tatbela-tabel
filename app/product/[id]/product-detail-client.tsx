@@ -38,7 +38,7 @@ type ProductRecord = {
   name_ar: string
   description_ar: string | null
   brand: string
-  price: number
+  price: number | null  // Can be null for B2B products in public search
   original_price: number | null
   rating: number | null
   reviews_count: number | null
@@ -54,7 +54,7 @@ type SimilarProduct = {
   name_ar: string
   description_ar: string | null
   brand: string
-  price: number
+  price: number | null  // Can be null for B2B products in public search
   original_price: number | null
   rating: number | null
   reviews_count: number | null
@@ -136,7 +136,8 @@ export function ProductDetailClient({
   const availableStock = activeVariant ? activeVariant.stock : product.stock
   const effectivePrice = activeVariant?.price ?? product.price
   const isOutOfStock = availableStock <= 0
-  const hidePrices = mode === "b2b" && (priceHidden || Boolean(product.b2b_price_hidden))
+  // Hide prices for B2B products when b2b_price_hidden is true, or when price is NULL (from DB migration)
+  const hidePrices = Boolean(product.b2b_price_hidden) || product.price === null
 
   useEffect(() => {
     const updateDeviceMode = () => {
@@ -399,13 +400,15 @@ export function ProductDetailClient({
             <div className="flex items-baseline gap-3 md:gap-4">
               {hidePrices ? (
                 <span className="text-lg md:text-xl font-semibold text-primary">{contactLabel}</span>
-              ) : (
+              ) : effectivePrice !== null ? (
                 <>
                   <span className="text-3xl md:text-5xl font-bold text-[#C41E3A]">{effectivePrice.toFixed(2)} ج.م</span>
                   {product.original_price && product.original_price > effectivePrice && (
                     <span className="text-xl md:text-2xl text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
                   )}
                 </>
+              ) : (
+                <span className="text-lg md:text-xl font-semibold text-primary">{contactLabel}</span>
               )}
             </div>
             {product.has_tax && !hidePrices && (
@@ -683,10 +686,11 @@ function SimilarProductsRow({
                 : true)
 
             const discount =
-              product.original_price && product.original_price > product.price
+              product.price !== null && product.original_price && product.original_price > product.price
                 ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
                 : 0
-            const hidePrice = mode === "b2b" && (priceHidden || Boolean(product.b2b_price_hidden))
+            // Hide prices for B2B products when b2b_price_hidden is true, or when price is NULL (from DB migration)
+            const hidePrice = Boolean(product.b2b_price_hidden) || product.price === null
             const productLink = mode === "b2b" ? `/b2b/product/${product.id}` : `/product/${product.id}`
 
             return (
@@ -739,7 +743,7 @@ function SimilarProductsRow({
                     <div className="flex items-baseline gap-2 mb-3">
                       {hidePrice ? (
                         <span className="text-sm font-semibold text-primary">{contactLabel}</span>
-                      ) : (
+                      ) : product.price !== null ? (
                         <>
                           <span className="text-xl md:text-2xl font-bold text-[#C41E3A]">
                             {product.price.toFixed(2)} ج.م
@@ -750,6 +754,8 @@ function SimilarProductsRow({
                             </span>
                           )}
                         </>
+                      ) : (
+                        <span className="text-sm font-semibold text-primary">{contactLabel}</span>
                       )}
                     </div>
                   </div>

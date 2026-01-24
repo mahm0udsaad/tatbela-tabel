@@ -1,5 +1,5 @@
 import { z } from "zod"
-import type { AboutPagePayload, ContactPagePayload, FooterPayload } from "@/lib/site-content/types"
+import type { AboutPagePayload, ContactPagePayload, FooterPayload, PolicyPagePayload } from "@/lib/site-content/types"
 
 const nonEmptyText = z.string().trim().min(1)
 
@@ -134,5 +134,16 @@ export function coercePayloadOrDefault<T>(schema: z.ZodType<T>, payload: unknown
   if (parsed.success) return parsed.data
   return fallback
 }
+
+export const policyPagePayloadSchema: z.ZodType<PolicyPagePayload> = z.object({
+  title: nonEmptyText,
+  sections: z.array(
+    z.object({
+      heading: nonEmptyText,
+      content: z.string().trim().min(1),
+    })
+  ).min(1),
+  footer: z.string().optional(),
+})
 
 

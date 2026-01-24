@@ -12,7 +12,7 @@ export interface SearchResult {
   description_ar: string | null
   brand: string
   type: string | null
-  price: number
+  price: number | null  // Can be null for B2B products in public search
   original_price: number | null
   rating: number | null
   reviews_count: number | null

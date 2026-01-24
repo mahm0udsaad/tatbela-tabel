@@ -35,7 +35,7 @@ type ProductRecord = {
   description_ar: string | null
   brand: string
   type: string | null
-  price: number
+  price: number | null  // Can be null for B2B products in public search
   original_price: number | null
   rating: number | null
   reviews_count: number | null
@@ -808,13 +808,14 @@ function ProductCard({
       : true)
 
   const discount =
-    product.original_price && product.original_price > product.price
+    product.price !== null && product.original_price && product.original_price > product.price
       ? Math.round(
           ((product.original_price - product.price) / product.original_price) * 100,
         )
       : 0
 
-  const hidePrices = mode === 'b2b' && (priceHidden || product.b2b_price_hidden)
+  // Hide prices for B2B products when b2b_price_hidden is true, or when price is NULL (from DB migration)
+  const hidePrices = (product.is_b2b && product.b2b_price_hidden) || product.price === null
   const productLink = mode === 'b2b' ? `/b2b/product/${product.id}` : `/product/${product.id}`
   const variantBadges = useMemo(() => {
     const variants = product.product_variants ?? []
@@ -1007,7 +1008,7 @@ function ProductCard({
           <div className="flex items-baseline gap-1.5 sm:gap-2">
             {hidePrices ? (
               <span className="text-xs sm:text-base font-semibold text-[#E8A835]">{contactLabel}</span>
-            ) : (
+            ) : product.price !== null ? (
               <>
                 <span className="text-lg sm:text-2xl font-bold text-[#C41E3A]">
                   {product.price.toFixed(2)} ج.م
@@ -1018,6 +1019,8 @@ function ProductCard({
                   </span>
                 )}
               </>
+            ) : (
+              <span className="text-xs sm:text-base font-semibold text-[#E8A835]">{contactLabel}</span>
             )}
           </div>
           {product.has_tax && !hidePrices && (

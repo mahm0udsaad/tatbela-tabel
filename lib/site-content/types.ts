@@ -55,4 +55,13 @@ export type AboutPagePayload = {
   content: string
 }
 
+export type PolicyPagePayload = {
+  title: string
+  sections: {
+    heading: string
+    content: string
+  }[]
+  footer?: string
+}
+
 
