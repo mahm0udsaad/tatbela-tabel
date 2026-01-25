@@ -175,7 +175,7 @@ export function Navbar() {
           {/* Right Side - Search + Cart + Auth */}
           <div className="flex items-center gap-4 justify-end flex-1">
             {/* Desktop Search */}
-            <div                 className="hidden md:flex items-center px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-primary">
+            <div className="hidden md:flex items-center px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-primary">
               <SearchAutocomplete
                 value={searchTerm}
                 onChange={setSearchTerm}
@@ -208,15 +208,6 @@ export function Navbar() {
                   >
                     <User size={24} className="text-foreground" />
                   </Link>
-                  <button
-                    onClick={async () => {
-                      await supabase.auth.signOut()
-                      setUser(null)
-                    }}
-                    className="p-2 hover:bg-muted rounded-lg transition-colors"
-                  >
-                    <LogOut size={24} className="text-foreground" />
-                  </button>
                 </>
               ) : (
                 <Link
@@ -280,7 +271,7 @@ export function Navbar() {
       {/* Mobile Bottom Navigation Bar */}
     </nav>
       <div className="md:hidden fixed bottom-0 right-0 left-0 bg-white/80 backdrop-blur-sm border-t border-primary/20 pb-safe z-50">
-        <div className="flex items-center justify-around h-16 px-2">
+        <div className="flex items-center justify-around h-16 px-1">
           {navLinks.map((link) => {
             const Icon = link.icon
             const isActive = pathname === link.href
@@ -288,26 +279,26 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg transition-all min-w-0 ${
                   isActive 
                     ? 'text-primary bg-primary/10' 
                     : 'text-foreground hover:text-primary hover:bg-muted'
                 }`}
               >
-                <Icon size={20} />
-                <span className="text-xs font-medium">{link.shortLabel}</span>
+                <Icon size={20} className="flex-shrink-0" />
+                <span className="text-[10px] font-medium whitespace-nowrap">{link.shortLabel}</span>
               </Link>
             )
           })}
           <Link
             href={isB2BRoute ? "/b2b/cart" : "/cart"}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all relative ${
+            className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg transition-all relative min-w-0 ${
               pathname === '/cart' || pathname === '/b2b/cart'
                 ? 'text-primary bg-primary/10'
                 : 'text-foreground hover:text-primary hover:bg-muted'
             }`}
           >
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <ShoppingCart size={20} />
               {cartCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-brand-red text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
@@ -315,7 +306,7 @@ export function Navbar() {
                 </span>
               )}
             </div>
-            <span className="text-xs font-medium">السلة</span>
+            <span className="text-[10px] font-medium whitespace-nowrap">السلة</span>
           </Link>
         </div>
       </div>
