@@ -11,6 +11,7 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 interface Order {
   id: string
@@ -53,6 +54,10 @@ export default function AdminOrders() {
   const [itemsLoading, setItemsLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<"all" | Order["status"]>("all")
   const [paymentFilter, setPaymentFilter] = useState<"all" | "online" | "cash">("all")
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set())
+  const [bulkActionStatus, setBulkActionStatus] = useState<Order["status"] | "">("")
+  const [showExportConfirmModal, setShowExportConfirmModal] = useState(false)
+  const [csvPreviewData, setCsvPreviewData] = useState<{ csvString: string, headers: string[], rows: string[][] }>({ csvString: "", headers: [], rows: [] })
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const supabase = getSupabaseClient()
 
@@ -123,6 +128,59 @@ export default function AdminOrders() {
     }
   }
 
+  const handleSelectAllOrders = () => {
+    if (selectedOrderIds.size === orders.length && orders.length > 0) {
+      setSelectedOrderIds(new Set())
+    } else {
+      setSelectedOrderIds(new Set(orders.map((order) => order.id)))
+    }
+  }
+
+  const handleSelectOrder = (orderId: string) => {
+    setSelectedOrderIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId)
+      } else {
+        newSet.add(orderId)
+      }
+      return newSet
+    })
+  }
+
+  const handleBulkStatusChange = async () => {
+    if (!bulkActionStatus || selectedOrderIds.size === 0) {
+      alert("الرجاء تحديد حالة وتحديد طلب واحد على الأقل.")
+      return
+    }
+
+    if (!confirm(`هل أنت متأكد من تغيير حالة ${selectedOrderIds.size} طلب إلى ${getStatusLabel(bulkActionStatus)}؟`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: bulkActionStatus })
+        .in("id", Array.from(selectedOrderIds))
+
+      if (error) throw error
+      
+      setOrders((prev) =>
+        prev.map((order) =>
+          selectedOrderIds.has(order.id) ? { ...order, status: bulkActionStatus as Order["status"] } : order
+        )
+      )
+      setSelectedOrderIds(new Set()) // Clear selection after bulk update
+      setBulkActionStatus("") // Clear bulk action status
+      alert("تم تحديث حالة الطلبات بنجاح.")
+    } catch (error) {
+      console.error("خطأ في تحديث حالة الطلبات المجمعة:", error)
+      alert("حدث خطأ أثناء تحديث حالة الطلبات.")
+    }
+  }
+
+
   const fetchOrderItems = async (orderId: string) => {
     setItemsLoading(true)
     try {
@@ -190,38 +248,158 @@ export default function AdminOrders() {
     return method === "online" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
   }
 
+  const generateCsvContent = async (data: Order[]) => { // Now returns content and parsed data
+    if (data.length === 0) return { csvString: "", headers: [], rows: [] };
+
+    // Collect all order IDs from selected orders
+    const orderIds = data.map(order => order.id);
+
+    // Fetch all order items for the selected orders in a single query
+    const { data: allOrderItems, error: itemsError } = await supabase
+      .from("order_items")
+      .select("product_name, product_brand, quantity")
+      .in("order_id", orderIds);
+    
+    if (itemsError) {
+      console.error("Error fetching order items for CSV aggregation:", itemsError);
+      alert("حدث خطأ أثناء جلب تفاصيل المنتجات للتصدير.");
+      return { csvString: "", headers: [], rows: [] };
+    }
+
+    if (!allOrderItems || allOrderItems.length === 0) {
+      return { csvString: "", headers: [], rows: [] };
+    }
+
+    // Aggregate quantities for each product
+    const productAggregation = new Map<string, { brand: string, quantity: number }>();
+
+    allOrderItems.forEach(item => {
+      const key = `${item.product_name}::${item.product_brand}`; // Use product name and brand as a unique key
+      if (productAggregation.has(key)) {
+        const existing = productAggregation.get(key)!;
+        existing.quantity += item.quantity;
+        productAggregation.set(key, existing);
+      } else {
+        productAggregation.set(key, { brand: item.product_brand, quantity: item.quantity });
+      }
+    });
+
+    const headers = [
+      "Product Name",
+      "Product Brand",
+      "Total Quantity"
+    ]
+    
+    let csvString = headers.map(h => `"${h}"`).join(",") + "\n"
+    const rows: string[][] = [];
+
+    productAggregation.forEach((value, key) => {
+      const [productName] = key.split("::");
+      const row = [
+        productName,
+        value.brand,
+        value.quantity.toString() // Convert number to string for CSV
+      ];
+      csvString += row.map(field => `"${field}"`).join(",") + "\n";
+      rows.push(row);
+    });
+
+    return { csvString, headers, rows };
+  }
+
+  const triggerCsvDownload = (csvString: string) => {
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob)
+      link.setAttribute("href", url)
+      link.setAttribute("download", "inventory_summary.csv")
+      link.style.visibility = "hidden"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
+  const handleExportCsv = async () => {
+    if (selectedOrderIds.size === 0) {
+      alert("الرجاء تحديد طلب واحد على الأقل للتصدير.")
+      return
+    }
+
+    const selectedOrders = orders.filter(order => selectedOrderIds.has(order.id));
+    const { csvString, headers, rows } = await generateCsvContent(selectedOrders);
+
+    if (csvString) {
+      setCsvPreviewData({ headers, rows });
+      setShowExportConfirmModal(true);
+    } else {
+      alert("لم يتم العثور على بيانات للتصدير.");
+    }
+  };
+
   return (
     <div className=" rounded-lg">
       <h1 className="text-3xl font-bold text-[#2B2520] mb-8">إدارة الطلبات</h1>
 
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col md:flex-row gap-4 md:items-center">
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-          <label className="text-sm text-[#8B6F47] font-semibold">حالة الطلب</label>
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col md:flex-row gap-4 md:items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <label className="text-sm text-[#8B6F47] font-semibold">حالة الطلب</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as Order["status"] | "all")}
+              className="px-3 py-2 border border-[#D9D4C8] rounded-lg text-sm focus:outline-none focus:border-[#E8A835]"
+            >
+              <option value="all">الكل</option>
+              <option value="pending">قيد الانتظار</option>
+              <option value="processing">قيد المعالجة</option>
+              <option value="shipped">تم الشحن</option>
+              <option value="delivered">تم التسليم</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <label className="text-sm text-[#8B6F47] font-semibold">طريقة الدفع</label>
+            <select
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value as "all" | "online" | "cash")}
+              className="px-3 py-2 border border-[#D9D4C8] rounded-lg text-sm focus:outline-none focus:border-[#E8A835]"
+            >
+              <option value="all">الكل</option>
+              <option value="online">دفع إلكتروني</option>
+              <option value="cash">دفع عند الاستلام</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as Order["status"] | "all")}
-            className="px-3 py-2 border border-[#D9D4C8] rounded-lg text-sm focus:outline-none focus:border-[#E8A835]"
+            value={bulkActionStatus}
+            onChange={(e) => setBulkActionStatus(e.target.value as Order["status"])}
+            disabled={selectedOrderIds.size === 0}
+            className="px-3 py-2 border border-[#D9D4C8] rounded-lg text-sm focus:outline-none focus:border-[#E8A835] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="all">الكل</option>
+            <option value="">تغيير الحالة</option>
             <option value="pending">قيد الانتظار</option>
             <option value="processing">قيد المعالجة</option>
             <option value="shipped">تم الشحن</option>
             <option value="delivered">تم التسليم</option>
           </select>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-          <label className="text-sm text-[#8B6F47] font-semibold">طريقة الدفع</label>
-          <select
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value as "all" | "online" | "cash")}
-            className="px-3 py-2 border border-[#D9D4C8] rounded-lg text-sm focus:outline-none focus:border-[#E8A835]"
+          <button
+            onClick={handleBulkStatusChange}
+            disabled={!bulkActionStatus || selectedOrderIds.size === 0}
+            className="px-4 py-2 bg-[#8B6F47] text-white rounded-lg text-sm font-semibold hover:bg-[#8B6F47]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="all">الكل</option>
-            <option value="online">دفع إلكتروني</option>
-            <option value="cash">دفع عند الاستلام</option>
-          </select>
+            تطبيق ({selectedOrderIds.size})
+          </button>
         </div>
+        <button
+          onClick={handleExportCsv}
+          disabled={selectedOrderIds.size === 0}
+          className="px-4 py-2 bg-[#E8A835] text-white rounded-lg text-sm font-semibold hover:bg-[#E8A835]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          تصدير CSV ({selectedOrderIds.size})
+        </button>
       </div>
 
         {loading ? (
@@ -233,6 +411,14 @@ export default function AdminOrders() {
             <table className="w-full">
               <thead className="bg-[#F5F1E8] border-b border-[#D9D4C8]">
                 <tr>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">
+                    <input
+                      type="checkbox"
+                      checked={orders.length > 0 && selectedOrderIds.size === orders.length}
+                      onChange={handleSelectAllOrders}
+                      className="accent-[#E8A835] size-4"
+                    />
+                  </th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">رقم الطلب</th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">المبلغ</th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-[#2B2520]">الحالة</th>
@@ -244,13 +430,21 @@ export default function AdminOrders() {
               <tbody>
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-[#8B6F47]">
+                    <td colSpan={7} className="px-6 py-8 text-center text-[#8B6F47]">
                       لا توجد طلبات حالياً
                     </td>
                   </tr>
                 ) : (
                   orders.map((order) => (
                     <tr key={order.id} className="border-b border-[#D9D4C8] hover:bg-[#F9F7F3]">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderIds.has(order.id)}
+                          onChange={() => handleSelectOrder(order.id)}
+                          className="accent-[#E8A835] size-4"
+                        />
+                      </td>
                       <td className="px-6 py-4 text-[#2B2520] font-semibold">
                         {order.order_number || order.id}
                       </td>
@@ -408,6 +602,60 @@ export default function AdminOrders() {
             <div ref={loadMoreRef} className="h-8" aria-hidden />
           </div>
         )}
+
+      <Dialog open={showExportConfirmModal} onOpenChange={setShowExportConfirmModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>تأكيد تصدير المنتجات إلى CSV</DialogTitle>
+            <DialogDescription>
+              سيتم تصدير المنتجات المجمعة من الطلبات المحددة إلى ملف CSV. يرجى مراجعة المعاينة أدناه:
+            </DialogDescription>
+          </DialogHeader>
+          {csvPreviewData.rows.length > 0 ? (
+            <div className="mt-4 border rounded-lg overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-[#F5F1E8]">
+                  <tr>
+                    {csvPreviewData.headers.map((header, index) => (
+                      <th key={index} className="px-4 py-2 text-right text-sm font-semibold text-[#2B2520] whitespace-nowrap">
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {csvPreviewData.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="border-t border-[#D9D4C8]">
+                      {row.map((cell, cellIndex) => (
+                        <td key={cellIndex} className="px-4 py-2 text-right text-[#2B2520] whitespace-nowrap">
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="mt-4 text-[#8B6F47]">لا توجد بيانات للمعاينة.</p>
+          )}
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setShowExportConfirmModal(false)}>
+              إلغاء
+            </Button>
+            <Button
+              onClick={() => {
+                triggerCsvDownload(csvPreviewData.csvString);
+                setShowExportConfirmModal(false);
+                setSelectedOrderIds(new Set()); // Clear selection after export
+              }}
+              disabled={csvPreviewData.csvString === ""}
+            >
+              تأكيد التصدير
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

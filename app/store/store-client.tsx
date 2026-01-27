@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Star, ChevronDown, Filter, Search, X } from "lucide-react"
-
 import { AddToCartButton } from "@/components/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -45,6 +44,7 @@ type ProductRecord = {
   is_featured?: boolean | null
   is_b2b?: boolean | null
   b2b_price_hidden?: boolean | null
+  has_tax?: boolean | null
   product_images: ProductImage[] | null
   product_variants: ProductVariant[] | null
 }
@@ -65,6 +65,8 @@ interface StoreClientProps {
   priceHidden?: boolean
   contactLabel?: string
   contactUrl?: string
+  isCategoryPage?: boolean
+  hideAllFilters?: boolean
 }
 
 export function StoreClient({
@@ -81,44 +83,27 @@ export function StoreClient({
   priceHidden = false,
   contactLabel = "تواصل مع المبيعات",
   contactUrl = "/contact",
+  isCategoryPage = false,
+  hideAllFilters = false,
 }: StoreClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const categoryParam = searchParams.get("category")?.toLowerCase() ?? null
   const isB2B = mode === "b2b"
   const isMobile = useIsMobile()
   const [filtersOpen, setFiltersOpen] = useState(false)
   const requestSeqRef = useRef(0)
   const [priceTouched, setPriceTouched] = useState(false)
 
-  // #region agent log - mount snapshot (hypothesis A/E)
-  useEffect(() => {
-    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A',location:'app/store/store-client.tsx:mount',message:'StoreClient mount snapshot',data:{initialProductsLen:initialProducts.length,initialTotal,calculatedInitialTotal,initialSearch,categoryScopeIdsLen:categoryScopeIds.length,initialSelectedCategories,mode,priceHidden},timestamp:Date.now()}
-    fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
-    try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
-  }, [])
-  // #endregion agent log
-
-  // #region agent log - relay smoke test (hypothesis Z)
-  useEffect(() => {
-    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'Z',location:'app/store/store-client.tsx:relay-mount',message:'Relay smoke test (same-origin)',data:{ua:typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'},timestamp:Date.now()}
-    fetch('/api/agent-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
-    try { navigator.sendBeacon?.('/api/agent-log', JSON.stringify(payload)) } catch {}
-  }, [])
-  // #endregion agent log
-
-  // #region agent log - post-fix version marker (hypothesis Z)
-  useEffect(() => {
-    const payload = {sessionId:'debug-session',runId:'post-fix',hypothesisId:'Z',location:'app/store/store-client.tsx:version',message:'StoreClient version marker',data:{version:'2026-01-06-priceTouched-v1'},timestamp:Date.now()}
-    fetch('/api/agent-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
-    try { navigator.sendBeacon?.('/api/agent-log', JSON.stringify(payload)) } catch {}
-  }, [])
-  // #endregion agent log
   
   // Calculate defaults from initialProducts if not provided
   const calculatedPriceBounds = useMemo(() => {
     if (priceBounds) return priceBounds
     if (initialProducts.length === 0) return { min: 0, max: 1000 }
-    const prices = initialProducts.map(p => p.price)
+    const prices = initialProducts
+      .map((p) => p.price)
+      .filter((n): n is number => typeof n === "number" && Number.isFinite(n))
+    if (prices.length === 0) return { min: 0, max: 1000 }
     return {
       min: Math.min(...prices),
       max: Math.max(...prices),
@@ -162,14 +147,45 @@ export function StoreClient({
 
   const brandOptions = useMemo(() => Array.from(new Set(calculatedBrands)), [calculatedBrands])
 
+  const rootScopeCategoryId = useMemo(() => {
+    if (!isCategoryPage) return null
+    return categoryScopeIds.length > 0 ? categoryScopeIds[0] : null
+  }, [isCategoryPage, categoryScopeIds])
+
+  const blendsSubcategoryOptions = useMemo(() => {
+    if (categoryParam !== "blends") return []
+    const root = categories.find((cat) => cat.slug === "blends")
+    if (!root) return []
+
+    const children = categories.filter((cat) => cat.parent_id === root.id)
+    if (children.length === 0) return []
+
+    const desiredOrder = ["خلطات لحوم", "خلطات الدجاج", "خلطات المأكولات البحرية", "خلطات الأرز"]
+    const byName = new Map(children.map((cat) => [cat.name_ar, cat]))
+    const ordered = desiredOrder.map((label) => byName.get(label)).filter(Boolean) as typeof children
+    const final = ordered.length > 0 ? ordered : children
+
+    return final.map((cat) => ({ id: cat.id, label: cat.name_ar }))
+  }, [categories, categoryParam])
+
+  const showBlendsFilters = !hideAllFilters && isCategoryPage && categoryParam === "blends" && blendsSubcategoryOptions.length > 0
+
+  const effectiveSelectedCategories = useMemo(() => {
+    if (!rootScopeCategoryId) return selectedCategories
+    // On category pages, the server preselects the root category. Treat that as "no explicit filter"
+    // so users can narrow down by selecting subcategories.
+    if (selectedCategories.length === 1 && selectedCategories[0] === rootScopeCategoryId) return []
+    return selectedCategories.filter((id) => id !== rootScopeCategoryId)
+  }, [selectedCategories, rootScopeCategoryId])
+
   const selectedCategoryIds = useMemo(() => {
     const allowed = new Set<string>()
-    selectedCategories.forEach((categoryId) => {
+    effectiveSelectedCategories.forEach((categoryId) => {
       allowed.add(categoryId)
       categoryDescendants.get(categoryId)?.forEach((childId) => allowed.add(childId))
     })
     return Array.from(allowed)
-  }, [selectedCategories, categoryDescendants])
+  }, [effectiveSelectedCategories, categoryDescendants])
 
   const categoryFilterIds = useMemo(() => {
     // If user explicitly selects categories, honor them
@@ -253,7 +269,7 @@ export function StoreClient({
       if (reset && !priceTouched && (searchResult.data?.length ?? 0) > 0) {
         const prices = (searchResult.data ?? [])
           .map((p) => p.price)
-          .filter((n) => Number.isFinite(n))
+          .filter((n): n is number => typeof n === "number" && Number.isFinite(n))
         if (prices.length > 0) {
           const nextMin = Math.min(...prices)
           const nextMax = Math.max(...prices)
@@ -332,7 +348,14 @@ export function StoreClient({
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategories((prev) => {
-      const next = prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
+      let next = prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
+
+      // On category pages, selecting a subcategory should narrow results. Remove the root selection
+      // so it doesn't "override" the narrower subcategory filter.
+      if (rootScopeCategoryId && categoryId !== rootScopeCategoryId) {
+        next = next.filter((id) => id !== rootScopeCategoryId)
+      }
+
       // #region agent log - category toggle (hypothesis A/E)
       const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'E',location:'app/store/store-client.tsx:handleCategoryToggle',message:'Category toggled',data:{categoryId,prevSelected:prev,nextSelected:next},timestamp:Date.now()}
       fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
@@ -417,80 +440,105 @@ export function StoreClient({
       </div>
 
       <Accordion type="multiple" defaultValue={["categories", "brands", "price"]} className="w-full">
-        <AccordionItem value="categories" className="border-none">
-          <FilterSection title="الفئات" accordion>
-            <CategoryFilter tree={categoryTree} selected={selectedCategories} onToggle={handleCategoryToggle} />
-          </FilterSection>
-        </AccordionItem>
-
-        <AccordionItem value="brands" className="border-none">
-          <FilterSection title="العلامات" accordion>
-            <div className="space-y-3">
-              {brandOptions.map((brand) => (
-                <label
-                  key={brand}
-                  className="flex items-center gap-3 text-sm text-[#2B2520] cursor-pointer py-2 min-h-[44px]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedBrands.includes(brand)}
-                    onChange={() => handleBrandToggle(brand)}
-                    className="size-5 cursor-pointer"
-                  />
-                  <span className="flex-1">{brand}</span>
-                </label>
-              ))}
-            </div>
-          </FilterSection>
-        </AccordionItem>
-
-        <AccordionItem value="price" className="border-none">
-          <FilterSection title="السعر" accordion>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47] px-1">
-                <span>{uiPriceBounds.min.toFixed(0)} ج.م</span>
-                <ChevronDown size={16} className="text-[#E8A835]" />
-                <span>{uiPriceBounds.max.toFixed(0)} ج.م</span>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs text-[#8B6F47] mb-2">من</label>
-                  <input
-                    type="number"
-                    value={priceRange[0]}
-                    min={uiPriceBounds.min}
-                    max={priceRange[1]}
-                    onChange={(e) => {
-                      setPriceTouched(true)
-                      setPriceRange([Number(e.target.value), priceRange[1]])
-                    }}
-                    className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
-                  />
+        {!hideAllFilters && (!isCategoryPage || showBlendsFilters) && (
+          <AccordionItem value="categories" className="border-none">
+            <FilterSection title={showBlendsFilters ? "أنواع الخلطات" : "الفئات"} accordion>
+              {showBlendsFilters ? (
+                <div className="space-y-3">
+                  {blendsSubcategoryOptions.map((option) => (
+                    <label
+                      key={option.id}
+                      className="flex items-center gap-3 text-sm text-[#2B2520] cursor-pointer py-2 min-h-[44px]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(option.id)}
+                        onChange={() => handleCategoryToggle(option.id)}
+                        className="size-5 cursor-pointer"
+                      />
+                      <span className="flex-1">{option.label}</span>
+                    </label>
+                  ))}
                 </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-[#8B6F47] mb-2">إلى</label>
-                  <input
-                    type="number"
-                    value={priceRange[1]}
-                    min={priceRange[0]}
-                    max={uiPriceBounds.max}
-                    onChange={(e) => {
-                      setPriceTouched(true)
-                      setPriceRange([priceRange[0], Number(e.target.value)])
-                    }}
-                    className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
-                  />
+              ) : (
+                <CategoryFilter tree={categoryTree} selected={selectedCategories} onToggle={handleCategoryToggle} />
+              )}
+            </FilterSection>
+          </AccordionItem>
+        )}
+
+        {!hideAllFilters && (
+          <AccordionItem value="brands" className="border-none">
+            <FilterSection title="العلامات" accordion>
+              <div className="space-y-3">
+                {brandOptions.map((brand) => (
+                  <label
+                    key={brand}
+                    className="flex items-center gap-3 text-sm text-[#2B2520] cursor-pointer py-2 min-h-[44px]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedBrands.includes(brand)}
+                      onChange={() => handleBrandToggle(brand)}
+                      className="size-5 cursor-pointer"
+                    />
+                    <span className="flex-1">{brand}</span>
+                  </label>
+                ))}
+              </div>
+            </FilterSection>
+          </AccordionItem>
+        )}
+
+        {!hideAllFilters && (
+          <AccordionItem value="price" className="border-none">
+            <FilterSection title="السعر" accordion>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47] px-1">
+                  <span>{uiPriceBounds.min.toFixed(0)} ج.م</span>
+                  <ChevronDown size={16} className="text-[#E8A835]" />
+                  <span>{uiPriceBounds.max.toFixed(0)} ج.م</span>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs text-[#8B6F47] mb-2">من</label>
+                    <input
+                      type="number"
+                      value={priceRange[0]}
+                      min={uiPriceBounds.min}
+                      max={priceRange[1]}
+                      onChange={(e) => {
+                        setPriceTouched(true)
+                        setPriceRange([Number(e.target.value), priceRange[1]])
+                      }}
+                      className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-[#8B6F47] mb-2">إلى</label>
+                    <input
+                      type="number"
+                      value={priceRange[1]}
+                      min={priceRange[0]}
+                      max={uiPriceBounds.max}
+                      onChange={(e) => {
+                        setPriceTouched(true)
+                        setPriceRange([priceRange[0], Number(e.target.value)])
+                      }}
+                      className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </FilterSection>
-        </AccordionItem>
+            </FilterSection>
+          </AccordionItem>
+        )}
       </Accordion>
     </div>
   )
 
   const activeFiltersCount =
-    selectedCategories.length +
+    effectiveSelectedCategories.length +
     selectedBrands.length +
     (priceTouched && (priceRange[0] !== uiPriceBounds.min || priceRange[1] !== uiPriceBounds.max) ? 1 : 0)
 
@@ -526,59 +574,84 @@ export function StoreClient({
               />
             </div>
 
-            <FilterSection title="الفئات">
-              <CategoryFilter tree={categoryTree} selected={selectedCategories} onToggle={handleCategoryToggle} />
-            </FilterSection>
+            {!hideAllFilters && (!isCategoryPage || showBlendsFilters) && (
+              <FilterSection title={showBlendsFilters ? "أنواع الخلطات" : "الفئات"}>
+                {showBlendsFilters ? (
+                  <div className="space-y-3">
+                    {blendsSubcategoryOptions.map((option) => (
+                      <label
+                        key={option.id}
+                        className="flex items-center gap-3 text-sm text-[#2B2520] cursor-pointer py-2 min-h-[44px]"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(option.id)}
+                          onChange={() => handleCategoryToggle(option.id)}
+                          className="size-5 cursor-pointer"
+                        />
+                        <span className="flex-1">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <CategoryFilter tree={categoryTree} selected={selectedCategories} onToggle={handleCategoryToggle} />
+                )}
+              </FilterSection>
+            )}
 
-            <FilterSection title="العلامات">
-              <div className="space-y-2">
-                {brandOptions.map((brand) => (
-                  <label key={brand} className="flex items-center gap-2 text-sm text-[#2B2520] cursor-pointer py-1">
+            {!hideAllFilters && (
+              <FilterSection title="العلامات">
+                <div className="space-y-2">
+                  {brandOptions.map((brand) => (
+                    <label key={brand} className="flex items-center gap-2 text-sm text-[#2B2520] cursor-pointer py-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedBrands.includes(brand)}
+                        onChange={() => handleBrandToggle(brand)}
+                        className="cursor-pointer"
+                      />
+                      {brand}
+                    </label>
+                  ))}
+                </div>
+              </FilterSection>
+            )}
+
+            {!hideAllFilters && (
+              <FilterSection title="السعر">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47]">
+                    <span>{uiPriceBounds.min.toFixed(0)} ج.م</span>
+                    <ChevronDown size={16} className="text-[#E8A835]" />
+                    <span>{uiPriceBounds.max.toFixed(0)} ج.م</span>
+                  </div>
+                  <div className="flex gap-2">
                     <input
-                      type="checkbox"
-                      checked={selectedBrands.includes(brand)}
-                      onChange={() => handleBrandToggle(brand)}
-                      className="cursor-pointer"
+                      type="number"
+                      value={priceRange[0]}
+                      min={uiPriceBounds.min}
+                      max={priceRange[1]}
+                      onChange={(e) => {
+                        setPriceTouched(true)
+                        setPriceRange([Number(e.target.value), priceRange[1]])
+                      }}
+                      className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
                     />
-                    {brand}
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
-
-            <FilterSection title="السعر">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47]">
-                  <span>{uiPriceBounds.min.toFixed(0)} ج.م</span>
-                  <ChevronDown size={16} className="text-[#E8A835]" />
-                  <span>{uiPriceBounds.max.toFixed(0)} ج.م</span>
+                    <input
+                      type="number"
+                      value={priceRange[1]}
+                      min={priceRange[0]}
+                      max={uiPriceBounds.max}
+                      onChange={(e) => {
+                        setPriceTouched(true)
+                        setPriceRange([priceRange[0], Number(e.target.value)])
+                      }}
+                      className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
+                    />
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={priceRange[0]}
-                    min={uiPriceBounds.min}
-                    max={priceRange[1]}
-                    onChange={(e) => {
-                      setPriceTouched(true)
-                      setPriceRange([Number(e.target.value), priceRange[1]])
-                    }}
-                    className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
-                  />
-                  <input
-                    type="number"
-                    value={priceRange[1]}
-                    min={priceRange[0]}
-                    max={uiPriceBounds.max}
-                    onChange={(e) => {
-                      setPriceTouched(true)
-                      setPriceRange([priceRange[0], Number(e.target.value)])
-                    }}
-                    className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
-                  />
-                </div>
-              </div>
-            </FilterSection>
+              </FilterSection>
+            )}
           </aside>
 
           <div className="flex-1 space-y-6 md:space-y-8">

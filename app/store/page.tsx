@@ -164,6 +164,7 @@ export default async function StorePage({
         initialSearch={params.search ?? ""}
         initialSelectedCategories={params.search ? [] : initialSelectedCategories}
         categoryScopeIds={params.search ? [] : categoryIds}
+        isCategoryPage={!!params.category}
       />
     </main>
   )

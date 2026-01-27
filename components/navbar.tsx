@@ -181,6 +181,7 @@ export function Navbar() {
                 onChange={setSearchTerm}
                 onSubmit={handleSearchSubmit}
                 placeholder="ابحث عن منتج أو خلطة"
+                mode={isB2BRoute ? "b2b" : "b2c"}
                 className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-foreground placeholder:text-muted-foreground"
                 showRecentSearches={true}
                 showPopularSearches={true}
