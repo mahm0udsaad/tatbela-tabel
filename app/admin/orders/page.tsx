@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { CheckCircle, Clock, Truck, Package, Eye } from "lucide-react"
+import { CheckCircle, Clock, Truck, Package, Eye, Printer } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -201,6 +201,283 @@ export default function AdminOrders() {
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order)
     fetchOrderItems(order.id)
+  }
+
+  const handlePrintOrder = () => {
+    if (!selectedOrder) return
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      alert('الرجاء السماح بالنوافذ المنبثقة لطباعة الطلب')
+      return
+    }
+
+    // Generate HTML content for printing
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>طلب #${selectedOrder.order_number || selectedOrder.id}</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+            color: #2B2520;
+            line-height: 1.6;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #E8A835;
+            padding-bottom: 20px;
+          }
+          .header h1 {
+            color: #2B2520;
+            font-size: 28px;
+            margin-bottom: 10px;
+          }
+          .header .order-number {
+            font-size: 20px;
+            color: #8B6F47;
+            font-weight: bold;
+          }
+          .header .order-date {
+            font-size: 14px;
+            color: #8B6F47;
+            margin-top: 5px;
+          }
+          .section {
+            margin-bottom: 25px;
+          }
+          .section-title {
+            background-color: #F5F1E8;
+            padding: 10px 15px;
+            font-weight: bold;
+            font-size: 16px;
+            color: #2B2520;
+            margin-bottom: 15px;
+            border-right: 4px solid #E8A835;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+          }
+          .info-box {
+            background-color: #F9F7F3;
+            padding: 15px;
+            border-radius: 8px;
+          }
+          .info-box h3 {
+            font-size: 14px;
+            color: #8B6F47;
+            margin-bottom: 8px;
+            font-weight: 600;
+          }
+          .info-box p {
+            font-size: 13px;
+            color: #2B2520;
+            margin: 3px 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+          }
+          table thead {
+            background-color: #F5F1E8;
+          }
+          table th {
+            padding: 12px;
+            text-align: right;
+            font-size: 14px;
+            color: #2B2520;
+            border-bottom: 2px solid #D9D4C8;
+          }
+          table td {
+            padding: 10px 12px;
+            text-align: right;
+            font-size: 13px;
+            border-bottom: 1px solid #D9D4C8;
+          }
+          table tbody tr:hover {
+            background-color: #F9F7F3;
+          }
+          .product-name {
+            font-weight: 600;
+            color: #2B2520;
+          }
+          .product-brand {
+            font-size: 11px;
+            color: #8B6F47;
+            margin-top: 2px;
+          }
+          .summary {
+            background-color: #F9F7F3;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+          }
+          .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+          }
+          .summary-row.total {
+            border-top: 2px solid #D9D4C8;
+            margin-top: 10px;
+            padding-top: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #C41E3A;
+          }
+          .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          .badge-online {
+            background-color: #d4edda;
+            color: #155724;
+          }
+          .badge-cash {
+            background-color: #d1ecf1;
+            color: #0c5460;
+          }
+          .status-pending { color: #856404; }
+          .status-processing { color: #004085; }
+          .status-shipped { color: #d63384; }
+          .status-delivered { color: #155724; }
+          .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #D9D4C8;
+            color: #8B6F47;
+            font-size: 12px;
+          }
+          @media print {
+            body {
+              padding: 20px;
+            }
+            .no-print {
+              display: none;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>تفاصيل الطلب</h1>
+          <div class="order-number">رقم الطلب: #${selectedOrder.order_number || selectedOrder.id}</div>
+          <div class="order-date">تاريخ الطلب: ${new Date(selectedOrder.created_at).toLocaleDateString("ar-EG")} - ${new Date(selectedOrder.created_at).toLocaleTimeString("ar-EG", { hour: '2-digit', minute: '2-digit' })}</div>
+          <div style="margin-top: 10px;">
+            <span class="badge ${selectedOrder.payment_method === 'online' ? 'badge-online' : 'badge-cash'}">
+              ${getPaymentMethodLabel(selectedOrder.payment_method)}
+            </span>
+            <span class="badge status-${selectedOrder.status}" style="margin-right: 10px; background-color: #F5F1E8;">
+              الحالة: ${getStatusLabel(selectedOrder.status)}
+            </span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">معلومات العميل والتوصيل</div>
+          <div class="info-grid">
+            <div class="info-box">
+              <h3>بيانات العميل</h3>
+              <p><strong>الاسم:</strong> ${selectedOrder.first_name} ${selectedOrder.last_name}</p>
+              <p><strong>البريد الإلكتروني:</strong> ${selectedOrder.customer_email}</p>
+              <p><strong>الهاتف:</strong> ${selectedOrder.phone}</p>
+            </div>
+            <div class="info-box">
+              <h3>عنوان التوصيل</h3>
+              <p><strong>العنوان:</strong> ${selectedOrder.address}</p>
+              <p><strong>المدينة:</strong> ${selectedOrder.city}</p>
+              <p><strong>الرمز البريدي:</strong> ${selectedOrder.postal_code}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">المنتجات المطلوبة</div>
+          <table>
+            <thead>
+              <tr>
+                <th>المنتج</th>
+                <th>الكمية</th>
+                <th>السعر</th>
+                <th>الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orderItems.map(item => `
+                <tr>
+                  <td>
+                    <div class="product-name">${item.product_name}</div>
+                    <div class="product-brand">${item.product_brand}</div>
+                  </td>
+                  <td>${item.quantity}</td>
+                  <td>${item.price.toFixed(2)} ج.م</td>
+                  <td><strong>${item.total.toFixed(2)} ج.م</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="summary">
+          <div class="summary-row">
+            <span>المجموع الفرعي:</span>
+            <span><strong>${selectedOrder.subtotal.toFixed(2)} ج.م</strong></span>
+          </div>
+          <div class="summary-row">
+            <span>تكلفة الشحن:</span>
+            <span><strong>${selectedOrder.shipping_cost.toFixed(2)} ج.م</strong></span>
+          </div>
+          <div class="summary-row">
+            <span>الضريبة:</span>
+            <span><strong>${selectedOrder.tax_amount.toFixed(2)} ج.م</strong></span>
+          </div>
+          <div class="summary-row total">
+            <span>الإجمالي النهائي:</span>
+            <span>${selectedOrder.total_amount.toFixed(2)} ج.م</span>
+          </div>
+          <div class="summary-row" style="border-top: 1px solid #D9D4C8; margin-top: 10px; padding-top: 10px; font-size: 13px;">
+            <span>طريقة الدفع:</span>
+            <span><strong>${getPaymentMethodLabel(selectedOrder.payment_method)}</strong></span>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>شكراً لتعاملكم معنا</p>
+          <p style="margin-top: 5px;">تم الطباعة في: ${new Date().toLocaleDateString("ar-EG")} - ${new Date().toLocaleTimeString("ar-EG")}</p>
+        </div>
+
+        <script>
+          // Auto print when page loads
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(printContent)
+    printWindow.document.close()
   }
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -463,7 +740,10 @@ export default function AdminOrders() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-[#8B6F47]">
-                        {new Date(order.created_at).toLocaleDateString("ar-EG")}
+                        <div className="flex flex-col">
+                          <span>{new Date(order.created_at).toLocaleDateString("ar-EG")}</span>
+                          <span className="text-xs text-[#8B6F47]/70">{new Date(order.created_at).toLocaleTimeString("ar-EG", { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -492,16 +772,29 @@ export default function AdminOrders() {
                               <DialogHeader>
                                 <DialogTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                   <span>تفاصيل الطلب #{selectedOrder?.order_number || selectedOrder?.id}</span>
-                                  {selectedOrder && (
-                                    <span
-                                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentMethodClasses(selectedOrder.payment_method)}`}
-                                    >
-                                      {getPaymentMethodLabel(selectedOrder.payment_method)}
-                                    </span>
-                                  )}
+                                  <div className="flex items-center gap-2">
+                                    {selectedOrder && (
+                                      <>
+                                        <span
+                                          className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentMethodClasses(selectedOrder.payment_method)}`}
+                                        >
+                                          {getPaymentMethodLabel(selectedOrder.payment_method)}
+                                        </span>
+                                        <Button
+                                          onClick={handlePrintOrder}
+                                          variant="outline"
+                                          size="sm"
+                                          className="flex items-center gap-2"
+                                        >
+                                          <Printer size={16} />
+                                          طباعة
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
                                 </DialogTitle>
                                 <DialogDescription>
-                                  تم الطلب في {selectedOrder && new Date(selectedOrder.created_at).toLocaleDateString("ar-EG")}
+                                  تم الطلب في {selectedOrder && new Date(selectedOrder.created_at).toLocaleDateString("ar-EG")} - {selectedOrder && new Date(selectedOrder.created_at).toLocaleTimeString("ar-EG", { hour: '2-digit', minute: '2-digit' })}
                                 </DialogDescription>
                               </DialogHeader>
 
