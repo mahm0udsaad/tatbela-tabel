@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition, useCallback } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Star, ShoppingCart, Heart, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react"
 import { submitReviewAction } from "./actions"
 import useEmblaCarousel from "embla-carousel-react"
@@ -296,15 +297,18 @@ export function ProductDetailClient({
               <div className="flex">
                 {images.map((image) => (
                   <div key={image.id} className="flex-[0_0_100%] min-w-0">
-                    <div className="relative flex items-center justify-center">
-                      <img
+                    <div className="relative flex items-center justify-center aspect-square">
+                      <Image
                         src={image.image_url}
                         alt={product.name_ar}
-                        className="max-w-full object-contain"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-contain"
                         loading="lazy"
+                        quality={85}
                       />
                       {isOutOfStock && (
-                        <span className="absolute top-4 left-4 bg-black/80 text-white px-3 py-1 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-semibold">
+                        <span className="absolute top-4 left-4 bg-black/80 text-white px-3 py-1 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-semibold z-10">
                           غير متوفر مؤقتاً
                         </span>
                       )}
@@ -362,12 +366,15 @@ export function ProductDetailClient({
                       : "border-transparent hover:border-border"
                   }`}
                 >
-                  <div className="w-full h-full flex items-center justify-center bg-[#F5F1E8]">
-                    <img
+                  <div className="w-full h-full relative bg-[#F5F1E8]">
+                    <Image
                       src={image.image_url}
                       alt={product.name_ar}
-                      className="max-h-full max-w-full object-contain"
+                      fill
+                      sizes="100px"
+                      className="object-contain"
                       loading="lazy"
+                      quality={75}
                     />
                   </div>
                 </button>
@@ -703,10 +710,14 @@ function SimilarProductsRow({
                   className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all border border-[#E8E2D1] flex flex-col group h-full"
                 >
                   <div className="relative h-48 bg-muted overflow-hidden">
-                    <img
+                    <Image
                       src={primaryImage}
                       alt={product.name_ar}
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 bg-white"
+                      fill
+                      sizes="(max-width: 640px) 85vw, (max-width: 1024px) 45vw, 30vw"
+                      className="object-contain group-hover:scale-105 transition-transform duration-300 bg-white"
+                      loading="lazy"
+                      quality={80}
                     />
                     {discount > 0 && (
                       <span className="absolute top-2 left-2 bg-[#C41E3A] text-white px-2 py-1 rounded-full text-xs font-bold z-10">

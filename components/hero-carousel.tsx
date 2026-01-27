@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useMemo } from 'react'
 import Autoplay from 'embla-carousel-autoplay'
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
@@ -44,10 +45,14 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
                   href={slide.link_url}
                   className="block relative w-full aspect-[4/3] sm:aspect-[5/3] md:aspect-[2/1] lg:aspect-[21/9] xl:aspect-[1850/820] overflow-hidden rounded-2xl md:rounded-[32px] bg-[#1f1b16] cursor-pointer group"
                 >
-                  <img
+                  <Image
                     src={slide.image_url}
                     alt={slide.alt_text ?? 'صورة السلايدر'}
-                    className="h-full w-full object-contain md:object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, (max-width: 1024px) 100vw, 1850px"
+                    className="object-contain md:object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                    priority
+                    quality={85}
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-10 flex flex-col gap-2 md:gap-4 text-white">
@@ -56,10 +61,14 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
                 </Link>
               ) : (
                 <div className="relative w-full aspect-[4/3] sm:aspect-[5/3] md:aspect-[2/1] lg:aspect-[21/9] xl:aspect-[1850/820] overflow-hidden rounded-2xl md:rounded-[32px] bg-[#1f1b16]">
-                  <img
+                  <Image
                     src={slide.image_url}
                     alt={slide.alt_text ?? 'صورة السلايدر'}
-                    className="h-full w-full object-contain md:object-cover object-center"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, (max-width: 1024px) 100vw, 1850px"
+                    className="object-contain md:object-cover object-center"
+                    priority
+                    quality={85}
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-10 flex flex-col gap-2 md:gap-4 text-white">

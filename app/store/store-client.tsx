@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Star, ChevronDown, Filter, Search, X } from "lucide-react"
 import { AddToCartButton } from "@/components/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
@@ -938,17 +939,20 @@ function ProductCard({
         overflow-hidden
         ">
         {primaryImage ? (
-          <img
+          <Image
             src={primaryImage}
             alt={product.name_ar}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="
-              w-full h-full
               object-contain
               bg-white
               transition-transform
               duration-300
               group-hover:scale-105
             "
+            loading="lazy"
+            quality={80}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-3xl sm:text-5xl">🌶️</div>
