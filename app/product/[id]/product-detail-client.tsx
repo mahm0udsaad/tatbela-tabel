@@ -137,8 +137,8 @@ export function ProductDetailClient({
   const availableStock = activeVariant ? activeVariant.stock : product.stock
   const effectivePrice = activeVariant?.price ?? product.price
   const isOutOfStock = availableStock <= 0
-  // Hide prices for B2B products when b2b_price_hidden is true, or when price is NULL (from DB migration)
-  const hidePrices = Boolean(product.b2b_price_hidden) || product.price === null
+  // Hide prices for B2B products when priceHidden prop is true (from server), or when price is NULL (from DB migration)
+  const hidePrices = priceHidden || product.price === null
 
   useEffect(() => {
     const updateDeviceMode = () => {
@@ -651,6 +651,7 @@ function SimilarProductsRow({
   mode = "b2c",
   priceHidden = false,
   contactLabel = "تواصل مع المبيعات",
+  contactUrl = "/contact",
 }: {
   products: SimilarProduct[]
   mode?: "b2c" | "b2b"
@@ -697,7 +698,7 @@ function SimilarProductsRow({
                 ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
                 : 0
             // Hide prices for B2B products when b2b_price_hidden is true, or when price is NULL (from DB migration)
-            const hidePrice = Boolean(product.b2b_price_hidden) || product.price === null
+            const hidePrice = priceHidden || Boolean(product.b2b_price_hidden) || product.price === null
             const productLink = mode === "b2b" ? `/b2b/product/${product.id}` : `/product/${product.id}`
 
             return (
@@ -753,7 +754,9 @@ function SimilarProductsRow({
                     </div>
                     <div className="flex items-baseline gap-2 mb-3">
                       {hidePrice ? (
-                        <span className="text-sm font-semibold text-primary">{contactLabel}</span>
+                        <Link href={contactUrl} className="text-sm font-semibold text-primary hover:underline">
+                          {contactLabel}
+                        </Link>
                       ) : product.price !== null ? (
                         <>
                           <span className="text-xl md:text-2xl font-bold text-[#C41E3A]">
@@ -766,7 +769,9 @@ function SimilarProductsRow({
                           )}
                         </>
                       ) : (
-                        <span className="text-sm font-semibold text-primary">{contactLabel}</span>
+                        <Link href={contactUrl} className="text-sm font-semibold text-primary hover:underline">
+                          {contactLabel}
+                        </Link>
                       )}
                     </div>
                   </div>
