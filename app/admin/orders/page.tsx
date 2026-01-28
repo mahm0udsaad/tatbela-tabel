@@ -12,6 +12,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 interface Order {
   id: string
@@ -57,7 +59,7 @@ export default function AdminOrders() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set())
   const [bulkActionStatus, setBulkActionStatus] = useState<Order["status"] | "">("")
   const [showExportConfirmModal, setShowExportConfirmModal] = useState(false)
-  const [csvPreviewData, setCsvPreviewData] = useState<{ csvString: string, headers: string[], rows: string[][] }>({ csvString: "", headers: [], rows: [] })
+  const [pdfPreviewData, setPdfPreviewData] = useState<{ headers: string[], rows: string[][] }>({ headers: [], rows: [] })
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const supabase = getSupabaseClient()
 
@@ -154,6 +156,17 @@ export default function AdminOrders() {
       return
     }
 
+    // Check if trying to revert to pending
+    if (bulkActionStatus === "pending") {
+      const hasNonPendingOrders = orders.some(
+        order => selectedOrderIds.has(order.id) && order.status !== "pending"
+      );
+      if (hasNonPendingOrders) {
+        alert("لا يمكن إرجاع الطلبات إلى حالة 'قيد الانتظار' بعد أن تم معالجتها.");
+        return;
+      }
+    }
+
     if (!confirm(`هل أنت متأكد من تغيير حالة ${selectedOrderIds.size} طلب إلى ${getStatusLabel(bulkActionStatus)}؟`)) {
       return
     }
@@ -165,7 +178,7 @@ export default function AdminOrders() {
         .in("id", Array.from(selectedOrderIds))
 
       if (error) throw error
-      
+
       setOrders((prev) =>
         prev.map((order) =>
           selectedOrderIds.has(order.id) ? { ...order, status: bulkActionStatus as Order["status"] } : order
@@ -482,6 +495,15 @@ export default function AdminOrders() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
+      // Find the current order
+      const currentOrder = orders.find(order => order.id === orderId);
+
+      // Prevent reverting to 'pending' if order is not currently 'pending'
+      if (newStatus === "pending" && currentOrder && currentOrder.status !== "pending") {
+        alert("لا يمكن إرجاع الطلب إلى حالة 'قيد الانتظار' بعد أن تم معالجته.");
+        return;
+      }
+
       const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId)
 
       if (error) throw error
@@ -525,8 +547,8 @@ export default function AdminOrders() {
     return method === "online" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
   }
 
-  const generateCsvContent = async (data: Order[]) => { // Now returns content and parsed data
-    if (data.length === 0) return { csvString: "", headers: [], rows: [] };
+  const generatePdfData = async (data: Order[]) => {
+    if (data.length === 0) return { headers: [], rows: [] };
 
     // Collect all order IDs from selected orders
     const orderIds = data.map(order => order.id);
@@ -536,21 +558,21 @@ export default function AdminOrders() {
       .from("order_items")
       .select("product_name, product_brand, quantity")
       .in("order_id", orderIds);
-    
+
     if (itemsError) {
-      console.error("Error fetching order items for CSV aggregation:", itemsError);
+      console.error("Error fetching order items for PDF aggregation:", itemsError);
       alert("حدث خطأ أثناء جلب تفاصيل المنتجات للتصدير.");
-      return { csvString: "", headers: [], rows: [] };
+      return { headers: [], rows: [] };
     }
 
     if (!allOrderItems || allOrderItems.length === 0) {
-      return { csvString: "", headers: [], rows: [] };
+      return { headers: [], rows: [] };
     }
 
     // Aggregate quantities for each product
     const productAggregation = new Map<string, { brand: string, quantity: number }>();
 
-    allOrderItems.forEach(item => {
+    allOrderItems.forEach((item: { product_name: string; product_brand: string; quantity: number }) => {
       const productName = item.product_name || "غير معروف";
       const productBrand = item.product_brand || "غير محدد";
       const key = `${productName}::${productBrand}`; // Use product name and brand as a unique key
@@ -568,8 +590,7 @@ export default function AdminOrders() {
       "Product Brand",
       "Total Quantity"
     ]
-    
-    let csvString = headers.map(h => `"${h}"`).join(",") + "\n"
+
     const rows: string[][] = [];
 
     productAggregation.forEach((value, key) => {
@@ -577,40 +598,61 @@ export default function AdminOrders() {
       const row = [
         productName || "غير معروف",
         productBrand || value.brand || "غير محدد",
-        value.quantity.toString() // Convert number to string for CSV
+        value.quantity.toString()
       ];
-      csvString += row.map(field => `"${field}"`).join(",") + "\n";
       rows.push(row);
     });
 
-    return { csvString, headers, rows };
+    return { headers, rows };
   }
 
-  const triggerCsvDownload = (csvString: string) => {
-    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob)
-      link.setAttribute("href", url)
-      link.setAttribute("download", "inventory_summary.csv")
-      link.style.visibility = "hidden"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
+  const generatePdfFile = (headers: string[], rows: string[][]) => {
+    const doc = new jsPDF();
+
+    // Add title
+    doc.setFontSize(18);
+    doc.text("Orders Summary - Inventory Report", 14, 20);
+
+    // Add date
+    doc.setFontSize(11);
+    doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, 28);
+
+    // Add table using autoTable
+    autoTable(doc, {
+      startY: 35,
+      head: [headers],
+      body: rows,
+      theme: 'grid',
+      styles: {
+        font: 'helvetica',
+        fontSize: 10,
+        cellPadding: 4,
+      },
+      headStyles: {
+        fillColor: [232, 168, 53], // #E8A835
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [249, 247, 243], // #F9F7F3
+      },
+    });
+
+    // Save the PDF
+    doc.save(`inventory_summary_${new Date().getTime()}.pdf`);
   }
 
-  const handleExportCsv = async () => {
+  const handleExportPdf = async () => {
     if (selectedOrderIds.size === 0) {
       alert("الرجاء تحديد طلب واحد على الأقل للتصدير.")
       return
     }
 
     const selectedOrders = orders.filter(order => selectedOrderIds.has(order.id));
-    const { csvString, headers, rows } = await generateCsvContent(selectedOrders);
+    const { headers, rows } = await generatePdfData(selectedOrders);
 
-    if (csvString) {
-      setCsvPreviewData({ csvString, headers, rows });
+    if (headers.length > 0 && rows.length > 0) {
+      setPdfPreviewData({ headers, rows });
       setShowExportConfirmModal(true);
     } else {
       alert("لم يتم العثور على بيانات للتصدير.");
@@ -673,11 +715,11 @@ export default function AdminOrders() {
           </button>
         </div>
         <button
-          onClick={handleExportCsv}
+          onClick={handleExportPdf}
           disabled={selectedOrderIds.size === 0}
           className="px-4 py-2 bg-[#E8A835] text-white rounded-lg text-sm font-semibold hover:bg-[#E8A835]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          تصدير CSV ({selectedOrderIds.size})
+          تصدير PDF ({selectedOrderIds.size})
         </button>
       </div>
 
@@ -754,7 +796,7 @@ export default function AdminOrders() {
                             onChange={(e) => updateOrderStatus(order.id, e.target.value)}
                             className="px-3 py-1 border border-[#D9D4C8] rounded text-sm focus:outline-none focus:border-[#E8A835]"
                           >
-                            <option value="pending">قيد الانتظار</option>
+                            <option value="pending" disabled={order.status !== "pending"}>قيد الانتظار</option>
                             <option value="processing">قيد المعالجة</option>
                             <option value="shipped">تم الشحن</option>
                             <option value="delivered">تم التسليم</option>
@@ -901,17 +943,17 @@ export default function AdminOrders() {
       <Dialog open={showExportConfirmModal} onOpenChange={setShowExportConfirmModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>تأكيد تصدير المنتجات إلى CSV</DialogTitle>
+            <DialogTitle>تأكيد تصدير المنتجات إلى PDF</DialogTitle>
             <DialogDescription>
-              سيتم تصدير المنتجات المجمعة من الطلبات المحددة إلى ملف CSV. يرجى مراجعة المعاينة أدناه:
+              سيتم تصدير المنتجات المجمعة من الطلبات المحددة إلى ملف PDF وتغيير حالة الطلبات تلقائياً إلى "قيد المعالجة". يرجى مراجعة المعاينة أدناه:
             </DialogDescription>
           </DialogHeader>
-          {csvPreviewData.rows.length > 0 ? (
+          {pdfPreviewData.rows.length > 0 ? (
             <div className="mt-4 border rounded-lg overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="bg-[#F5F1E8]">
                   <tr>
-                    {csvPreviewData.headers.map((header, index) => (
+                    {pdfPreviewData.headers.map((header: string, index: number) => (
                       <th key={index} className="px-4 py-2 text-right text-sm font-semibold text-[#2B2520] whitespace-nowrap">
                         {header}
                       </th>
@@ -919,9 +961,9 @@ export default function AdminOrders() {
                   </tr>
                 </thead>
                 <tbody>
-                  {csvPreviewData.rows.map((row, rowIndex) => (
+                  {pdfPreviewData.rows.map((row: string[], rowIndex: number) => (
                     <tr key={rowIndex} className="border-t border-[#D9D4C8]">
-                      {row.map((cell, cellIndex) => (
+                      {row.map((cell: string, cellIndex: number) => (
                         <td key={cellIndex} className="px-4 py-2 text-right text-[#2B2520] whitespace-nowrap">
                           {cell}
                         </td>
@@ -939,12 +981,36 @@ export default function AdminOrders() {
               إلغاء
             </Button>
             <Button
-              onClick={() => {
-                triggerCsvDownload(csvPreviewData.csvString);
+              onClick={async () => {
+                // Generate and download PDF
+                generatePdfFile(pdfPreviewData.headers, pdfPreviewData.rows);
+
+                // Update order statuses to 'processing'
+                try {
+                  const { error } = await supabase
+                    .from("orders")
+                    .update({ status: "processing" })
+                    .in("id", Array.from(selectedOrderIds));
+
+                  if (error) throw error;
+
+                  // Update local state
+                  setOrders((prev) =>
+                    prev.map((order) =>
+                      selectedOrderIds.has(order.id) ? { ...order, status: "processing" } : order
+                    )
+                  );
+
+                  alert("تم تصدير الملف بنجاح وتحديث حالة الطلبات إلى 'قيد المعالجة'.");
+                } catch (error) {
+                  console.error("خطأ في تحديث حالة الطلبات:", error);
+                  alert("تم تصدير الملف، ولكن حدث خطأ في تحديث حالة الطلبات.");
+                }
+
                 setShowExportConfirmModal(false);
                 setSelectedOrderIds(new Set()); // Clear selection after export
               }}
-              disabled={csvPreviewData.csvString === ""}
+              disabled={pdfPreviewData.rows.length === 0}
             >
               تأكيد التصدير
             </Button>
