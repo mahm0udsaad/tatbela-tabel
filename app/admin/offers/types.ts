@@ -27,6 +27,7 @@ export type Offer = {
   original_price: number | null
   stock: number
   is_featured: boolean
+  has_tax: boolean
   sort_order: number | null
   offer_images: OfferImage[] | null
   offer_variants: OfferVariant[] | null
@@ -44,6 +45,7 @@ export type OfferFormState = {
   original_price: string
   stock: string
   is_featured: boolean
+  has_tax: boolean
 }
 
 export type WeightUnit = "g" | "kg"
@@ -72,6 +74,7 @@ export const emptyOfferForm: OfferFormState = {
   original_price: "",
   stock: "",
   is_featured: false,
+  has_tax: false,
 }
 
 export const emptyVariantForm: VariantFormState = {
@@ -97,6 +100,7 @@ export function mapOfferToForm(offer: Offer): OfferFormState {
     original_price: offer.original_price?.toString() ?? "",
     stock: offer.stock?.toString() ?? "",
     is_featured: Boolean(offer.is_featured),
+    has_tax: Boolean(offer.has_tax),
   }
 }
 

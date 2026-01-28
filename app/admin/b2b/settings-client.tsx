@@ -72,25 +72,36 @@ export function B2BSettingsClient({
       contact_url: form.contact_url || "/contact",
     }
 
-    const { data, error: upsertError } = await supabase
-      .from("b2b_settings")
-      .upsert(payload)
-      .select()
-      .maybeSingle()
+    try {
+      const response = await fetch("/api/admin/b2b-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
 
-    if (upsertError) {
-      console.error("Failed to save B2B settings", upsertError)
-      setError("تعذر حفظ إعدادات منتجات الجملة")
-    } else {
-      setStatus("تم تحديث الإعدادات")
-      if (data) {
-        setForm({
-          id: data.id,
-          price_hidden: Boolean(data.price_hidden),
-          contact_label: data.contact_label,
-          contact_url: data.contact_url,
-        })
+      const result = await response.json()
+
+      if (!response.ok || result.error) {
+        console.error("Failed to save B2B settings", result.error)
+        setError("تعذر حفظ إعدادات منتجات الجملة")
+      } else {
+        setStatus("تم تحديث الإعدادات")
+        if (result.data) {
+          setForm({
+            id: result.data.id,
+            price_hidden: Boolean(result.data.price_hidden),
+            contact_label: result.data.contact_label,
+            contact_url: result.data.contact_url,
+          })
+        }
+        // Refresh the page to show updated settings
+        window.location.reload()
       }
+    } catch (err) {
+      console.error("Failed to save B2B settings", err)
+      setError("تعذر حفظ إعدادات منتجات الجملة")
     }
 
     setIsSaving(false)

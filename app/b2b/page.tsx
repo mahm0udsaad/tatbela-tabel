@@ -53,7 +53,6 @@ export default async function B2BStorePage({ searchParams }: { searchParams: Pro
         priceHidden={priceHidden}
         contactLabel={contactLabel}
         contactUrl={contactUrl}
-        hideAllFilters={true}
       />
     </main>
   )

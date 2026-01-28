@@ -9,6 +9,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { useCart } from "@/components/cart-provider"
 import { SearchAutocomplete } from "@/components/search-autocomplete"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import type { CategoryRecord } from "@/app/store/category-helpers"
 
 function getCategoryIcon(slug: string) {
@@ -27,7 +34,7 @@ function getCategoryIcon(slug: string) {
 export function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [mainCategories, setMainCategories] = useState<CategoryRecord[]>([])
   const supabase = getSupabaseClient()
   const pathname = usePathname()
@@ -125,33 +132,22 @@ export function Navbar() {
     
     const queryString = params.toString()
     router.push(queryString ? `${targetPath}?${queryString}` : targetPath)
-    setMobileSearchOpen(false)
+    setSearchOpen(false)
   }
 
   return (
    <>
     <nav className="overflow-visible bg-white/80 backdrop-blur-sm border-b border-primary/20 fixed top-0 left-0 right-0 z-50">
-      <div className="sm:mx-2 sm:px-2">
-        <div className="flex items-center justify-between h-20">
-          {/* Left Side - Desktop Menu + Mobile Search */}
-          <div className="flex items-center gap-4 flex-1">
-            {/* Mobile Search Button */}
-            <button
-              type="button"
-              onClick={() => setMobileSearchOpen((prev) => !prev)}
-              className="md:hidden p-2 rounded-lg border border-primary text-foreground"
-              aria-label="فتح البحث"
-            >
-              <Search size={22} />
-            </button>
-
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-0">
+      <div className="px-4 sm:mx-2 sm:px-2">
+        <div className="flex items-center justify-between h-20 gap-2 min-w-0">
+          {/* Left Side - Nav links only (keeps logo centered) */}
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 justify-start">
+            <div className="hidden md:flex items-center gap-0 flex-shrink-0">
               {navLinks.map((link, index) => (
-                <div key={link.href} className="flex items-center">
+                <div key={link.href} className="flex items-center flex-shrink-0">
                   <Link
                     href={link.href}
-                    className="text-foreground hover:text-primary transition-colors px-4 py-2 text-sm"
+                    className="text-foreground hover:text-primary transition-colors px-3 py-2 text-sm whitespace-nowrap"
                   >
                     {link.label}
                   </Link>
@@ -168,28 +164,21 @@ export function Navbar() {
           </div>
 
           {/* Logo - Centered */}
-          <Link href="/" className="overflow-y-hidden h-full flex items-center justify-center flex-shrink-0 mx-4">
-            <Image src="/icon.png" alt="logo" width={100} height={100} className="md:w-64 md:h-40 w-[225px] h-auto" />
+          <Link href="/" className="overflow-y-hidden h-full flex items-center justify-center flex-shrink-0 mx-2 sm:mx-4">
+            <Image src="/icon.png" alt="logo" width={100} height={100} className="md:w-64 md:h-40 w-[140px] sm:w-[180px] h-auto" />
           </Link>
 
-          {/* Right Side - Search + Cart + Auth */}
-          <div className="flex items-center gap-4 justify-end flex-1">
-            {/* Desktop Search */}
-            <div className="hidden md:flex items-center px-4 py-2 w-72 lg:w-[360px] border border-transparent focus-within:border-primary">
-              <SearchAutocomplete
-                value={searchTerm}
-                onChange={setSearchTerm}
-                onSubmit={handleSearchSubmit}
-                placeholder="ابحث عن منتج أو خلطة"
-                mode={isB2BRoute ? "b2b" : "b2c"}
-                className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-foreground placeholder:text-muted-foreground"
-                showRecentSearches={true}
-                showPopularSearches={true}
-              />
-            </div>
-
-            {/* Desktop Cart */}
-            <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-muted rounded-lg transition-colors hidden md:flex relative">
+          {/* Right Side - Search + Cart + Profile dropdown */}
+          <div className="flex items-center gap-2 sm:gap-4 justify-end flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => setSearchOpen((prev) => !prev)}
+              className="p-2 rounded-lg border border-primary text-foreground hover:bg-muted transition-colors"
+              aria-label="فتح البحث"
+            >
+              <Search size={22} />
+            </button>
+            <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-muted rounded-lg transition-colors relative">
               <ShoppingCart size={24} className="text-foreground" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-brand-red text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
@@ -198,69 +187,71 @@ export function Navbar() {
               )}
             </Link>
 
-            {/* Desktop User Auth Menu */}
-            <div className="hidden md:flex items-center gap-2">
-              {user ? (
-                <>
-                  <Link
-                    href="/user/orders"
-                    className="p-2 hover:bg-muted rounded-lg transition-colors"
-                    title="طلباتي"
-                  >
-                    <User size={24} className="text-foreground" />
-                  </Link>
-                </>
-              ) : (
-                <Link
-                  href="/auth/sign-in"
-                  className="px-1 py-2 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-brand-green-dark transition-colors"
+            {/* Profile dropdown: sign in / orders / sign out */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="p-2 hover:bg-muted rounded-lg transition-colors text-foreground"
+                  aria-label={user ? "الحساب" : "تسجيل الدخول"}
                 >
-                  تسجيل الدخول
-                </Link>
-              )}
-            </div>
-
-            {/* Mobile User + Cart */}
-            <div className="md:hidden flex items-center gap-2">
-              {user ? (
-                <Link href="/user/orders" className="p-2 hover:bg-muted rounded-lg transition-colors">
-                  <User size={24} className="text-foreground" />
-                </Link>
-              ) : (
-                <Link href="/auth/sign-in" className="p-2 hover:bg-muted rounded-lg transition-colors">
-                  <User size={24} className="text-foreground" />
-                </Link>
-              )}
-              <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-muted rounded-lg transition-colors relative">
-                <ShoppingCart size={24} className="text-foreground" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-brand-red text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
-                    {cartCount}
-                  </span>
+                  <User size={24} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="left" className="min-w-[10rem]">
+                {user ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/user/orders" className="cursor-pointer">
+                        طلباتي
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      className="cursor-pointer"
+                      onClick={async () => {
+                        await supabase.auth.signOut()
+                        router.refresh()
+                      }}
+                    >
+                      <LogOut className="size-4" />
+                      تسجيل الخروج
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/sign-in" className="cursor-pointer font-medium">
+                      تسجيل الدخول
+                    </Link>
+                  </DropdownMenuItem>
                 )}
-              </Link>
-            </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
-      {/* Mobile search drawer */}
-      {mobileSearchOpen && (
-        <div className="md:hidden px-4 pb-4 bg-white/80 backdrop-blur-sm border-b border-primary/20">
+      {/* Search drawer - opens from search button on all screens */}
+      {searchOpen && (
+        <div className="px-4 pb-4 bg-white/80 backdrop-blur-sm border-b border-primary/20">
           <div className="flex items-center gap-3 bg-muted rounded-2xl px-4 py-3">
             <SearchAutocomplete
               value={searchTerm}
               onChange={setSearchTerm}
               onSubmit={(value) => {
                 handleSearchSubmit(value)
-                setMobileSearchOpen(false)
+                setSearchOpen(false)
               }}
               placeholder="ابحث عن منتجات"
               className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
+              mode={isB2BRoute ? "b2b" : "b2c"}
+              showRecentSearches={true}
+              showPopularSearches={true}
             />
             <button
               type="button"
-              onClick={() => setMobileSearchOpen(false)}
+              onClick={() => setSearchOpen(false)}
               className="text-sm text-muted-foreground"
             >
               إغلاق

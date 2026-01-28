@@ -551,13 +551,15 @@ export default function AdminOrders() {
     const productAggregation = new Map<string, { brand: string, quantity: number }>();
 
     allOrderItems.forEach(item => {
-      const key = `${item.product_name}::${item.product_brand}`; // Use product name and brand as a unique key
+      const productName = item.product_name || "غير معروف";
+      const productBrand = item.product_brand || "غير محدد";
+      const key = `${productName}::${productBrand}`; // Use product name and brand as a unique key
       if (productAggregation.has(key)) {
         const existing = productAggregation.get(key)!;
         existing.quantity += item.quantity;
         productAggregation.set(key, existing);
       } else {
-        productAggregation.set(key, { brand: item.product_brand, quantity: item.quantity });
+        productAggregation.set(key, { brand: productBrand, quantity: item.quantity });
       }
     });
 
@@ -571,10 +573,10 @@ export default function AdminOrders() {
     const rows: string[][] = [];
 
     productAggregation.forEach((value, key) => {
-      const [productName] = key.split("::");
+      const [productName, productBrand] = key.split("::");
       const row = [
-        productName,
-        value.brand,
+        productName || "غير معروف",
+        productBrand || value.brand || "غير محدد",
         value.quantity.toString() // Convert number to string for CSV
       ];
       csvString += row.map(field => `"${field}"`).join(",") + "\n";
@@ -608,7 +610,7 @@ export default function AdminOrders() {
     const { csvString, headers, rows } = await generateCsvContent(selectedOrders);
 
     if (csvString) {
-      setCsvPreviewData({ headers, rows });
+      setCsvPreviewData({ csvString, headers, rows });
       setShowExportConfirmModal(true);
     } else {
       alert("لم يتم العثور على بيانات للتصدير.");

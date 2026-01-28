@@ -888,8 +888,8 @@ function ProductCard({
         )
       : 0
 
-  // Hide prices for B2B products when b2b_price_hidden is true, or when price is NULL (from DB migration)
-  const hidePrices = (product.is_b2b && product.b2b_price_hidden) || product.price === null
+  // Hide prices based on: global B2B setting OR individual product setting OR NULL price
+  const hidePrices = priceHidden || (product.is_b2b && product.b2b_price_hidden) || product.price === null
   const productLink = mode === 'b2b' ? `/b2b/product/${product.id}` : `/product/${product.id}`
   const variantBadges = useMemo(() => {
     const variants = product.product_variants ?? []

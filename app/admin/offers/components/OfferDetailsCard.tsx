@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
-import { Edit2, Star, Package, Tag, DollarSign } from "lucide-react"
+import { Edit2, Star, Package, Tag, DollarSign, Receipt } from "lucide-react"
 import type { OfferFormState } from "../types"
 
 type OfferDetailsCardProps = {
@@ -28,7 +27,7 @@ export function OfferDetailsCard({
           <h3 className="text-sm font-semibold text-[#8B6F47] uppercase tracking-wide flex items-center gap-2">
             <Package size={16} /> المعلومات الأساسية
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[#2B2520]">اسم العرض *</label>
               <input
@@ -50,6 +49,16 @@ export function OfferDetailsCard({
                 <option value="Tabel">Tabel</option>
                 <option value="Tatbeelah">Tatbeelah</option>
               </select>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-[#2B2520]">النوع</label>
+              <input
+                type="text"
+                value={offerForm.type}
+                onChange={(e) => onFieldChange("type", e.target.value)}
+                placeholder="أدخل نوع العرض"
+                className="w-full rounded-lg border border-[#D9D4C8] px-4 py-2.5 text-sm transition-all focus:border-[#E8A835] focus:ring-2 focus:ring-[#E8A835]/20 focus:outline-none hover:border-[#E8A835]/50"
+              />
             </div>
           </div>
         </section>
@@ -203,6 +212,33 @@ export function OfferDetailsCard({
                 </div>
                 <p className="text-xs text-[#8B6F47] leading-relaxed">
                   إظهار في العروض المميزة
+                </p>
+              </div>
+            </label>
+
+            {/* Tax Offer */}
+            <label
+              className={`flex items-start gap-3 rounded-xl border-2 p-4 cursor-pointer transition-all ${
+                offerForm.has_tax
+                  ? "border-[#E8A835] bg-[#FFF8ED]"
+                  : "border-[#D9D4C8] hover:border-[#E8A835]/50 hover:bg-[#FFF8ED]/30"
+              }`}
+            >
+              <div className="mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={offerForm.has_tax}
+                  onChange={(e) => onFieldChange("has_tax", e.target.checked)}
+                  className="accent-[#E8A835] w-5 h-5 cursor-pointer"
+                />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Receipt size={16} className={`${offerForm.has_tax ? "text-[#E8A835]" : "text-[#8B6F47]"}`} />
+                  <p className="text-sm font-semibold text-[#2B2520]">خاضع للضريبة</p>
+                </div>
+                <p className="text-xs text-[#8B6F47] leading-relaxed">
+                  تطبيق ضريبة 14% على العرض - سيتم عرض علامة "خاضع للضريبة. 14%" على العرض
                 </p>
               </div>
             </label>

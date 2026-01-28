@@ -31,6 +31,7 @@ type OfferRecord = {
   stock: number
   created_at?: string | null
   is_featured?: boolean | null
+  has_tax?: boolean | null
   offer_images: OfferImage[] | null
   offer_variants: OfferVariant[] | null
 }
@@ -462,6 +463,11 @@ function OfferCard({
             غير متوفر
           </span>
         )}
+        {offer.has_tax && (
+          <span className="absolute top-2 left-2 right-2 bg-[#C41E3A] text-white px-2 py-1 text-xs font-bold text-center z-10">
+            خاضع للضريبة. 14%
+          </span>
+        )}
       </div>
       <div className="p-4 flex flex-col flex-1">
         {offer.is_featured ? (
@@ -490,10 +496,15 @@ function OfferCard({
           </div>
           <span className="text-xs text-[#8B6F47]">({offer.reviews_count || 0})</span>
         </div>
-        <div className="flex items-baseline gap-2 mb-4">
-          <span className="text-2xl font-bold text-[#C41E3A]">{offer.price.toFixed(2)} ج.م</span>
-          {offer.original_price && offer.original_price > offer.price && (
-            <span className="text-sm text-gray-400 line-through">{offer.original_price.toFixed(2)} ج.م</span>
+        <div className="mb-4">
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-[#C41E3A]">{offer.price.toFixed(2)} ج.م</span>
+            {offer.original_price && offer.original_price > offer.price && (
+              <span className="text-sm text-gray-400 line-through">{offer.original_price.toFixed(2)} ج.م</span>
+            )}
+          </div>
+          {offer.has_tax && (
+            <p className="text-xs text-[#C41E3A] font-semibold mt-1">خاضع للضريبة. 14%</p>
           )}
         </div>
         <AddToCartButton 
