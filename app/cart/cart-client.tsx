@@ -145,7 +145,7 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
               const imageUrl = getProductImageUrl(item)
               return (
                 <div key={item.id} className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-[#E8E2D1] flex gap-4 sm:gap-6">
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 bg-[#F5F1E8] rounded-lg overflow-hidden flex-shrink-0">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden flex-shrink-0">
                     {imageUrl ? (
                       <img
                         src={imageUrl}
@@ -227,7 +227,7 @@ export function CartClient({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
               
               {/* Address Selection */}
               {!isB2B && addresses.length > 0 && (
-                <div className="mb-4 p-4 bg-[#F5F1E8] rounded-lg border border-[#E8E2D1]">
+                <div className="mb-4 p-4 rounded-lg border border-[#E8E2D1]">
                   <label className="block text-sm font-semibold text-[#2B2520] mb-2 flex items-center gap-2">
                     <MapPin size={16} />
                     عنوان التوصيل

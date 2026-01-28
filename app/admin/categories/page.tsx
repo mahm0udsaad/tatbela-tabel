@@ -15,7 +15,7 @@ export default async function AdminCategoriesPage() {
   }
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <CategoryManager initialCategories={categories ?? []} />
     </div>
   )

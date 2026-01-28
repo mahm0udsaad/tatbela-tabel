@@ -17,7 +17,7 @@ export default async function B2BSettingsPage() {
   ])
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <B2BSettingsClient initialSettings={settings ?? null} initialCategories={categories ?? []} />
     </div>
   )

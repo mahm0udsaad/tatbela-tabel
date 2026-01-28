@@ -12,8 +12,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
 
 interface Order {
   id: string
@@ -586,9 +584,9 @@ export default function AdminOrders() {
     });
 
     const headers = [
-      "Product Name",
-      "Product Brand",
-      "Total Quantity"
+      "اسم المنتج",
+      "العلامة التجارية",
+      "الكمية الإجمالية"
     ]
 
     const rows: string[][] = [];
@@ -606,40 +604,54 @@ export default function AdminOrders() {
     return { headers, rows };
   }
 
-  const generatePdfFile = (headers: string[], rows: string[][]) => {
-    const doc = new jsPDF();
+  const generatePdfFile = async (headers: string[], rows: string[][]) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('الرجاء السماح بالنوافذ المنبثقة لتصدير الملف');
+      return;
+    }
 
-    // Add title
-    doc.setFontSize(18);
-    doc.text("Orders Summary - Inventory Report", 14, 20);
+    const tableRows = rows.map(row => `
+      <tr>
+        ${row.map((cell, i) => `<td style="${i === 2 ? 'text-align: center;' : ''}">${cell}</td>`).join('')}
+      </tr>
+    `).join('');
 
-    // Add date
-    doc.setFontSize(11);
-    doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, 28);
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>ملخص الطلبات - تقرير المخزون</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #2B2520; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #E8A835; padding-bottom: 20px; }
+          .header h1 { font-size: 24px; margin-bottom: 8px; }
+          .header .date { font-size: 13px; color: #8B6F47; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th { background-color: #E8A835; color: #fff; padding: 12px; text-align: center; font-size: 14px; }
+          td { padding: 10px 12px; text-align: right; font-size: 13px; border-bottom: 1px solid #D9D4C8; }
+          tr:nth-child(even) { background-color: #F9F7F3; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>ملخص الطلبات - تقرير المخزون</h1>
+          <div class="date">تم الإنشاء: ${new Date().toLocaleDateString('ar-EG')} ${new Date().toLocaleTimeString('ar-EG')}</div>
+        </div>
+        <table>
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
 
-    // Add table using autoTable
-    autoTable(doc, {
-      startY: 35,
-      head: [headers],
-      body: rows,
-      theme: 'grid',
-      styles: {
-        font: 'helvetica',
-        fontSize: 10,
-        cellPadding: 4,
-      },
-      headStyles: {
-        fillColor: [232, 168, 53], // #E8A835
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [249, 247, 243], // #F9F7F3
-      },
-    });
-
-    // Save the PDF
-    doc.save(`inventory_summary_${new Date().getTime()}.pdf`);
+    printWindow.document.write(html);
+    printWindow.document.close();
   }
 
   const handleExportPdf = async () => {
@@ -983,7 +995,7 @@ export default function AdminOrders() {
             <Button
               onClick={async () => {
                 // Generate and download PDF
-                generatePdfFile(pdfPreviewData.headers, pdfPreviewData.rows);
+                await generatePdfFile(pdfPreviewData.headers, pdfPreviewData.rows);
 
                 // Update order statuses to 'processing'
                 try {

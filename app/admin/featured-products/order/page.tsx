@@ -59,7 +59,7 @@ export default async function FeaturedProductOrderPage() {
     .order("is_primary", { referencedTable: "product_images", ascending: false })
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <ProductSortBoard
         initialProducts={products ?? []}
         title="ترتيب أبرز المنتجات"

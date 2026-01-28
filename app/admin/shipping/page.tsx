@@ -12,7 +12,7 @@ export default async function ShippingAdminPage() {
     .order("governorate", { ascending: true })
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <ShippingAdminClient initialZones={zones ?? []} />
     </div>
   )

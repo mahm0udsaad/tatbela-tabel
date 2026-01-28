@@ -12,7 +12,7 @@ export default async function FreeShippingPage() {
     .maybeSingle()
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <FreeShippingAdminClient initialRule={data ?? null} />
     </div>
   )

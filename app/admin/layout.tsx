@@ -4,6 +4,7 @@ import type React from "react"
 import { usePathname } from "next/navigation"
 import { AdminSidebar } from "./sidebar"
 import { Toaster } from "@/components/ui/toaster"
+import { SidebarProvider } from "@/components/ui/sidebar"
 
 export default function AdminLayout({
   children,
@@ -24,12 +25,14 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <AdminSidebar />
-      <main className="flex-1 bg-[#F5F1E8] p-6 md:p-8">
-        {children}
-      </main>
+    <SidebarProvider>
+      <div className="min-h-screen bg-[#f8f8f8] flex w-full">
+        <AdminSidebar />
+        <main className="flex-1 p-6 md:p-8">
+          {children}
+        </main>
+      </div>
       <Toaster />
-    </div>
+    </SidebarProvider>
   )
 }

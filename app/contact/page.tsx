@@ -132,7 +132,7 @@ export default async function ContactPage() {
                 {payload.workHours.map((item) => (
                   <div
                     key={item.label}
-                    className="flex justify-between gap-4 p-4 bg-[#F5F1E8] rounded-lg border border-brand-green/20"
+                    className="flex justify-between gap-4 p-4 rounded-lg border border-brand-green/20"
                   >
                     <span className="font-semibold text-[#2B2520]">{item.label}</span>
                     <span className="text-[#8B6F47]">{item.time}</span>

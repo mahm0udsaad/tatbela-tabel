@@ -31,7 +31,7 @@ export default async function AdminSiteContentPage() {
   }, {})
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <SiteContentAdminClient initialSettings={byKey} />
     </div>
   )

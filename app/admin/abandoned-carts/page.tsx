@@ -72,7 +72,7 @@ export default function AbandonedCartsPage() {
   }
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <h1 className="text-3xl font-bold text-[#2B2520] mb-8">السلات المتروكة</h1>
         
         {loading ? (

@@ -587,7 +587,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <h1 className="text-3xl font-bold text-[#2B2520] mb-8">ملخص لوحة التحكم</h1>
 
         {loading && stats.totalOrders === 0 ? (
@@ -635,7 +635,7 @@ export default function AdminDashboard() {
 
           {/* Product Form */}
           {showProductForm && (
-            <div className="mb-8 p-6 bg-[#F5F1E8] rounded-lg border border-[#D9D4C8]">
+            <div className="mb-8 p-6 rounded-lg border border-[#D9D4C8]">
               <h3 className="text-xl font-bold text-[#2B2520] mb-6">
                 {editingProduct ? "تعديل المنتج" : "إضافة منتج جديد"}
               </h3>

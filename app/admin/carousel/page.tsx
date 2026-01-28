@@ -382,7 +382,7 @@ export default function AdminCarouselPage() {
   }
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="text-sm text-[#8B6F47] mb-2">مظهر الصفحة الرئيسية</p>

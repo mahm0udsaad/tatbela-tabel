@@ -59,7 +59,7 @@ export default async function AdminProductsPage() {
   }
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <ProductManager initialProducts={products ?? []} categories={categories ?? []} />
     </div>
   )

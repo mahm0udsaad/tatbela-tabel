@@ -76,7 +76,7 @@ export default function RecipesPage() {
                 <h1 className="text-4xl font-bold text-[#2B2520] mb-4">{recipe.title}</h1>
                 <p className="text-lg text-[#8B6F47] mb-6">{recipe.description}</p>
 
-                <div className="grid md:grid-cols-3 gap-6 mb-8 p-6 bg-[#F5F1E8] rounded-lg">
+                <div className="grid md:grid-cols-3 gap-6 mb-8 p-6 rounded-lg">
                   <div>
                     <p className="text-sm text-[#8B6F47]">وقت الطهي</p>
                     <p className="text-2xl font-bold text-[#C41E3A]">{recipe.cookTime}</p>

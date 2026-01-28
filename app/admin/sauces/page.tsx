@@ -12,7 +12,7 @@ export default async function AdminSaucesPage() {
     .single()
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <SaucesSettingsClient initialSettings={data ?? null} />
     </div>
   )

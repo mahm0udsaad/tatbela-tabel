@@ -143,7 +143,7 @@ export default function PromoBannerAdminPage() {
   }, [formState.background_from, formState.background_via, formState.background_to])
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <p className="text-sm text-[#8B6F47] mb-1">القسم الترويجي</p>

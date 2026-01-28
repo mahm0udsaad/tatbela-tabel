@@ -58,7 +58,7 @@ export default async function B2BProductsPage() {
   }
 
   return (
-    <div className="bg-[#F5F1E8] rounded-lg">
+    <div className="rounded-lg">
       <B2BProductManager initialProducts={products ?? []} categories={categories ?? []} />
     </div>
   )

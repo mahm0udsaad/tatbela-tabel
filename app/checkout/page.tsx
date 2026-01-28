@@ -526,7 +526,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
                   {/* Saved Addresses Selection */}
                   {!isB2B && savedAddresses.length > 0 && (
-                    <div className="mb-6 p-4 bg-[#F5F1E8] rounded-lg border border-[#E8E2D1]">
+                    <div className="mb-6 p-4 rounded-lg border border-[#E8E2D1]">
                       <label className="block text-sm font-semibold text-[#2B2520] mb-2">
                         اختر عنوان محفوظ (اختياري)
                       </label>
