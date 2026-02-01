@@ -32,8 +32,8 @@ PAYMOB_PUBLIC_KEY=your_public_key_here
 # Integration ID (same as before)
 PAYMOB_INTEGRATION_ID=your_integration_id_here
 
-# Optional: Custom API base URL (defaults to https://accept.paymob.com/api)
-PAYMOB_API_BASE=https://accept.paymob.com/api
+# Optional: Custom API base URL (defaults to https://accept.paymob.com)
+PAYMOB_API_BASE=https://accept.paymob.com
 
 # Required for payment redirects
 NEXT_PUBLIC_BASE_URL=https://yourdomain.com

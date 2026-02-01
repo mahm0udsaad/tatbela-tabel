@@ -1,5 +1,5 @@
 // New Intention API configuration
-const PAYMOB_API_BASE = process.env.PAYMOB_API_BASE || "https://accept.paymob.com/api"
+const PAYMOB_API_BASE = (process.env.PAYMOB_API_BASE || "https://accept.paymob.com").replace(/\/api\/?$/, "")
 const PAYMOB_SECRET_KEY = process.env.PAYMOB_SECRET_KEY
 const PAYMOB_PUBLIC_KEY = process.env.PAYMOB_PUBLIC_KEY
 const PAYMOB_INTEGRATION_ID = process.env.PAYMOB_INTEGRATION_ID
@@ -82,11 +82,15 @@ async function createIntention({
     }),
   })
 
-  const payload = await response.json()
+  const contentType = response.headers.get("content-type") || ""
+  const isJson = contentType.includes("application/json")
+  const payload = isJson ? await response.json() : await response.text()
 
   if (!response.ok) {
     console.error("[Paymob] Intention creation error", payload)
-    const errorMessage = payload?.detail || payload?.message || "Failed to create payment intention"
+    const errorMessage = isJson
+      ? payload?.detail || payload?.message || "Failed to create payment intention"
+      : `Unexpected response from Paymob (status ${response.status})`
     throw new Error(errorMessage)
   }
 
