@@ -96,6 +96,7 @@ export function VariantsCard({
         <input
           placeholder={isPerKilo ? "يُحسب تلقائياً" : "سعر خاص"}
           type="number"
+          step="any"
           value={variantForm.price}
           onChange={(e) => onFieldChange("price", e.target.value)}
           readOnly={isPerKilo}

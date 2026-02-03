@@ -32,8 +32,14 @@ type OfferRecord = {
   created_at?: string | null
   is_featured?: boolean | null
   has_tax?: boolean | null
-  offer_images: OfferImage[] | null
-  offer_variants: OfferVariant[] | null
+  images?: OfferImage[] | null
+  variants?: OfferVariant[] | null
+  source?: 'offer' | 'product'
+  // Legacy fields for backwards compatibility
+  offer_images?: OfferImage[] | null
+  offer_variants?: OfferVariant[] | null
+  product_images?: OfferImage[] | null
+  product_variants?: OfferVariant[] | null
 }
 
 interface OffersClientProps {
@@ -53,15 +59,6 @@ export function OffersClient({
   const searchParams = useSearchParams()
   const supabase = useMemo(() => getSupabaseClient(), [])
   
-  const calculatedPriceBounds = useMemo(() => {
-    if (initialOffers.length === 0) return { min: 0, max: 1000 }
-    const prices = initialOffers.map(p => p.price)
-    return {
-      min: Math.min(...prices),
-      max: Math.max(...prices),
-    }
-  }, [initialOffers])
-
   const calculatedBrands = useMemo(() => {
     const uniqueBrands = new Set(initialOffers.map(p => p.brand).filter(Boolean))
     // Ensure core brands are always available
@@ -76,12 +73,6 @@ export function OffersClient({
   const [selectedBrand, setSelectedBrand] = useState<string>(() => {
     if (initialBrand === "Tabel" || initialBrand === "Tatbeelah") return initialBrand
     return ""
-  })
-  const [priceRange, setPriceRange] = useState<[number, number]>(() => {
-    const min = Number.isFinite(calculatedPriceBounds.min) ? calculatedPriceBounds.min : 0
-    const maxCandidate = Number.isFinite(calculatedPriceBounds.max) ? calculatedPriceBounds.max : min
-    const max = maxCandidate >= min ? maxCandidate : min
-    return [min, max]
   })
   const [sortBy, setSortBy] = useState("popularity")
   const [loading, setLoading] = useState(false)
@@ -105,7 +96,8 @@ export function OffersClient({
     const to = from + pageSize - 1
 
     try {
-      let query = supabase
+      // Query dedicated offers
+      let offersQueryClient = supabase
         .from("offers")
         .select(
           `
@@ -121,6 +113,7 @@ export function OffersClient({
           stock,
           created_at,
           is_featured,
+          has_tax,
           offer_images (image_url, is_primary),
           offer_variants (stock)
         `,
@@ -128,42 +121,101 @@ export function OffersClient({
         )
         .eq("is_archived", false)
 
+      // Query products with discounts (B2C only)
+      let productsQueryClient = supabase
+        .from("products")
+        .select(
+          `
+          id,
+          name_ar,
+          description_ar,
+          brand,
+          type,
+          price,
+          original_price,
+          rating,
+          reviews_count,
+          stock,
+          created_at,
+          is_featured,
+          has_tax,
+          product_images (image_url, is_primary),
+          product_variants (stock)
+        `,
+          { count: "exact" }
+        )
+        .eq("is_archived", false)
+        .eq("is_b2b", false)
+        .not("original_price", "is", null)
+        .gt("original_price", 0)
+
+      // Apply filters to both queries
       if (search.trim()) {
-        query = query.or(`name_ar.ilike.%${search}%,description_ar.ilike.%${search}%`)
+        offersQueryClient = offersQueryClient.or(`name_ar.ilike.%${search}%,description_ar.ilike.%${search}%`)
+        productsQueryClient = productsQueryClient.or(`name_ar.ilike.%${search}%,description_ar.ilike.%${search}%`)
       }
 
       if (selectedBrand) {
-        query = query.eq("brand", selectedBrand)
+        offersQueryClient = offersQueryClient.eq("brand", selectedBrand)
+        productsQueryClient = productsQueryClient.eq("brand", selectedBrand)
       }
 
-      if (priceRange[0] > calculatedPriceBounds.min || priceRange[1] < calculatedPriceBounds.max) {
-        query = query.gte("price", priceRange[0]).lte("price", priceRange[1])
-      }
-
-      // Apply sorting
+      // Apply sorting to both queries
       if (sortBy === "price-low") {
-        query = query.order("price", { ascending: true })
+        offersQueryClient = offersQueryClient.order("price", { ascending: true })
+        productsQueryClient = productsQueryClient.order("price", { ascending: true })
       } else if (sortBy === "price-high") {
-        query = query.order("price", { ascending: false })
+        offersQueryClient = offersQueryClient.order("price", { ascending: false })
+        productsQueryClient = productsQueryClient.order("price", { ascending: false })
       } else if (sortBy === "newest") {
-        query = query.order("created_at", { ascending: false })
+        offersQueryClient = offersQueryClient.order("created_at", { ascending: false })
+        productsQueryClient = productsQueryClient.order("created_at", { ascending: false })
       } else {
-        query = query.order("is_featured", { ascending: false }).order("created_at", { ascending: false })
+        offersQueryClient = offersQueryClient.order("is_featured", { ascending: false }).order("created_at", { ascending: false })
+        productsQueryClient = productsQueryClient.order("is_featured", { ascending: false }).order("created_at", { ascending: false })
       }
 
-      query = query.range(from, to)
+      // Execute both queries in parallel
+      const [offersResult, productsResult] = await Promise.all([
+        offersQueryClient,
+        productsQueryClient
+      ])
 
-      const { data, count, error } = await query
+      if (offersResult.error) throw offersResult.error
+      if (productsResult.error) throw productsResult.error
 
-      if (error) throw error
+      // Filter products to only include those with actual discounts
+      const discountedProducts = (productsResult.data || []).filter(
+        (product: any) => product.original_price && product.original_price > product.price
+      )
 
-      const received = data?.length ?? 0
+      // Combine and normalize the data
+      const combinedData = [
+        ...(offersResult.data || []).map((offer: any) => ({
+          ...offer,
+          images: offer.offer_images,
+          variants: offer.offer_variants,
+          source: 'offer' as const
+        })),
+        ...discountedProducts.map((product: any) => ({
+          ...product,
+          images: product.product_images,
+          variants: product.product_variants,
+          source: 'product' as const
+        }))
+      ]
+
+      // Apply pagination to combined results
+      const paginatedData = combinedData.slice(from, to + 1)
+      const totalCombinedCount = combinedData.length
+
+      const received = paginatedData.length
       const previousLength = reset ? 0 : offers.length
       const totalLoaded = previousLength + received
 
-      setOffers((prev) => (reset ? (data || []) : [...prev, ...(data || [])]))
-      setTotalCount(count ?? 0)
-      setHasMore(totalLoaded < (count ?? 0))
+      setOffers((prev) => (reset ? paginatedData : [...prev, ...paginatedData]))
+      setTotalCount(totalCombinedCount)
+      setHasMore(totalLoaded < totalCombinedCount)
     } catch (error) {
       console.error("خطأ في جلب العروض:", error)
     } finally {
@@ -175,7 +227,7 @@ export function OffersClient({
   useEffect(() => {
     const timer = setTimeout(() => fetchOffers(true), 300)
     return () => clearTimeout(timer)
-  }, [sortBy, selectedBrand, priceRange, search])
+  }, [sortBy, selectedBrand, search])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -235,9 +287,6 @@ export function OffersClient({
     }
     router.replace(`/offers?${params.toString()}`)
   }
-
-  const activeFiltersCount = (selectedBrand ? 1 : 0) + 
-    (priceRange[0] !== calculatedPriceBounds.min || priceRange[1] !== calculatedPriceBounds.max ? 1 : 0)
 
   return (
     <section className="py-6 md:py-12">
@@ -321,33 +370,6 @@ export function OffersClient({
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow p-4 space-y-3">
-              <h3 className="text-lg font-bold text-[#2B2520]">السعر</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47]">
-                  <span>{calculatedPriceBounds.min.toFixed(0)} ج.م</span>
-                  <span>{calculatedPriceBounds.max.toFixed(0)} ج.م</span>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={priceRange[0]}
-                    min={calculatedPriceBounds.min}
-                    max={priceRange[1]}
-                    onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                    className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
-                  />
-                  <input
-                    type="number"
-                    value={priceRange[1]}
-                    min={priceRange[0]}
-                    max={calculatedPriceBounds.max}
-                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                    className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
           </aside>
 
           <div className="flex-1 space-y-6 md:space-y-8">
@@ -425,15 +447,19 @@ function OfferCard({
   offer: OfferRecord
   searchTerm?: string
 }) {
+  // Use normalized images field, fallback to legacy fields
+  const images = offer.images || offer.offer_images || offer.product_images || null
+  const variants = offer.variants || offer.offer_variants || offer.product_variants || null
+
   const primaryImage =
-    offer.offer_images?.find((image) => image.is_primary)?.image_url ||
-    offer.offer_images?.[0]?.image_url ||
+    images?.find((image) => image.is_primary)?.image_url ||
+    images?.[0]?.image_url ||
     null
 
   const isOutOfStock =
     (offer.stock ?? 0) <= 0 &&
-    (offer.offer_variants?.length
-      ? offer.offer_variants.every((variant) => (variant.stock ?? 0) <= 0)
+    (variants?.length
+      ? variants.every((variant) => (variant.stock ?? 0) <= 0)
       : true)
 
   const discount =
@@ -518,4 +544,3 @@ function OfferCard({
     </div>
   )
 }
-

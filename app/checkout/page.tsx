@@ -4,17 +4,12 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Check, CreditCard, Banknote, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, Banknote } from "lucide-react"
 import type { ZodIssue } from "zod"
 
 import { useCart } from "@/components/cart-provider"
 import { getSupabaseClient } from "@/lib/supabase"
-import {
-  paymobBillingSchema,
-  paymobRequestSchema,
-  type PaymobBillingData,
-  type PaymobRequestPayload,
-} from "@/lib/validation/paymob"
+import { paymobBillingSchema, type PaymobBillingData } from "@/lib/validation/paymob"
 import { getUserAddresses, saveAddress, type Address } from "@/lib/actions/addresses"
 
 type ShippingFormData = {
@@ -43,7 +38,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   const isB2B = mode === "b2b"
   const [currentStep, setCurrentStep] = useState<"auth" | "shipping" | "payment" | "confirmation">("auth")
   const [isLoading, setIsLoading] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online")
+  const paymentMethod: "cash" = "cash"
   const [user, setUser] = useState<any>(null)
   const [orderId, setOrderId] = useState("")
   const [paymentError, setPaymentError] = useState<string | null>(null)
@@ -330,52 +325,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
     }
 
     const orderNumber = `TT${Date.now()}`
-    let onlinePaymentPayload: PaymobRequestPayload | null = null
-
-    if (paymentMethod === "online") {
-      const paymobItemsPayload: PaymobRequestPayload["items"] = [
-        ...orderItems.map((item) => ({
-          name: item.product.name,
-          price: Number(item.unit_price ?? item.product.price),
-          quantity: item.quantity,
-          description: item.product.brand,
-        })),
-      ]
-
-      if (shipping > 0) {
-        paymobItemsPayload.push({
-          name: "الشحن",
-          price: shipping,
-          quantity: 1,
-          description: "تكلفة التوصيل",
-        })
-      }
-
-      if (tax > 0) {
-        paymobItemsPayload.push({
-          name: "الضريبة (14%)",
-          price: tax,
-          quantity: 1,
-          description: "ضريبة على بعض المنتجات",
-        })
-      }
-
-      const validationResult = paymobRequestSchema.safeParse({
-        amount: total,
-        currency: "EGP",
-        merchantOrderId: orderNumber,
-        billing: billingValidation.data,
-        items: paymobItemsPayload,
-      })
-
-      if (!validationResult.success) {
-        setPaymentError(formatValidationIssues(validationResult.error.issues))
-        return
-      }
-
-      onlinePaymentPayload = validationResult.data
-    }
-
     setFormData(sanitizedShippingData)
     setShippingError(null)
     setPaymentError(null)
@@ -385,34 +334,8 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       await persistOrder(orderNumber, sanitizedShippingData)
       await clearCart()
 
-      if (paymentMethod === "cash") {
-        setOrderId(orderNumber)
-        setCurrentStep("confirmation")
-        return
-      }
-
-      if (!onlinePaymentPayload) {
-        throw new Error("بيانات الدفع غير متاحة")
-      }
-
-      const paymobResponse = await fetch("/api/paymob", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(onlinePaymentPayload),
-      })
-
-      const paymobPayload = await paymobResponse.json().catch(() => ({}))
-      if (!paymobResponse.ok) {
-        const apiErrorMessage =
-          paymobPayload?.details?.[0]?.message || paymobPayload?.error || "تعذر بدء عملية الدفع عبر Paymob"
-        throw new Error(apiErrorMessage)
-      }
-
-      if (!paymobPayload?.iframeUrl) {
-        throw new Error("استجابة Paymob غير مكتملة")
-      }
-
-      window.location.href = paymobPayload.iframeUrl as string
+      setOrderId(orderNumber)
+      setCurrentStep("confirmation")
     } catch (error) {
       console.error("Error saving order:", error)
       setPaymentError(
@@ -683,61 +606,15 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 <form onSubmit={handlePaymentSubmit} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8">
                   <h2 className="text-2xl font-bold text-[#2B2520] mb-6">تفاصيل الدفع</h2>
 
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("online")}
-                      className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
-                        paymentMethod === "online"
-                          ? "border-brand-green bg-brand-green/10 text-brand-green"
-                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-brand-green"
-                      }`}
-                    >
-                      <CreditCard size={32} className="mb-3" />
-                      <span className="font-bold">دفع إلكتروني</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("cash")}
-                      className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
-                        paymentMethod === "cash"
-                          ? "border-brand-green bg-brand-green/10 text-brand-green"
-                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-brand-green"
-                      }`}
-                    >
-                      <Banknote size={32} className="mb-3" />
-                      <span className="font-bold">دفع عند الاستلام</span>
-                    </button>
-                  </div>
-
-          {paymentMethod === "online" && (
-            <div className="bg-brand-green/10 p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300 border border-brand-green/30">
-              <div className="bg-white p-3 rounded-full text-brand-green">
-                <ShieldCheck size={28} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-[#2B2520] mb-2">دفع إلكتروني آمن عبر Paymob</h3>
-                <p className="text-[#8B6F47]">
-                  بعد الضغط على زر إتمام الطلب سيتم تحويلك تلقائياً إلى بوابة Paymob الآمنة لإدخال بيانات البطاقة أو
-                  المحافظة الإلكترونية الخاصة بك. لا نقوم بحفظ أي بيانات حساسة على خوادمنا.
-                </p>
-              </div>
-            </div>
-          )}
-
-                  {paymentMethod === "cash" && (
-                    <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                      <div className="bg-white p-2 rounded-full text-brand-green">
-                        <Banknote size={24} />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-[#2B2520] mb-2">الدفع عند الاستلام</h3>
-                        <p className="text-[#8B6F47]">
-                          سيتم دفع المبلغ بالكامل لمندوب التوصيل عند استلام الطلب.
-                        </p>
-                      </div>
+                  <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="bg-white p-2 rounded-full text-brand-green">
+                      <Banknote size={24} />
                     </div>
-                  )}
+                    <div>
+                      <h3 className="text-lg font-bold text-[#2B2520] mb-2">الدفع عند الاستلام</h3>
+                      <p className="text-[#8B6F47]">سيتم دفع المبلغ بالكامل لمندوب التوصيل عند استلام الطلب.</p>
+                    </div>
+                  </div>
 
           <div className="flex flex-col gap-4">
                     <button

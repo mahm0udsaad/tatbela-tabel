@@ -216,12 +216,12 @@ export function ProductDetailsCard({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[#2B2520]">
-                {productForm.pricing_mode === "per_kilo" ? "السعر لكل كيلو (ج.م) *" : "السعر بعد الخصم (ج.م) *"}
+                {productForm.pricing_mode === "per_kilo" ? "السعر لكل كيلو (ج.م) *" : "سعر البيع (ج.م) *"}
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  step="0.01"
+                  step="any"
                   min="0"
                   value={productForm.pricing_mode === "per_kilo" ? productForm.price_per_kilo : productForm.price}
                   onChange={(e) => {
@@ -237,19 +237,24 @@ export function ProductDetailsCard({
                 />
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#8B6F47]">ج.م</span>
               </div>
-              {productForm.pricing_mode === "per_kilo" && (
+              {productForm.pricing_mode === "per_kilo" ? (
                 <p className="text-xs text-[#8B6F47] mt-1 flex items-center gap-1">
                   <span className="w-1 h-1 rounded-full bg-[#E8A835]" />
                   سيتم حساب سعر كل وزن تلقائياً في المتغيرات
                 </p>
+              ) : (
+                <p className="text-xs text-[#8B6F47] mt-1 flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-[#E8A835]" />
+                  السعر الذي سيدفعه العميل
+                </p>
               )}
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-[#2B2520]">السعر قبل الخصم (ج.م)</label>
+              <label className="block text-sm font-semibold text-[#2B2520]">السعر الأصلي (ج.م) <span className="text-xs text-[#8B6F47] font-normal">(اختياري)</span></label>
               <div className="relative">
                 <input
                   type="number"
-                  step="0.01"
+                  step="any"
                   min="0"
                   value={productForm.original_price}
                   onChange={(e) => onFieldChange("original_price", e.target.value)}
@@ -258,6 +263,10 @@ export function ProductDetailsCard({
                 />
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#8B6F47]">ج.م</span>
               </div>
+              <p className="text-xs text-[#8B6F47] mt-1 flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-[#E8A835]" />
+                يظهر مشطوباً لإظهار الخصم (إن وجد)
+              </p>
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[#2B2520]">المخزون *</label>

@@ -4,13 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { Star, ChevronDown, Filter, Search, X } from "lucide-react"
+import { Star, Filter, Search, X } from "lucide-react"
 import { AddToCartButton } from "@/components/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { SearchAutocomplete } from "@/components/search-autocomplete"
 import { SearchHighlighter } from "@/components/search-highlighter"
 import { searchService, type SearchAnalytics } from "@/lib/search"
@@ -59,7 +58,6 @@ interface StoreClientProps {
   initialTotal?: number
   categoryScopeIds?: string[]
   initialSelectedCategories?: string[]
-  priceBounds?: { min: number; max: number }
   brands?: string[]
   pageSize?: number
   mode?: "b2c" | "b2b"
@@ -75,7 +73,6 @@ export function StoreClient({
   categories,
   initialSearch = "",
   initialTotal,
-  priceBounds,
   brands,
   categoryScopeIds = [],
   initialSelectedCategories = [],
@@ -91,27 +88,8 @@ export function StoreClient({
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get("category")?.toLowerCase() ?? null
   const isB2B = mode === "b2b"
-  const isMobile = useIsMobile()
   const [filtersOpen, setFiltersOpen] = useState(false)
   const requestSeqRef = useRef(0)
-  const [priceTouched, setPriceTouched] = useState(false)
-
-  
-  // Calculate defaults from initialProducts if not provided
-  const calculatedPriceBounds = useMemo(() => {
-    if (priceBounds) return priceBounds
-    if (initialProducts.length === 0) return { min: 0, max: 1000 }
-    const prices = initialProducts
-      .map((p) => p.price)
-      .filter((n): n is number => typeof n === "number" && Number.isFinite(n))
-    if (prices.length === 0) return { min: 0, max: 1000 }
-    return {
-      min: Math.min(...prices),
-      max: Math.max(...prices),
-    }
-  }, [priceBounds, initialProducts])
-
-  const [uiPriceBounds, setUiPriceBounds] = useState(() => calculatedPriceBounds)
 
   const calculatedBrands = useMemo(() => {
     if (brands) return brands
@@ -129,12 +107,6 @@ export function StoreClient({
   const [search, setSearch] = useState(initialSearch)
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialSelectedCategories)
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
-  const [priceRange, setPriceRange] = useState<[number, number]>(() => {
-    const min = Number.isFinite(calculatedPriceBounds.min) ? calculatedPriceBounds.min : 0
-    const maxCandidate = Number.isFinite(calculatedPriceBounds.max) ? calculatedPriceBounds.max : min
-    const max = maxCandidate >= min ? maxCandidate : min
-    return [min, max]
-  })
   const [sortBy, setSortBy] = useState("popularity")
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -215,30 +187,15 @@ export function StoreClient({
     try {
       const reqId = (requestSeqRef.current += 1)
       // #region agent log - fetch entry (hypothesis A/B/D)
-      const payloadEntry = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D',location:'app/store/store-client.tsx:fetchProducts:entry',message:'fetchProducts entry',data:{reqId,reset,search,categoryFilterIds,selectedCategories,selectedBrands,priceRange,pageSize,from,to,sortBy,isB2B,productsLen:products.length,hasMore,loading,loadingMore},timestamp:Date.now()}
+      const payloadEntry = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D',location:'app/store/store-client.tsx:fetchProducts:entry',message:'fetchProducts entry',data:{reqId,reset,search,categoryFilterIds,selectedCategories,selectedBrands,pageSize,from,to,sortBy,isB2B,productsLen:products.length,hasMore,loading,loadingMore},timestamp:Date.now()}
       fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadEntry)}).catch(()=>{});
       try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payloadEntry)) } catch {}
-      // #endregion agent log
-
-      const effectivePriceMin = priceTouched ? priceRange[0] : undefined
-      const effectivePriceMax = priceTouched ? priceRange[1] : undefined
-      // #region agent log - effective search params (hypothesis A)
-      const payloadEffective = {sessionId:'debug-session',runId:'post-fix',hypothesisId:'A',location:'app/store/store-client.tsx:fetchProducts:effectiveParams',message:'effective search params (post-fix)',data:{reqId,reset,categoryFilterIdsLen:categoryFilterIds.length,priceTouched,effectivePriceMin,effectivePriceMax,priceRange},timestamp:Date.now()}
-      fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadEffective)}).catch(()=>{});
-      try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payloadEffective)) } catch {}
-      // #endregion agent log
-
-      // #region agent log - post-fix effective params via relay (hypothesis Z)
-      fetch('/api/agent-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadEffective)}).catch(()=>{});
-      try { navigator.sendBeacon?.('/api/agent-log', JSON.stringify(payloadEffective)) } catch {}
       // #endregion agent log
 
       const searchResult = await searchService.searchProducts({
         query: search,
         categoryIds: categoryFilterIds.length > 0 ? categoryFilterIds : undefined,
         brands: selectedBrands.length > 0 ? selectedBrands : undefined,
-        priceMin: effectivePriceMin,
-        priceMax: effectivePriceMax,
         isB2B,
         limit: pageSize,
         offset: from,
@@ -267,18 +224,6 @@ export function StoreClient({
       // If the user hasn't explicitly set a price filter, keep the UI bounds
       // aligned with the newly loaded dataset so category switches don't show
       // stale Atara bounds when viewing Blends.
-      if (reset && !priceTouched && (searchResult.data?.length ?? 0) > 0) {
-        const prices = (searchResult.data ?? [])
-          .map((p) => p.price)
-          .filter((n): n is number => typeof n === "number" && Number.isFinite(n))
-        if (prices.length > 0) {
-          const nextMin = Math.min(...prices)
-          const nextMax = Math.max(...prices)
-          setUiPriceBounds({ min: nextMin, max: nextMax })
-          setPriceRange([nextMin, nextMax])
-        }
-      }
-
       // #region agent log - fetch response (hypothesis A/B/D)
       const payloadResponse = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B',location:'app/store/store-client.tsx:fetchProducts:response',message:'fetchProducts response',data:{reqId:requestSeqRef.current,reset,received,count:searchResult.count,hasAnalytics:!!searchResult.analytics,totalLoaded,computedHasMore:reset && searchResult.analytics ? totalLoaded < searchResult.count : reset ? received === pageSize : received === pageSize},timestamp:Date.now()}
       fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadResponse)}).catch(()=>{});
@@ -299,7 +244,7 @@ export function StoreClient({
       return
     }
     // #region agent log - filters change triggers fetch (hypothesis A/E)
-    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A',location:'app/store/store-client.tsx:filtersEffect',message:'filters/search/sort changed -> will reset fetch',data:{sortBy,selectedCategories,selectedBrands,priceRange,priceTouched,search,categoryFilterIds,selectedCategoryIds,categoryScopeIds},timestamp:Date.now()}
+    const payload = {sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A',location:'app/store/store-client.tsx:filtersEffect',message:'filters/search/sort changed -> will reset fetch',data:{sortBy,selectedCategories,selectedBrands,search,categoryFilterIds,selectedCategoryIds,categoryScopeIds},timestamp:Date.now()}
     fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
     try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
     // #endregion agent log
@@ -310,8 +255,6 @@ export function StoreClient({
     selectedCategories,
     selectedBrands,
     search,
-    // Only treat price changes as filter changes after the user has explicitly edited it.
-    priceTouched ? `${priceRange[0]}-${priceRange[1]}` : "price:not-touched",
   ])
 
   useEffect(() => {
@@ -407,9 +350,6 @@ export function StoreClient({
     fetch('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
     try { navigator.sendBeacon?.('http://127.0.0.1:7243/ingest/87a82cd4-27bc-4a13-a28b-97d7121e94c1', JSON.stringify(payload)) } catch {}
     // #endregion agent log
-    setUiPriceBounds(calculatedPriceBounds)
-    setPriceRange([calculatedPriceBounds.min, calculatedPriceBounds.max])
-    setPriceTouched(false)
   }, [initialProducts, calculatedInitialTotal])
 
   const handleSearchSubmit = (searchValue: string) => {
@@ -440,7 +380,7 @@ export function StoreClient({
         </div>
       </div>
 
-      <Accordion type="multiple" defaultValue={["categories", "brands", "price"]} className="w-full">
+      <Accordion type="multiple" defaultValue={["categories", "brands"]} className="w-full">
         {!hideAllFilters && (!isCategoryPage || showBlendsFilters) && (
           <AccordionItem value="categories" className="border-none">
             <FilterSection title={showBlendsFilters ? "أنواع الخلطات" : "الفئات"} accordion>
@@ -491,57 +431,13 @@ export function StoreClient({
           </AccordionItem>
         )}
 
-        {!hideAllFilters && (
-          <AccordionItem value="price" className="border-none">
-            <FilterSection title="السعر" accordion>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47] px-1">
-                  <span>{uiPriceBounds.min.toFixed(0)} ج.م</span>
-                  <ChevronDown size={16} className="text-[#E8A835]" />
-                  <span>{uiPriceBounds.max.toFixed(0)} ج.م</span>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-xs text-[#8B6F47] mb-2">من</label>
-                    <input
-                      type="number"
-                      value={priceRange[0]}
-                      min={uiPriceBounds.min}
-                      max={priceRange[1]}
-                      onChange={(e) => {
-                        setPriceTouched(true)
-                        setPriceRange([Number(e.target.value), priceRange[1]])
-                      }}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-[#8B6F47] mb-2">إلى</label>
-                    <input
-                      type="number"
-                      value={priceRange[1]}
-                      min={priceRange[0]}
-                      max={uiPriceBounds.max}
-                      onChange={(e) => {
-                        setPriceTouched(true)
-                        setPriceRange([priceRange[0], Number(e.target.value)])
-                      }}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-3 py-3 text-base focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            </FilterSection>
-          </AccordionItem>
-        )}
       </Accordion>
     </div>
   )
 
   const activeFiltersCount =
     effectiveSelectedCategories.length +
-    selectedBrands.length +
-    (priceTouched && (priceRange[0] !== uiPriceBounds.min || priceRange[1] !== uiPriceBounds.max) ? 1 : 0)
+    selectedBrands.length
 
   return (
     <section className="py-6 md:py-12">
@@ -618,41 +514,6 @@ export function StoreClient({
               </FilterSection>
             )}
 
-            {!hideAllFilters && (
-              <FilterSection title="السعر">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2 text-sm text-[#8B6F47]">
-                    <span>{uiPriceBounds.min.toFixed(0)} ج.م</span>
-                    <ChevronDown size={16} className="text-[#E8A835]" />
-                    <span>{uiPriceBounds.max.toFixed(0)} ج.م</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={priceRange[0]}
-                      min={uiPriceBounds.min}
-                      max={priceRange[1]}
-                      onChange={(e) => {
-                        setPriceTouched(true)
-                        setPriceRange([Number(e.target.value), priceRange[1]])
-                      }}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
-                    />
-                    <input
-                      type="number"
-                      value={priceRange[1]}
-                      min={priceRange[0]}
-                      max={uiPriceBounds.max}
-                      onChange={(e) => {
-                        setPriceTouched(true)
-                        setPriceRange([priceRange[0], Number(e.target.value)])
-                      }}
-                      className="w-full rounded-lg border border-[#D9D4C8] px-2 py-1 text-sm focus:border-[#E8A835] focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </FilterSection>
-            )}
           </aside>
 
           <div className="flex-1 space-y-6 md:space-y-8">
@@ -1190,4 +1051,3 @@ function arraysEqual<T>(a: T[], b: T[]) {
   }
   return true
 }
-

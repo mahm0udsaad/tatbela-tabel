@@ -130,7 +130,7 @@ export function Navbar() {
 
   return (
    <>
-    <nav className="overflow-visible bg-white/80 backdrop-blur-sm border-b border-primary/20 fixed top-0 left-0 right-0 z-50">
+    <nav className="overflow-visible bg-white border-b border-primary/20 fixed top-0 left-0 right-0 z-50">
       <div className="sm:mx-2 sm:px-2">
         <div className="flex items-center justify-between h-20">
           {/* Left Side - Desktop Menu + Mobile Search */}
@@ -151,7 +151,7 @@ export function Navbar() {
                 <div key={link.href} className="flex items-center">
                   <Link
                     href={link.href}
-                    className="text-foreground hover:text-primary transition-colors px-4 py-2 text-sm"
+                    className="text-foreground hover:text-primary transition-colors px-4 py-2 text-sm whitespace-nowrap"
                   >
                     {link.label}
                   </Link>
@@ -168,8 +168,8 @@ export function Navbar() {
           </div>
 
           {/* Logo - Centered */}
-          <Link href="/" className="overflow-y-hidden h-full flex items-center justify-center flex-shrink-0 mx-4">
-            <Image src="/icon.png" alt="logo" width={100} height={100} className="md:w-64 md:h-40 w-[225px] h-auto" />
+          <Link href="/" className="overflow-y-hidden w-[16rem] h-full flex items-center justify-center flex-shrink-0 mx-4">
+            <Image src="/icon.png" alt="logo" width={100} height={100} className=" md:h-40 w-full h-auto" />
           </Link>
 
           {/* Right Side - Search + Cart + Auth */}
@@ -246,7 +246,7 @@ export function Navbar() {
 
       {/* Mobile search drawer */}
       {mobileSearchOpen && (
-        <div className="md:hidden px-4 pb-4 bg-white/80 backdrop-blur-sm border-b border-primary/20">
+        <div className="md:hidden px-4 pb-4 bg-white border-b border-primary/20">
           <div className="flex items-center gap-3 bg-muted rounded-2xl px-4 py-3">
             <SearchAutocomplete
               value={searchTerm}
@@ -271,8 +271,8 @@ export function Navbar() {
 
       {/* Mobile Bottom Navigation Bar */}
     </nav>
-      <div className="md:hidden fixed bottom-0 right-0 left-0 bg-white/80 backdrop-blur-sm border-t border-primary/20 pb-safe z-50">
-        <div className="flex items-center justify-around h-16 px-1">
+      <div className="md:hidden fixed bottom-0 right-0 left-0 bg-white border-t border-primary/20 pb-safe z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
+        <div className="flex items-center justify-around h-20 px-2">
           {navLinks.map((link) => {
             const Icon = link.icon
             const isActive = pathname === link.href
@@ -280,34 +280,34 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg transition-all min-w-0 ${
+                className={`flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-xl transition-all min-w-0 ${
                   isActive 
-                    ? 'text-primary bg-primary/10' 
+                    ? 'text-white bg-primary shadow-md' 
                     : 'text-foreground hover:text-primary hover:bg-muted'
                 }`}
               >
-                <Icon size={20} className="flex-shrink-0" />
-                <span className="text-[10px] font-medium whitespace-nowrap">{link.shortLabel}</span>
+                <Icon size={22} className="flex-shrink-0" />
+                <span className="text-[11px] font-semibold whitespace-nowrap">{link.shortLabel}</span>
               </Link>
             )
           })}
           <Link
             href={isB2BRoute ? "/b2b/cart" : "/cart"}
-            className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg transition-all relative min-w-0 ${
+            className={`flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-xl transition-all relative min-w-0 ${
               pathname === '/cart' || pathname === '/b2b/cart'
-                ? 'text-primary bg-primary/10'
+                ? 'text-white bg-primary shadow-md'
                 : 'text-foreground hover:text-primary hover:bg-muted'
             }`}
           >
             <div className="relative flex-shrink-0">
-              <ShoppingCart size={20} />
+              <ShoppingCart size={22} />
               {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-brand-red text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                <span className="absolute -top-2 -right-2 bg-brand-red text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
                   {cartCount}
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-medium whitespace-nowrap">السلة</span>
+            <span className="text-[11px] font-semibold whitespace-nowrap">السلة</span>
           </Link>
         </div>
       </div>
