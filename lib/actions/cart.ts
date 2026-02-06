@@ -72,9 +72,12 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
   const cartId = cookieStore.get(cartCookieKey)?.value
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Use admin client for guest carts since RLS blocks anonymous access
+  const dbClient = user ? supabase : getSupabaseAdminClient()
+
   // NOTE: B2B product data is fetched via service role on the server to guarantee isolation
   // after tightening public RLS. So we avoid joining products/product_variants for the b2b cart.
-  let query = supabase.from('carts').select(
+  let query = dbClient.from('carts').select(
     channel === 'b2b'
       ? `
         id,
@@ -243,7 +246,7 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
 
   let freeShipping: Cart['freeShipping'] = null
   if (channel === 'b2c') {
-    const { data: rule } = await supabase
+    const { data: rule } = await dbClient
       .from('free_shipping_rules')
       .select('threshold_amount, expires_at, is_active')
       .in('applies_to', ['b2c', 'all'])
@@ -282,22 +285,25 @@ export async function addToCart(
   let cartId = cookieStore.get(cartCookieKey)?.value
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Use admin client for guest carts since RLS blocks anonymous access
+  const admin = getSupabaseAdminClient()
+
   // If no cart, create one
   let cartIdToUse = cartId
 
   if (!cartId && !user) {
-    // Create new guest cart
-    const { data: newCart, error: createError } = await supabase
+    // Create new guest cart using admin client
+    const { data: newCart, error: createError } = await admin
       .from('carts')
       .insert([{ status: 'active', channel }])
       .select('id')
       .single()
-    
+
     if (createError) throw createError
     cartIdToUse = newCart.id
-    
+
     // Set cookie
-    cookieStore.set(cartCookieKey, cartIdToUse, { 
+    cookieStore.set(cartCookieKey, cartIdToUse!, {
       path: '/',
       httpOnly: true,
       maxAge: 60 * 60 * 24 * 30 // 30 days
@@ -378,8 +384,11 @@ export async function addToCart(
 
   const snapshotPrice = variantData?.price ?? product.price
 
+  // Use admin client for guest cart item operations
+  const cartClient = user ? supabase : admin
+
   // Now add item to cart
-  let existingItemQuery = supabase
+  let existingItemQuery = cartClient
     .from('cart_items')
     .select('id, quantity, product_variant_id')
     .eq('cart_id', cartIdToUse)
@@ -403,10 +412,10 @@ export async function addToCart(
     // Persist variant selection (keeps items separated by variant)
     updates.product_variant_id = productVariantId ?? null
 
-    const { error } = await supabase.from('cart_items').update(updates).eq('id', existingItem.id)
+    const { error } = await cartClient.from('cart_items').update(updates).eq('id', existingItem.id)
     if (error) throw error
   } else {
-    const { error } = await supabase.from('cart_items').insert({
+    const { error } = await cartClient.from('cart_items').insert({
       cart_id: cartIdToUse,
       product_id: productId,
       product_variant_id: productVariantId ?? null,
@@ -418,7 +427,7 @@ export async function addToCart(
   }
 
   // Update cart timestamp
-  await supabase
+  await cartClient
     .from('carts')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', cartIdToUse)
@@ -428,29 +437,57 @@ export async function addToCart(
 
 export async function updateCartItemQuantity(itemId: string, quantity: number) {
   const supabase = await createClient()
-  
+  const { data: { user } } = await supabase.auth.getUser()
+
   if (quantity <= 0) {
     return removeItemFromCart(itemId)
   }
 
-  const { error } = await supabase
-    .from('cart_items')
-    .update({ quantity, updated_at: new Date().toISOString() })
-    .eq('id', itemId)
+  if (user) {
+    const { error } = await supabase
+      .from('cart_items')
+      .update({ quantity, updated_at: new Date().toISOString() })
+      .eq('id', itemId)
+    if (error) throw error
+  } else {
+    // Guest: use admin client, scoped to guest cart from cookie
+    const cookieStore = await cookies()
+    const guestCartId = cookieStore.get('cartId')?.value || cookieStore.get('b2bCartId')?.value
+    if (!guestCartId) throw new Error('سلة التسوق غير موجودة')
+    const { error } = await getSupabaseAdminClient()
+      .from('cart_items')
+      .update({ quantity, updated_at: new Date().toISOString() })
+      .eq('id', itemId)
+      .eq('cart_id', guestCartId)
+    if (error) throw error
+  }
 
-  if (error) throw error
   return { success: true }
 }
 
 export async function removeItemFromCart(itemId: string) {
   const supabase = await createClient()
-  
-  const { error } = await supabase
-    .from('cart_items')
-    .delete()
-    .eq('id', itemId)
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (error) throw error
+  if (user) {
+    const { error } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('id', itemId)
+    if (error) throw error
+  } else {
+    // Guest: use admin client, scoped to guest cart from cookie
+    const cookieStore = await cookies()
+    const guestCartId = cookieStore.get('cartId')?.value || cookieStore.get('b2bCartId')?.value
+    if (!guestCartId) throw new Error('سلة التسوق غير موجودة')
+    const { error } = await getSupabaseAdminClient()
+      .from('cart_items')
+      .delete()
+      .eq('id', itemId)
+      .eq('cart_id', guestCartId)
+    if (error) throw error
+  }
+
   return { success: true }
 }
 
@@ -487,10 +524,13 @@ export async function clearCart(channel: CartChannel = 'b2c') {
     return { success: true }
   }
 
-  const { error: deleteError } = await supabase.from('cart_items').delete().eq('cart_id', cartIdToClear)
+  // Use admin client for guest carts
+  const clearClient = user ? supabase : getSupabaseAdminClient()
+
+  const { error: deleteError } = await clearClient.from('cart_items').delete().eq('cart_id', cartIdToClear)
   if (deleteError) throw deleteError
 
-  await supabase.from('carts').update({ updated_at: new Date().toISOString() }).eq('id', cartIdToClear)
+  await clearClient.from('carts').update({ updated_at: new Date().toISOString() }).eq('id', cartIdToClear)
 
   if (!user && cartIdCookie) {
     cookieStore.delete(cartCookieKey)

@@ -3,14 +3,19 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { ArrowRight, Check, Banknote } from "lucide-react"
+import { ArrowRight, Check, CreditCard, Banknote, ShieldCheck } from "lucide-react"
 import type { ZodIssue } from "zod"
 
 import { useCart } from "@/components/cart-provider"
 import { getSupabaseClient } from "@/lib/supabase"
-import { paymobBillingSchema, type PaymobBillingData } from "@/lib/validation/paymob"
+import {
+  paymobBillingSchema,
+  paymobRequestSchema,
+  type PaymobBillingData,
+  type PaymobRequestPayload,
+} from "@/lib/validation/paymob"
 import { getUserAddresses, saveAddress, type Address } from "@/lib/actions/addresses"
+import { placeOrder } from "@/lib/actions/orders"
 
 type ShippingFormData = {
   firstName: string
@@ -32,13 +37,12 @@ type ShippingZone = {
 }
 
 export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
-  const router = useRouter()
   const supabase = getSupabaseClient()
   const { cart, isLoading: isCartLoading, clearCart } = useCart()
   const isB2B = mode === "b2b"
-  const [currentStep, setCurrentStep] = useState<"auth" | "shipping" | "payment" | "confirmation">("auth")
+  const [currentStep, setCurrentStep] = useState<"shipping" | "payment" | "confirmation">("shipping")
   const [isLoading, setIsLoading] = useState(false)
-  const paymentMethod: "cash" = "cash"
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online")
   const [user, setUser] = useState<any>(null)
   const [orderId, setOrderId] = useState("")
   const [paymentError, setPaymentError] = useState<string | null>(null)
@@ -65,7 +69,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       const { data: sessionData } = await supabase.auth.getSession()
       if (sessionData.session?.user) {
         setUser(sessionData.session.user)
-        setCurrentStep("shipping")
         // Pre-fill email from user profile
         setFormData((prev) => ({
           ...prev,
@@ -242,44 +245,9 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   }
 
   const persistOrder = async (orderNumber: string, billingData: ShippingFormData) => {
-    const { data: orderData, error: orderError } = await supabase
-      .from("orders")
-      .insert([
-        {
-          user_id: user.id,
-          order_number: orderNumber,
-          status: "processing",
-          subtotal: subtotal,
-          shipping_cost: shipping,
-          tax_amount: tax,
-          total_amount: total,
-        channel: mode,
-          shipping_zone_id: shippingZoneId,
-          customer_email: billingData.email,
-          first_name: billingData.firstName,
-          last_name: billingData.lastName,
-          phone: billingData.phone,
-          address: billingData.address,
-          city: billingData.city,
-          postal_code: billingData.postalCode,
-          payment_method: paymentMethod,
-          payment_status: "pending",
-        },
-      ])
-      .select()
-
-    if (orderError) throw orderError
-
-    const newOrderId = orderData?.[0]?.id
-
-    if (!newOrderId) {
-      throw new Error("لم نتمكن من إنشاء الطلب في قاعدة البيانات")
-    }
-
-    const itemsToInsert = orderItems.map((item) => {
+    const items = orderItems.map((item) => {
       const priceToUse = item.unit_price ?? item.product.price
       return {
-        order_id: newOrderId,
         product_id: item.product.id,
         product_name: item.product.name,
         product_brand: item.product.brand,
@@ -289,12 +257,26 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       }
     })
 
-    if (itemsToInsert.length > 0) {
-      const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert)
-      if (itemsError) throw itemsError
-    }
+    const result = await placeOrder({
+      orderNumber,
+      subtotal,
+      shippingCost: shipping,
+      taxAmount: tax,
+      totalAmount: total,
+      channel: mode,
+      shippingZoneId,
+      customerEmail: billingData.email,
+      firstName: billingData.firstName,
+      lastName: billingData.lastName,
+      phone: billingData.phone,
+      address: billingData.address,
+      city: billingData.city,
+      postalCode: billingData.postalCode,
+      paymentMethod,
+      items,
+    })
 
-    return { newOrderId }
+    return { newOrderId: result.newOrderId }
   }
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
@@ -302,13 +284,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
     if (!orderItems.length) {
       setPaymentError("سلة التسوق فارغة")
-      return
-    }
-
-    if (!user) {
-      setPaymentError("يرجى تسجيل الدخول لإكمال عملية الدفع")
-      setCurrentStep("auth")
-      router.push("/auth/sign-in")
       return
     }
 
@@ -325,6 +300,52 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
     }
 
     const orderNumber = `TT${Date.now()}`
+    let onlinePaymentPayload: PaymobRequestPayload | null = null
+
+    if (paymentMethod === "online") {
+      const paymobItemsPayload: PaymobRequestPayload["items"] = [
+        ...orderItems.map((item) => ({
+          name: item.product.name,
+          price: Number(item.unit_price ?? item.product.price),
+          quantity: item.quantity,
+          description: item.product.brand,
+        })),
+      ]
+
+      if (shipping > 0) {
+        paymobItemsPayload.push({
+          name: "الشحن",
+          price: shipping,
+          quantity: 1,
+          description: "تكلفة التوصيل",
+        })
+      }
+
+      if (tax > 0) {
+        paymobItemsPayload.push({
+          name: "الضريبة (14%)",
+          price: tax,
+          quantity: 1,
+          description: "ضريبة على بعض المنتجات",
+        })
+      }
+
+      const validationResult = paymobRequestSchema.safeParse({
+        amount: total,
+        currency: "EGP",
+        merchantOrderId: orderNumber,
+        billing: billingValidation.data,
+        items: paymobItemsPayload,
+      })
+
+      if (!validationResult.success) {
+        setPaymentError(formatValidationIssues(validationResult.error.issues))
+        return
+      }
+
+      onlinePaymentPayload = validationResult.data
+    }
+
     setFormData(sanitizedShippingData)
     setShippingError(null)
     setPaymentError(null)
@@ -334,8 +355,34 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       await persistOrder(orderNumber, sanitizedShippingData)
       await clearCart()
 
-      setOrderId(orderNumber)
-      setCurrentStep("confirmation")
+      if (paymentMethod === "cash") {
+        setOrderId(orderNumber)
+        setCurrentStep("confirmation")
+        return
+      }
+
+      if (!onlinePaymentPayload) {
+        throw new Error("بيانات الدفع غير متاحة")
+      }
+
+      const paymobResponse = await fetch("/api/paymob", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(onlinePaymentPayload),
+      })
+
+      const paymobPayload = await paymobResponse.json().catch(() => ({}))
+      if (!paymobResponse.ok) {
+        const apiErrorMessage =
+          paymobPayload?.details?.[0]?.message || paymobPayload?.error || "تعذر بدء عملية الدفع عبر Paymob"
+        throw new Error(apiErrorMessage)
+      }
+
+      if (!paymobPayload?.iframeUrl) {
+        throw new Error("استجابة Paymob غير مكتملة")
+      }
+
+      window.location.href = paymobPayload.iframeUrl as string
     } catch (error) {
       console.error("Error saving order:", error)
       setPaymentError(
@@ -351,49 +398,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       <div className="min-h-screen py-20 text-center">
         <p className="text-[#8B6F47]">جاري تحميل السلة...</p>
       </div>
-    )
-  }
-
-  if (currentStep === "auth" && !user) {
-    return (
-      <main className="min-h-screen">
-
-        <section className="py-8">
-          <div className="max-w-7xl mx-auto px-4">
-            <h1 className="text-4xl font-bold text-[#2B2520]">{pageTitle}</h1>
-          </div>
-        </section>
-
-        <section className="py-12">
-          <div className="max-w-md mx-auto px-4">
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8 border border-[#E8E2D1] text-center">
-              <h2 className="text-2xl font-bold text-[#2B2520] mb-4">يجب تسجيل الدخول أولاً</h2>
-              <p className="text-[#8B6F47] mb-8">يرجى تسجيل الدخول أو إنشاء حساب جديد لإكمال عملية الشراء</p>
-
-              <div className="space-y-3">
-                <Link
-                  href="/auth/sign-in"
-                  className="block w-full px-6 py-3 bg-brand-green text-white rounded-lg font-semibold hover:bg-brand-green-dark transition-colors"
-                >
-                  تسجيل الدخول
-                </Link>
-                <Link
-                  href="/auth/sign-up"
-                  className="block w-full px-6 py-3 border-2 border-brand-green text-brand-green rounded-lg font-semibold hover:bg-[#F5F1E8] transition-colors"
-                >
-                  إنشاء حساب جديد
-                </Link>
-              </div>
-
-              <p className="text-[#8B6F47] mt-8">
-                <Link href="/cart" className="text-brand-green font-semibold hover:underline">
-                  العودة إلى السلة
-                </Link>
-              </p>
-            </div>
-          </div>
-        </section>
-      </main>
     )
   }
 
@@ -606,17 +610,61 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 <form onSubmit={handlePaymentSubmit} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8">
                   <h2 className="text-2xl font-bold text-[#2B2520] mb-6">تفاصيل الدفع</h2>
 
-                  <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                    <div className="bg-white p-2 rounded-full text-brand-green">
-                      <Banknote size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-[#2B2520] mb-2">الدفع عند الاستلام</h3>
-                      <p className="text-[#8B6F47]">سيتم دفع المبلغ بالكامل لمندوب التوصيل عند استلام الطلب.</p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("online")}
+                      className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
+                        paymentMethod === "online"
+                          ? "border-brand-green bg-brand-green/10 text-brand-green"
+                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-brand-green"
+                      }`}
+                    >
+                      <CreditCard size={32} className="mb-3" />
+                      <span className="font-bold">دفع إلكتروني</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("cash")}
+                      className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
+                        paymentMethod === "cash"
+                          ? "border-brand-green bg-brand-green/10 text-brand-green"
+                          : "border-[#E8E2D1] bg-white text-[#8B6F47] hover:border-brand-green"
+                      }`}
+                    >
+                      <Banknote size={32} className="mb-3" />
+                      <span className="font-bold">دفع عند الاستلام</span>
+                    </button>
                   </div>
 
-          <div className="flex flex-col gap-4">
+                  {paymentMethod === "online" && (
+                    <div className="bg-brand-green/10 p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300 border border-brand-green/30">
+                      <div className="bg-white p-3 rounded-full text-brand-green">
+                        <ShieldCheck size={28} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-[#2B2520] mb-2">دفع إلكتروني آمن عبر Paymob</h3>
+                        <p className="text-[#8B6F47]">
+                          بعد الضغط على زر إتمام الطلب سيتم تحويلك تلقائياً إلى بوابة Paymob الآمنة لإدخال بيانات البطاقة أو
+                          المحافظة الإلكترونية الخاصة بك. لا نقوم بحفظ أي بيانات حساسة على خوادمنا.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethod === "cash" && (
+                    <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="bg-white p-2 rounded-full text-brand-green">
+                        <Banknote size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-[#2B2520] mb-2">الدفع عند الاستلام</h3>
+                        <p className="text-[#8B6F47]">سيتم دفع المبلغ بالكامل لمندوب التوصيل عند استلام الطلب.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-4">
                     <button
                       type="submit"
                       disabled={isLoading}
@@ -651,10 +699,10 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                     <p className="text-[#8B6F47]">تاريخ الطلب: {new Date().toLocaleDateString("ar-EG")}</p>
                   </div>
                   <Link
-                    href="/user/orders"
+                    href={user ? "/user/orders" : "/"}
                     className="inline-block px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors"
                   >
-                    عرض طلباتي
+                    {user ? "عرض طلباتي" : "العودة للرئيسية"}
                   </Link>
                 </div>
               )}
