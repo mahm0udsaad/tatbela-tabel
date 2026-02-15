@@ -106,6 +106,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/sauces", label: "إعدادات الصوصات", icon: Megaphone },
       { href: "/admin/free-shipping", label: "الشحن المجاني", icon: Truck },
       { href: "/admin/promo-banner", label: "قسم العروض", icon: Megaphone },
+      { href: "/admin/marketing", label: "رسائل SMS", icon: MessageSquare },
     ],
   },
   {

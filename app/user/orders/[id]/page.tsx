@@ -47,11 +47,13 @@ export default function OrderDetailsPage() {
   useEffect(() => {
     const fetchOrderDetails = async () => {
       try {
-        const { data: sessionData } = await supabase.auth.getSession()
-        if (!sessionData.session) {
+        const authResponse = await fetch("/api/customer-auth/me", { cache: "no-store" })
+        const authPayload = await authResponse.json().catch(() => ({}))
+        if (!authResponse.ok || !authPayload?.authenticated || !authPayload?.customer) {
           router.push("/auth/sign-in")
           return
         }
+        const sessionCustomer = authPayload.customer as { phone: string }
 
         if (!params.id) return
 
@@ -60,7 +62,7 @@ export default function OrderDetailsPage() {
           .from("orders")
           .select("*")
           .eq("id", params.id)
-          .eq("user_id", sessionData.session.user.id)
+          .eq("phone", sessionCustomer.phone)
           .single()
 
         if (orderError) throw orderError
@@ -245,4 +247,3 @@ export default function OrderDetailsPage() {
     </main>
   )
 }
-

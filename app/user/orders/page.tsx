@@ -20,24 +20,23 @@ export default function OrdersPage() {
   const supabase = getSupabaseClient()
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     const fetchUserAndOrders = async () => {
       try {
-        const { data: sessionData } = await supabase.auth.getSession()
-        if (!sessionData.session) {
+        const authResponse = await fetch("/api/customer-auth/me", { cache: "no-store" })
+        const authPayload = await authResponse.json().catch(() => ({}))
+        if (!authResponse.ok || !authPayload?.authenticated || !authPayload?.customer) {
           router.push("/auth/sign-in")
           return
         }
 
-        setUser(sessionData.session.user)
+        const sessionCustomer = authPayload.customer as { id: string; phone: string }
 
-        // Fetch orders from the database
         const { data, error } = await supabase
           .from("orders")
           .select("*")
-          .eq("user_id", sessionData.session.user.id)
+          .eq("phone", sessionCustomer.phone)
           .order("created_at", { ascending: false })
 
         if (error) throw error
@@ -53,7 +52,9 @@ export default function OrdersPage() {
   }, [supabase, router])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await fetch("/api/customer-auth/sign-out", {
+      method: "POST",
+    })
     router.push("/")
   }
 

@@ -58,6 +58,132 @@ const CART_COOKIE_BY_CHANNEL: Record<CartChannel, string> = {
   b2b: 'b2bCartId',
 }
 
+const buildCartItemKey = (productId: string, variantId?: string | null) =>
+  `${productId}::${variantId ?? 'no-variant'}`
+
+async function mergeGuestCartIntoUserCart(params: {
+  channel: CartChannel
+  userId: string
+  guestCartId: string
+  supabase: Awaited<ReturnType<typeof createClient>>
+}) {
+  const { channel, userId, guestCartId, supabase } = params
+  const admin = getSupabaseAdminClient()
+  const cookieStore = await cookies()
+  const cartCookieKey = CART_COOKIE_BY_CHANNEL[channel]
+
+  const { data: guestCart, error: guestCartError } = await (admin
+    .from('carts')
+    .select(
+      `
+        id,
+        cart_items (
+          id,
+          product_id,
+          product_variant_id,
+          quantity,
+          unit_price
+        )
+      `,
+    )
+    .eq('id', guestCartId)
+    .eq('status', 'active')
+    .eq('channel', channel)
+    .maybeSingle()) as any
+
+  if (guestCartError) throw guestCartError
+  if (!guestCart) {
+    cookieStore.delete(cartCookieKey)
+    return
+  }
+
+  const guestItems: Array<{
+    product_id: string
+    product_variant_id: string | null
+    quantity: number
+    unit_price: number | null
+  }> = (guestCart as any).cart_items ?? []
+  if (guestItems.length === 0) {
+    await admin.from('carts').delete().eq('id', guestCartId)
+    cookieStore.delete(cartCookieKey)
+    return
+  }
+
+  const { data: userCart, error: userCartError } = await (supabase
+    .from('carts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .eq('channel', channel)
+    .maybeSingle()) as any
+
+  if (userCartError) throw userCartError
+
+  let userCartId = (userCart as any)?.id as string | undefined
+
+  if (!userCartId) {
+    const { data: createdUserCart, error: createUserCartError } = await (supabase
+      .from('carts')
+      .insert([{ user_id: userId, status: 'active', channel }])
+      .select('id')
+      .single()) as any
+
+    if (createUserCartError) throw createUserCartError
+    userCartId = createdUserCart.id
+  }
+
+  const { data: userCartItems, error: userCartItemsError } = await (supabase
+    .from('cart_items')
+    .select('id, product_id, product_variant_id, quantity')
+    .eq('cart_id', userCartId)) as any
+
+  if (userCartItemsError) throw userCartItemsError
+
+  const existingItemsByKey = new Map(
+    ((userCartItems ?? []) as any[]).map((item) => [
+      buildCartItemKey(item.product_id, item.product_variant_id),
+      item,
+    ]),
+  )
+
+  for (const guestItem of guestItems) {
+    const itemKey = buildCartItemKey(guestItem.product_id, guestItem.product_variant_id)
+    const existingItem = existingItemsByKey.get(itemKey)
+
+    if (existingItem) {
+      const { error: updateItemError } = await supabase
+        .from('cart_items')
+        .update({
+          quantity: existingItem.quantity + guestItem.quantity,
+          unit_price: guestItem.unit_price,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingItem.id)
+
+      if (updateItemError) throw updateItemError
+      continue
+    }
+
+    const { error: insertItemError } = await supabase.from('cart_items').insert({
+      cart_id: userCartId,
+      product_id: guestItem.product_id,
+      product_variant_id: guestItem.product_variant_id ?? null,
+      quantity: guestItem.quantity,
+      unit_price: guestItem.unit_price,
+    })
+
+    if (insertItemError) throw insertItemError
+  }
+
+  await Promise.all([
+    admin.from('cart_items').delete().eq('cart_id', guestCartId),
+    admin.from('carts').delete().eq('id', guestCartId),
+    supabase.from('carts').update({ updated_at: new Date().toISOString() }).eq('id', userCartId),
+  ])
+
+  cookieStore.delete(cartCookieKey)
+}
+
 const isRuleActive = (rule: any | null) => {
   if (!rule) return false
   if (!rule.is_active) return false
@@ -71,6 +197,15 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
   const cartCookieKey = CART_COOKIE_BY_CHANNEL[channel]
   const cartId = cookieStore.get(cartCookieKey)?.value
   const { data: { user } } = await supabase.auth.getUser()
+
+  if (user && cartId) {
+    await mergeGuestCartIntoUserCart({
+      channel,
+      userId: user.id,
+      guestCartId: cartId,
+      supabase,
+    })
+  }
 
   // Use admin client for guest carts since RLS blocks anonymous access
   const dbClient = user ? supabase : getSupabaseAdminClient()
@@ -538,4 +673,3 @@ export async function clearCart(channel: CartChannel = 'b2c') {
 
   return { success: true }
 }
-

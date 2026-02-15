@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ShoppingCart, User, LogOut, Home, Store, Blend, Soup, Phone, Search, Tag } from "lucide-react"
+import { ShoppingCart, User, Home, Store, Blend, Soup, Phone, Search, Tag } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
 import Image from "next/image"
@@ -25,7 +25,7 @@ function getCategoryIcon(slug: string) {
 }
 
 export function Navbar() {
-  const [user, setUser] = useState<any>(null)
+  const [customer, setCustomer] = useState<{ id: string; phone: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [mainCategories, setMainCategories] = useState<CategoryRecord[]>([])
@@ -45,20 +45,21 @@ export function Navbar() {
   }, [searchParams])
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getSession()
-      setUser(data.session?.user || null)
+    const fetchCustomerSession = async () => {
+      try {
+        const response = await fetch("/api/customer-auth/me", { cache: "no-store" })
+        if (!response.ok) {
+          setCustomer(null)
+          return
+        }
+        const payload = await response.json()
+        setCustomer(payload?.authenticated ? payload.customer : null)
+      } catch {
+        setCustomer(null)
+      }
     }
-    checkUser()
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
-      setUser(session?.user || null)
-    })
-
-    return () => {
-      authListener?.subscription.unsubscribe()
-    }
-  }, [supabase])
+    fetchCustomerSession()
+  }, [])
 
   // Fetch only main (root) categories for navigation
   useEffect(() => {
@@ -200,7 +201,7 @@ export function Navbar() {
 
             {/* Desktop User Auth Menu */}
             <div className="hidden md:flex items-center gap-2">
-              {user ? (
+              {customer ? (
                 <>
                   <Link
                     href="/user/orders"
@@ -222,7 +223,7 @@ export function Navbar() {
 
             {/* Mobile User + Cart */}
             <div className="md:hidden flex items-center gap-2">
-              {user ? (
+              {customer ? (
                 <Link href="/user/orders" className="p-2 hover:bg-muted rounded-lg transition-colors">
                   <User size={24} className="text-foreground" />
                 </Link>
