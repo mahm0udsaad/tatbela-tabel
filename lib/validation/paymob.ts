@@ -10,7 +10,7 @@ const paymobItemSchema = z.object({
 export const paymobBillingSchema = z.object({
   firstName: z.string().trim().min(1, { message: "الاسم الأول مطلوب" }),
   lastName: z.string().trim().min(1, { message: "الاسم الأخير مطلوب" }),
-  email: z.string().trim().email({ message: "البريد الإلكتروني غير صالح" }),
+  email: z.string().trim().email({ message: "البريد الإلكتروني غير صالح" }).optional().or(z.literal("")),
   phone: z.string().trim().min(5, { message: "يرجى إدخال رقم هاتف صالح" }),
   address: z.string().trim().min(3, { message: "الرجاء إدخال عنوان مكون من 3 أحرف على الأقل" }),
   city: z.string().trim().min(2, { message: "اسم المدينة يجب أن يحتوي على حرفين على الأقل" }),

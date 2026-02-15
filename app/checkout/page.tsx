@@ -401,9 +401,9 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className={`grid ${currentStep === "confirmation" ? "" : "lg:grid-cols-3"} gap-8`}>
             {/* Main Form */}
-            <div className="lg:col-span-2">
+            <div className={currentStep === "confirmation" ? "max-w-2xl mx-auto w-full" : "lg:col-span-2"}>
               {/* Shipping Form */}
               {currentStep === "shipping" && (
                 <form onSubmit={handleShippingSubmit} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8">
@@ -438,13 +438,12 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
                   <div className="grid md:grid-cols-2 gap-6 mb-6">
                     <div>
-                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">البريد الإلكتروني*</label>
+                      <label className="block text-sm font-semibold text-[#2B2520] mb-2">البريد الإلكتروني (اختياري)</label>
                       <input
                         type="email"
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
-                        required
                         className="w-full px-4 py-3 border border-[#D9D4C8] rounded-lg focus:outline-none focus:border-brand-green"
                         placeholder="بريدك الإلكتروني"
                       />
@@ -606,7 +605,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                   </div>
                   <h2 className="text-3xl font-bold text-green-700 mb-2">شكراً لك!</h2>
                   <p className="text-green-600 mb-4">تم استقبال طلبك بنجاح</p>
-                  <p className="text-[#8B6F47] mb-8">سيتم التواصل معك قريباً على البريد الإلكتروني وسيصلك رقم التتبع</p>
+                  <p className="text-[#8B6F47] mb-8">سيتم التواصل معك قريباً وسيصلك رقم التتبع</p>
                   <div className="bg-white p-6 rounded-lg mb-8 text-left">
                     <p className="text-[#2B2520] font-semibold mb-2">رقم الطلب: #{orderId}</p>
                     <p className="text-[#8B6F47]">تاريخ الطلب: {new Date().toLocaleDateString("ar-EG")}</p>
@@ -622,7 +621,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
             </div>
 
             {/* Order Summary */}
-            <div className="bg-[#F5F1E8] rounded-xl p-6 h-fit sticky top-4">
+            {currentStep !== "confirmation" && <div className="bg-[#F5F1E8] rounded-xl p-6 h-fit sticky top-4">
               <h3 className="text-xl font-bold text-[#2B2520] mb-6">ملخص الطلب</h3>
 
               <div className="space-y-4 mb-6 pb-6 border-b border-[#D9D4C8]">
@@ -678,7 +677,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                   لطلبات الجملة الإتصال بخدمة العملاء 000000000
                 </p>
               )}
-            </div>
+            </div>}
           </div>
         </div>
       </section>

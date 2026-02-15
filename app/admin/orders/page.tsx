@@ -458,10 +458,10 @@ export default function AdminOrders() {
             <span>تكلفة الشحن:</span>
             <span><strong>${selectedOrder.shipping_cost.toFixed(2)} ج.م</strong></span>
           </div>
-          <div class="summary-row">
+          ${selectedOrder.tax_amount > 0 ? `<div class="summary-row">
             <span>الضريبة:</span>
             <span><strong>${selectedOrder.tax_amount.toFixed(2)} ج.م</strong></span>
-          </div>
+          </div>` : ''}
           <div class="summary-row total">
             <span>الإجمالي النهائي:</span>
             <span>${selectedOrder.total_amount.toFixed(2)} ج.م</span>
@@ -915,10 +915,12 @@ export default function AdminOrders() {
                                       <span className="text-[#8B6F47]">الشحن:</span>
                                       <span className="font-semibold">{selectedOrder.shipping_cost} ج.م</span>
                                     </div>
+                                    {selectedOrder.tax_amount > 0 && (
                                     <div className="flex justify-between mb-2 text-sm">
                                       <span className="text-[#8B6F47]">الضريبة:</span>
                                       <span className="font-semibold">{selectedOrder.tax_amount} ج.م</span>
                                     </div>
+                                    )}
                                     <div className="flex justify-between pt-2 border-t border-[#D9D4C8] mt-2">
                                       <span className="font-bold text-[#2B2520]">الإجمالي:</span>
                                       <span className="font-bold text-[#C41E3A] text-lg">{selectedOrder.total_amount} ج.م</span>

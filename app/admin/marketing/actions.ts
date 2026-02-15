@@ -42,7 +42,7 @@ export async function fetchPhoneContactsAction(input: {
   const admin = getSupabaseAdminClient()
   const offset = (page - 1) * pageSize
 
-  const [orderRes, addressRes, authRes] = await Promise.all([
+  const [orderRes, addressRes, customerRes] = await Promise.all([
     admin
       .from("orders")
       .select("phone, first_name, last_name")
@@ -53,11 +53,13 @@ export async function fetchPhoneContactsAction(input: {
       .select("phone, recipient_name")
       .not("phone", "is", null)
       .neq("phone", ""),
-    admin.auth.admin.listUsers({ perPage: 1000 }),
+    admin
+      .from("customer_users")
+      .select("phone"),
   ])
 
-  if (orderRes.error || addressRes.error) {
-    console.error("Failed to fetch phones:", orderRes.error, addressRes.error)
+  if (orderRes.error || addressRes.error || customerRes.error) {
+    console.error("Failed to fetch phones:", orderRes.error, addressRes.error, customerRes.error)
     return { contacts: [], total: 0, page, pageSize, totalPages: 0 }
   }
 
@@ -73,13 +75,12 @@ export async function fetchPhoneContactsAction(input: {
     }
   }
 
-  // Auth users (sign-in via phone OTP)
-  for (const user of authRes.data?.users ?? []) {
-    if (!user.phone) continue
-    const normalized = normalizePhone(user.phone)
+  // Customer users (sign-in via phone OTP)
+  for (const row of customerRes.data ?? []) {
+    if (!row.phone) continue
+    const normalized = normalizePhone(row.phone)
     if (!normalized || !isValidEgyptPhone(normalized)) continue
-    const name = user.user_metadata?.full_name?.trim() || null
-    addToMap(normalized, name, "signin")
+    addToMap(normalized, null, "signin")
   }
 
   // Orders
