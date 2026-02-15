@@ -27,13 +27,15 @@ const SMS_BATCH_SIZE = 10
 const SOURCE_LABELS: Record<PhoneContact["source"], string> = {
   order: "طلب",
   address: "عنوان",
-  both: "طلب وعنوان",
+  signin: "تسجيل دخول",
+  multiple: "متعدد",
 }
 
 const SOURCE_COLORS: Record<PhoneContact["source"], string> = {
   order: "bg-amber-100 text-amber-800",
   address: "bg-blue-100 text-blue-800",
-  both: "bg-green-100 text-green-800",
+  signin: "bg-purple-100 text-purple-800",
+  multiple: "bg-green-100 text-green-800",
 }
 
 export default function AdminMarketing() {
