@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
+import { normalizePhone } from '@/lib/customer-auth/phone'
 
 type OrderItem = {
   product_id: string
@@ -34,6 +35,7 @@ type PlaceOrderInput = {
 export async function placeOrder(input: PlaceOrderInput) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const normalizedPhone = normalizePhone(input.phone)
 
   // Use admin client for guest orders since RLS blocks anonymous inserts
   const dbClient = user ? supabase : getSupabaseAdminClient()
@@ -54,7 +56,7 @@ export async function placeOrder(input: PlaceOrderInput) {
         customer_email: input.customerEmail,
         first_name: input.firstName,
         last_name: input.lastName,
-        phone: input.phone,
+        phone: normalizedPhone || input.phone.trim(),
         address: input.address,
         city: input.city,
         postal_code: input.postalCode,

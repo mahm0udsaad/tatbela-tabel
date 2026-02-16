@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LogOut, ShoppingBag, Package, Truck, CheckCircle } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
+import { normalizePhone } from "@/lib/customer-auth/phone"
 
 interface Order {
   id: string
@@ -32,11 +33,12 @@ export default function OrdersPage() {
         }
 
         const sessionCustomer = authPayload.customer as { id: string; phone: string }
+        const normalizedPhone = normalizePhone(sessionCustomer.phone)
 
         const { data, error } = await supabase
           .from("orders")
           .select("*")
-          .eq("phone", sessionCustomer.phone)
+          .eq("phone", normalizedPhone || sessionCustomer.phone)
           .order("created_at", { ascending: false })
 
         if (error) throw error
