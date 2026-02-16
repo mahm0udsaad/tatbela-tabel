@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Check, CreditCard, Banknote, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, Banknote } from "lucide-react"
 import type { ZodIssue } from "zod"
 
 import { useCart } from "@/components/cart-provider"
@@ -48,7 +48,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   const isB2B = mode === "b2b"
   const [currentStep, setCurrentStep] = useState<"shipping" | "payment" | "confirmation">("shipping")
   const [isLoading, setIsLoading] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online")
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("cash")
   const [user, setUser] = useState<CustomerSession | null>(null)
   const [orderId, setOrderId] = useState("")
   const [paymentError, setPaymentError] = useState<string | null>(null)
@@ -522,7 +522,8 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 <form onSubmit={handlePaymentSubmit} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8">
                   <h2 className="text-2xl font-bold text-[#2B2520] mb-6">تفاصيل الدفع</h2>
 
-                  <div className="grid grid-cols-2 gap-4 mb-8">
+                  <div className="grid grid-cols-1 gap-4 mb-8">
+                    {/*
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("online")}
@@ -535,6 +536,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                       <CreditCard size={32} className="mb-3" />
                       <span className="font-bold">دفع إلكتروني</span>
                     </button>
+                    */}
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("cash")}
@@ -549,6 +551,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                     </button>
                   </div>
 
+                  {/*
                   {paymentMethod === "online" && (
                     <div className="bg-brand-green/10 p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300 border border-brand-green/30">
                       <div className="bg-white p-3 rounded-full text-brand-green">
@@ -563,6 +566,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                       </div>
                     </div>
                   )}
+                  */}
 
                   {paymentMethod === "cash" && (
                     <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
