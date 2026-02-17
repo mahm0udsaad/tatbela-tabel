@@ -49,6 +49,14 @@ type ProductRecord = {
   product_variants: ProductVariant[] | null
 }
 
+const PLACEHOLDER_VARIANT_LABELS = new Set(["متغير", "variable", "variant"])
+
+const normalizeVariantLabel = (value?: string | null) => {
+  const text = value?.trim()
+  if (!text) return null
+  return PLACEHOLDER_VARIANT_LABELS.has(text.toLowerCase()) ? null : text
+}
+
 type CategoryNode = CategoryRecord & { children: CategoryNode[] }
 
 interface StoreClientProps {
@@ -757,13 +765,15 @@ function ProductCard({
     if (variants.length === 0) return []
 
     const labelFor = (variant: ProductVariant) => {
-      if (typeof variant.weight === 'number' && Number.isFinite(variant.weight)) return `${variant.weight} جم`
-      if (variant.size) return variant.size
-      if (variant.variant_type) return variant.variant_type
-      return 'متغير'
+      if (typeof variant.weight === 'number' && Number.isFinite(variant.weight) && variant.weight > 0) return `${variant.weight} جم`
+      const sizeLabel = normalizeVariantLabel(variant.size)
+      if (sizeLabel) return sizeLabel
+      const typeLabel = normalizeVariantLabel(variant.variant_type)
+      if (typeLabel) return typeLabel
+      return null
     }
 
-    const labels = variants.map(labelFor).filter(Boolean)
+    const labels = variants.map(labelFor).filter((label): label is string => Boolean(label))
     const unique = Array.from(new Set(labels))
     return unique.slice(0, 4)
   }, [product.product_variants])
@@ -843,19 +853,6 @@ function ProductCard({
             z-10
           ">
             -{discount}%
-          </span>
-        )}
-        {isOutOfStock && (
-          <span className="
-            absolute top-2 sm:top-4 right-2 sm:right-4
-            bg-gray-900/80 text-white
-            px-2.5 sm:px-3 py-0.5 sm:py-1
-            rounded-full
-            text-xs sm:text-sm
-            font-bold
-            z-10
-          ">
-            غير متوفر
           </span>
         )}
       </div>

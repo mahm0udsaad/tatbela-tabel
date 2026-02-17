@@ -169,8 +169,16 @@ export function Navbar() {
           </div>
 
           {/* Logo - Centered */}
-          <Link href="/" className="overflow-y-hidden w-[16rem] h-full flex items-center mx-4">
-            <Image src="/main-logo.png" alt="logo" width={100} height={100} className=" md:h-40 w-full h-auto" />
+          <Link href="/" className="mx-2 flex items-center shrink-0">
+            <Image
+              src="/main-logo.png"
+              alt="logo"
+              width={2528}
+              height={1696}
+              priority
+              sizes="(max-width: 768px) 180px, 260px"
+              className="h-16 w-auto md:h-20"
+            />
           </Link>
 
           {/* Right Side - Search + Cart + Auth */}

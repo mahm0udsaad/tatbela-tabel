@@ -65,6 +65,14 @@ type SimilarProduct = {
   product_variants: ProductVariant[] | null
 }
 
+const PLACEHOLDER_VARIANT_LABELS = new Set(["متغير", "variable", "variant"])
+
+const normalizeVariantLabel = (value?: string | null) => {
+  const text = value?.trim()
+  if (!text) return null
+  return PLACEHOLDER_VARIANT_LABELS.has(text.toLowerCase()) ? null : text
+}
+
 export function ProductDetailClient({
   product,
   reviews,
@@ -309,11 +317,6 @@ export function ProductDetailClient({
                         loading="lazy"
                         quality={85}
                       />
-                      {isOutOfStock && (
-                        <span className="absolute top-4 left-4 bg-black/80 text-white px-3 py-1 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-semibold z-10">
-                          غير متوفر مؤقتاً
-                        </span>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -425,11 +428,6 @@ export function ProductDetailClient({
                 خاضع للضريبة. 14%
               </p>
             )}
-            {isOutOfStock ? (
-              <p className="mt-2 text-xs md:text-sm text-red-600 font-semibold">نفدت الكمية وسيتم التوفير قريباً</p>
-            ) : (
-              <p className="mt-2 text-xs md:text-sm text-brand-cumin">المخزون المتوفر: {availableStock} عبوة</p>
-            )}
           </div>
 
           {variants.length > 0 && (
@@ -440,19 +438,25 @@ export function ProductDetailClient({
                   <button
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant.id)}
-                      className={`px-4 py-2 rounded-full border ${
+                    className={`px-4 py-2 rounded-full border ${
                       selectedVariant === variant.id ? "border-primary bg-primary/10" : "border-border"
                     }`}
                   >
-                    {variant.variant_type || variant.size || variant.weight ? (
-                      <>
-                        {variant.variant_type && <span>{variant.variant_type}</span>}
-                        {variant.size && <span> • {variant.size}</span>}
-                        {variant.weight && <span> • {variant.weight} جم</span>}
-                      </>
-                    ) : (
-                      "خيار أساسي"
-                    )}
+                    {(() => {
+                      const parts = [
+                        normalizeVariantLabel(variant.variant_type),
+                        normalizeVariantLabel(variant.size),
+                        typeof variant.weight === "number" && variant.weight > 0 ? `${variant.weight} جم` : null,
+                      ].filter((part): part is string => Boolean(part))
+
+                      if (parts.length === 0) return "خيار أساسي"
+                      return parts.map((part, index) => (
+                        <span key={`${variant.id}-${part}-${index}`}>
+                          {index > 0 ? " • " : ""}
+                          {part}
+                        </span>
+                      ))
+                    })()}
                   </button>
                 ))}
               </div>
@@ -725,11 +729,6 @@ function SimilarProductsRow({
                     {discount > 0 && (
                       <span className="absolute top-2 left-2 bg-[#C41E3A] text-white px-2 py-1 rounded-full text-xs font-bold z-10">
                         -{discount}%
-                      </span>
-                    )}
-                    {isOutOfStock && (
-                      <span className="absolute top-2 right-2 bg-gray-900/80 text-white px-2 py-1 rounded-full text-xs font-bold z-10">
-                        غير متوفر
                       </span>
                     )}
                   </div>
