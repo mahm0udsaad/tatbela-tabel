@@ -25,6 +25,7 @@ type ProductVariant = {
   weight?: number | null
   size?: string | null
   variant_type?: string | null
+  price?: number | null
   stock: number
 }
 
@@ -750,30 +751,48 @@ function ProductCard({
       ? product.product_variants.every((variant) => (variant.stock ?? 0) <= 0)
       : true)
 
+  const variantLabelFor = (variant: ProductVariant) => {
+    if (typeof variant.weight === 'number' && Number.isFinite(variant.weight) && variant.weight > 0) return `${variant.weight} جم`
+    const sizeLabel = normalizeVariantLabel(variant.size)
+    if (sizeLabel) return sizeLabel
+    const typeLabel = normalizeVariantLabel(variant.variant_type)
+    if (typeLabel) return typeLabel
+    return null
+  }
+
+  // Find the cheapest variant (if any have prices)
+  const cheapestVariant = useMemo(() => {
+    const variants = product.product_variants ?? []
+    if (variants.length === 0) return null
+    const withPrice = variants.filter((v) => v.price !== null && v.price !== undefined)
+    if (withPrice.length === 0) return null
+    return withPrice.reduce((min, v) => (v.price! < min.price! ? v : min), withPrice[0])
+  }, [product.product_variants])
+
+  // Use cheapest variant price if available, otherwise base product price
+  const displayPrice = cheapestVariant?.price ?? product.price
+  const cheapestVariantLabel = cheapestVariant ? variantLabelFor(cheapestVariant) : null
+  const hasMultipleVariantPrices = useMemo(() => {
+    const variants = product.product_variants ?? []
+    const prices = variants.filter((v) => v.price !== null).map((v) => v.price)
+    return new Set(prices).size > 1
+  }, [product.product_variants])
+
   const discount =
-    product.price !== null && product.original_price && product.original_price > product.price
+    displayPrice !== null && product.original_price && product.original_price > displayPrice
       ? Math.round(
-          ((product.original_price - product.price) / product.original_price) * 100,
+          ((product.original_price - displayPrice) / product.original_price) * 100,
         )
       : 0
 
   // Hide prices based on: global B2B setting OR individual product setting OR NULL price
-  const hidePrices = priceHidden || (product.is_b2b && product.b2b_price_hidden) || product.price === null
+  const hidePrices = priceHidden || (product.is_b2b && product.b2b_price_hidden) || displayPrice === null
   const productLink = mode === 'b2b' ? `/b2b/product/${product.id}` : `/product/${product.id}`
   const variantBadges = useMemo(() => {
     const variants = product.product_variants ?? []
     if (variants.length === 0) return []
 
-    const labelFor = (variant: ProductVariant) => {
-      if (typeof variant.weight === 'number' && Number.isFinite(variant.weight) && variant.weight > 0) return `${variant.weight} جم`
-      const sizeLabel = normalizeVariantLabel(variant.size)
-      if (sizeLabel) return sizeLabel
-      const typeLabel = normalizeVariantLabel(variant.variant_type)
-      if (typeLabel) return typeLabel
-      return null
-    }
-
-    const labels = variants.map(labelFor).filter((label): label is string => Boolean(label))
+    const labels = variants.map(variantLabelFor).filter((label): label is string => Boolean(label))
     const unique = Array.from(new Set(labels))
     return unique.slice(0, 4)
   }, [product.product_variants])
@@ -940,17 +959,25 @@ function ProductCard({
           </span>
         </div>
         <div className="mb-2 sm:mb-4">
-          <div className="flex items-baseline gap-1.5 sm:gap-2">
+          <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
             {hidePrices ? (
               <span className="text-xs sm:text-base font-semibold text-[#E8A835]">{contactLabel}</span>
-            ) : product.price !== null ? (
+            ) : displayPrice !== null ? (
               <>
+                {cheapestVariant && hasMultipleVariantPrices && (
+                  <span className="text-[10px] sm:text-xs text-[#8B6F47] font-medium">يبدأ من</span>
+                )}
                 <span className="text-lg sm:text-2xl font-bold text-[#C41E3A]">
-                  {product.price.toFixed(2)} ج.م
+                  {displayPrice.toFixed(2)} ج.م
                 </span>
-                {product.original_price && product.original_price > product.price && (
+                {product.original_price && product.original_price > displayPrice && (
                   <span className="text-xs sm:text-sm text-gray-400 line-through">
                     {product.original_price.toFixed(2)} ج.م
+                  </span>
+                )}
+                {cheapestVariant && cheapestVariantLabel && hasMultipleVariantPrices && (
+                  <span className="text-[10px] sm:text-xs text-[#8B6F47] font-medium">
+                    ({cheapestVariantLabel})
                   </span>
                 )}
               </>
