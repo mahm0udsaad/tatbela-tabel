@@ -171,7 +171,7 @@ export function Navbar() {
           {/* Logo - Centered */}
           <Link href="/" className="mx-2 flex items-center shrink-0">
             <Image
-              src="/main-logo.png"
+              src="/main-logo-v1.png"
               alt="logo"
               width={2528}
               height={1696}
