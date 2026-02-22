@@ -176,8 +176,8 @@ export function Navbar() {
               width={2528}
               height={1696}
               priority
-              sizes="(max-width: 768px) 180px, 260px"
-              className="h-16 w-auto md:h-20"
+              sizes="(max-width: 768px) 220px, 340px"
+              className="h-28 w-auto md:h-32"
             />
           </Link>
 

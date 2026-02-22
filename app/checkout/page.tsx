@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Check, Banknote } from "lucide-react"
+import { ArrowRight, Check, Banknote, CreditCard, ShieldCheck } from "lucide-react"
 import type { ZodIssue } from "zod"
 
 import { useCart } from "@/components/cart-provider"
@@ -522,8 +522,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                 <form onSubmit={handlePaymentSubmit} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-8">
                   <h2 className="text-2xl font-bold text-[#2B2520] mb-6">تفاصيل الدفع</h2>
 
-                  <div className="grid grid-cols-1 gap-4 mb-8">
-                    {/*
+                  <div className="grid grid-cols-2 gap-4 mb-8">
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("online")}
@@ -536,7 +535,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                       <CreditCard size={32} className="mb-3" />
                       <span className="font-bold">دفع إلكتروني</span>
                     </button>
-                    */}
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("cash")}
@@ -551,7 +549,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                     </button>
                   </div>
 
-                  {/*
                   {paymentMethod === "online" && (
                     <div className="bg-brand-green/10 p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300 border border-brand-green/30">
                       <div className="bg-white p-3 rounded-full text-brand-green">
@@ -566,7 +563,6 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                       </div>
                     </div>
                   )}
-                  */}
 
                   {paymentMethod === "cash" && (
                     <div className="bg-[#F5F1E8] p-6 rounded-lg mb-8 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -628,58 +624,92 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
             {currentStep !== "confirmation" && <div className="bg-[#F5F1E8] rounded-xl p-6 h-fit sticky top-4">
               <h3 className="text-xl font-bold text-[#2B2520] mb-6">ملخص الطلب</h3>
 
-              <div className="space-y-4 mb-6 pb-6 border-b border-[#D9D4C8]">
-                {orderItems.map((item) => {
-                  const linePrice = (item.unit_price ?? item.product.price) * item.quantity
-                  return (
-                    <div key={item.id} className="flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold text-[#2B2520]">{item.product.name}</p>
-                        <p className="text-sm text-[#8B6F47]">{item.product.brand}</p>
-                        <p className="text-xs text-[#8B6F47] mt-1">الكمية: {item.quantity}</p>
-                        {item.product.has_tax && (
-                          <p className="text-xs text-[#C41E3A] font-medium mt-1">
-                            خاضع للضريبة. 14%
-                          </p>
-                        )}
+              {isLoading && paymentMethod === "online" ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="space-y-4 mb-6 pb-6 border-b border-[#D9D4C8]">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="flex justify-between items-start">
+                        <div className="space-y-2 flex-1">
+                          <div className="h-4 bg-[#D9D4C8] rounded w-3/4" />
+                          <div className="h-3 bg-[#D9D4C8] rounded w-1/2" />
+                          <div className="h-3 bg-[#D9D4C8] rounded w-1/4" />
+                        </div>
+                        <div className="h-4 bg-[#D9D4C8] rounded w-16 mr-4" />
                       </div>
-                      <p className="font-bold text-[#C41E3A]">{linePrice.toFixed(2)} ج.م</p>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="space-y-3 mb-6 pb-6 border-b border-[#D9D4C8]">
-                <div className="flex justify-between text-[#8B6F47]">
-                  <span>المجموع الفرعي</span>
-                  <span>{subtotal.toFixed(2)} ج.م</span>
-                </div>
-                {tax > 0 && (
-                  <div className="flex justify-between text-[#C41E3A]">
-                    <span className="flex items-center gap-1">
-                      الضريبة (14%)
-                      <span className="text-xs text-[#8B6F47]">على بعض المنتجات</span>
-                    </span>
-                    <span className="font-semibold">{tax.toFixed(2)} ج.م</span>
+                    ))}
                   </div>
-                )}
-                <div className="flex justify-between text-[#8B6F47]">
-                  <span>الشحن</span>
-                  <span>{shipping === 0 ? "مجاني" : `${shipping.toFixed(2)} ج.م`}</span>
+                  <div className="space-y-3 mb-6 pb-6 border-b border-[#D9D4C8]">
+                    <div className="flex justify-between">
+                      <div className="h-4 bg-[#D9D4C8] rounded w-24" />
+                      <div className="h-4 bg-[#D9D4C8] rounded w-16" />
+                    </div>
+                    <div className="flex justify-between">
+                      <div className="h-4 bg-[#D9D4C8] rounded w-20" />
+                      <div className="h-4 bg-[#D9D4C8] rounded w-16" />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="h-5 bg-[#D9D4C8] rounded w-20" />
+                    <div className="h-8 bg-[#D9D4C8] rounded w-28" />
+                  </div>
+                  <p className="text-sm text-[#8B6F47] text-center mt-4">جاري التحويل لبوابة الدفع...</p>
                 </div>
-                {isFreeShipping && (
-                  <p className="text-xs text-green-700 text-right">تم تفعيل الشحن المجاني على هذا الطلب</p>
-                )}
-              </div>
+              ) : (
+                <>
+                  <div className="space-y-4 mb-6 pb-6 border-b border-[#D9D4C8]">
+                    {orderItems.map((item) => {
+                      const linePrice = (item.unit_price ?? item.product.price) * item.quantity
+                      return (
+                        <div key={item.id} className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-[#2B2520]">{item.product.name}</p>
+                            <p className="text-sm text-[#8B6F47]">{item.product.brand}</p>
+                            <p className="text-xs text-[#8B6F47] mt-1">الكمية: {item.quantity}</p>
+                            {item.product.has_tax && (
+                              <p className="text-xs text-[#C41E3A] font-medium mt-1">
+                                خاضع للضريبة. 14%
+                              </p>
+                            )}
+                          </div>
+                          <p className="font-bold text-[#C41E3A]">{linePrice.toFixed(2)} ج.م</p>
+                        </div>
+                      )
+                    })}
+                  </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-[#2B2520]">الإجمالي</span>
-                <span className="text-3xl font-bold text-[#C41E3A]">{total.toFixed(2)} ج.م</span>
-              </div>
-              {isB2B && (
-                <p className="text-xs text-[#8B6F47] mt-4 text-center">
-                  لطلبات الجملة الإتصال بخدمة العملاء 000000000
-                </p>
+                  <div className="space-y-3 mb-6 pb-6 border-b border-[#D9D4C8]">
+                    <div className="flex justify-between text-[#8B6F47]">
+                      <span>المجموع الفرعي</span>
+                      <span>{subtotal.toFixed(2)} ج.م</span>
+                    </div>
+                    {tax > 0 && (
+                      <div className="flex justify-between text-[#C41E3A]">
+                        <span className="flex items-center gap-1">
+                          الضريبة (14%)
+                          <span className="text-xs text-[#8B6F47]">على بعض المنتجات</span>
+                        </span>
+                        <span className="font-semibold">{tax.toFixed(2)} ج.م</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-[#8B6F47]">
+                      <span>الشحن</span>
+                      <span>{shipping === 0 ? "مجاني" : `${shipping.toFixed(2)} ج.م`}</span>
+                    </div>
+                    {isFreeShipping && (
+                      <p className="text-xs text-green-700 text-right">تم تفعيل الشحن المجاني على هذا الطلب</p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold text-[#2B2520]">الإجمالي</span>
+                    <span className="text-3xl font-bold text-[#C41E3A]">{total.toFixed(2)} ج.م</span>
+                  </div>
+                  {isB2B && (
+                    <p className="text-xs text-[#8B6F47] mt-4 text-center">
+                      لطلبات الجملة الإتصال بخدمة العملاء 000000000
+                    </p>
+                  )}
+                </>
               )}
             </div>}
           </div>
