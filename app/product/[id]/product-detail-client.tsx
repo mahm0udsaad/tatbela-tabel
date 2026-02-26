@@ -415,7 +415,7 @@ export function ProductDetailClient({
               ) : effectivePrice !== null ? (
                 <>
                   <span className="text-3xl md:text-5xl font-bold text-[#C41E3A]">{effectivePrice.toFixed(2)} ج.م</span>
-                  {product.original_price && product.original_price > effectivePrice && (
+                  {product.price !== null && product.original_price && product.original_price > product.price && (
                     <span className="text-xl md:text-2xl text-gray-400 line-through">{product.original_price.toFixed(2)} ج.م</span>
                   )}
                 </>

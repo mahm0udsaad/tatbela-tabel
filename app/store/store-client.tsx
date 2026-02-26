@@ -779,9 +779,9 @@ function ProductCard({
   }, [product.product_variants])
 
   const discount =
-    displayPrice !== null && product.original_price && product.original_price > displayPrice
+    product.price !== null && product.original_price && product.original_price > product.price
       ? Math.round(
-          ((product.original_price - displayPrice) / product.original_price) * 100,
+          ((product.original_price - product.price) / product.original_price) * 100,
         )
       : 0
 
@@ -970,7 +970,7 @@ function ProductCard({
                 <span className="text-lg sm:text-2xl font-bold text-[#C41E3A]">
                   {displayPrice.toFixed(2)} ج.م
                 </span>
-                {product.original_price && product.original_price > displayPrice && (
+                {product.price !== null && product.original_price && product.original_price > product.price && (
                   <span className="text-xs sm:text-sm text-gray-400 line-through">
                     {product.original_price.toFixed(2)} ج.م
                   </span>
