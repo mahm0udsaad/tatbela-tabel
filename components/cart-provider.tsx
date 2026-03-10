@@ -50,9 +50,13 @@ export function CartProvider({ children, channel = 'b2c' }: { children: React.Re
       router.refresh() 
     } catch (error) {
       console.error(error)
+      const description =
+        error instanceof Error && error.message
+          ? error.message
+          : 'حدث خطأ أثناء إضافة المنتج للسلة'
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إضافة المنتج للسلة",
+        title: 'خطأ',
+        description,
         variant: "destructive",
       })
       throw error

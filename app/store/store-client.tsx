@@ -58,6 +58,13 @@ const normalizeVariantLabel = (value?: string | null) => {
   return PLACEHOLDER_VARIANT_LABELS.has(text.toLowerCase()) ? null : text
 }
 
+const hasMeaningfulVariantOption = (variant: ProductVariant) =>
+  Boolean(
+    normalizeVariantLabel(variant.variant_type) ||
+      normalizeVariantLabel(variant.size) ||
+      (typeof variant.weight === "number" && Number.isFinite(variant.weight) && variant.weight > 0)
+  )
+
 type CategoryNode = CategoryRecord & { children: CategoryNode[] }
 
 interface StoreClientProps {
@@ -745,12 +752,6 @@ function ProductCard({
     product.product_images?.[0]?.image_url ||
     null
 
-  const isOutOfStock =
-    (product.stock ?? 0) <= 0 &&
-    (product.product_variants?.length
-      ? product.product_variants.every((variant) => (variant.stock ?? 0) <= 0)
-      : true)
-
   const variantLabelFor = (variant: ProductVariant) => {
     if (typeof variant.weight === 'number' && Number.isFinite(variant.weight) && variant.weight > 0) return `${variant.weight} جم`
     const sizeLabel = normalizeVariantLabel(variant.size)
@@ -760,23 +761,30 @@ function ProductCard({
     return null
   }
 
+  const variants = useMemo(() => product.product_variants ?? [], [product.product_variants])
+  const selectableVariants = useMemo(
+    () => variants.filter(hasMeaningfulVariantOption),
+    [variants]
+  )
+  const variantPricePool = selectableVariants.length > 0 ? selectableVariants : variants
+  const baseStock = product.stock ?? 0
+  const isOutOfStock = baseStock <= 0
+
   // Find the cheapest variant (if any have prices)
   const cheapestVariant = useMemo(() => {
-    const variants = product.product_variants ?? []
-    if (variants.length === 0) return null
-    const withPrice = variants.filter((v) => v.price !== null && v.price !== undefined)
+    if (variantPricePool.length === 0) return null
+    const withPrice = variantPricePool.filter((v) => v.price !== null && v.price !== undefined)
     if (withPrice.length === 0) return null
     return withPrice.reduce((min, v) => (v.price! < min.price! ? v : min), withPrice[0])
-  }, [product.product_variants])
+  }, [variantPricePool])
 
   // Use cheapest variant price if available, otherwise base product price
   const displayPrice = cheapestVariant?.price ?? product.price
   const cheapestVariantLabel = cheapestVariant ? variantLabelFor(cheapestVariant) : null
   const hasMultipleVariantPrices = useMemo(() => {
-    const variants = product.product_variants ?? []
-    const prices = variants.filter((v) => v.price !== null).map((v) => v.price)
+    const prices = variantPricePool.filter((v) => v.price !== null).map((v) => v.price)
     return new Set(prices).size > 1
-  }, [product.product_variants])
+  }, [variantPricePool])
 
   const discount =
     product.price !== null && product.original_price && product.original_price > product.price
@@ -789,13 +797,12 @@ function ProductCard({
   const hidePrices = priceHidden || (product.is_b2b && product.b2b_price_hidden) || displayPrice === null
   const productLink = mode === 'b2b' ? `/b2b/product/${product.id}` : `/product/${product.id}`
   const variantBadges = useMemo(() => {
-    const variants = product.product_variants ?? []
-    if (variants.length === 0) return []
+    if (selectableVariants.length === 0) return []
 
-    const labels = variants.map(variantLabelFor).filter((label): label is string => Boolean(label))
+    const labels = selectableVariants.map(variantLabelFor).filter((label): label is string => Boolean(label))
     const unique = Array.from(new Set(labels))
     return unique.slice(0, 4)
-  }, [product.product_variants])
+  }, [selectableVariants])
 
   const handleProductClick = () => {
     if (searchAnalytics?.queryId && position) {
@@ -917,14 +924,14 @@ function ProductCard({
         ">
           <SearchHighlighter text={product.name_ar} searchTerm={searchTerm ?? ''} />
         </h3>
-        {(product.product_variants?.length ?? 0) > 0 && (
+        {selectableVariants.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {variantBadges.length > 0 ? (
               variantBadges.map((label) => (
                 <Badge
                   key={label}
                   variant="secondary"
-                  className="bg-[#F5F1E8] text-[#2B2520] border-[#E8E2D1] text-[10px] sm:text-xs"
+                  className="bg-green-200 text-[#2B2520] border-[#E8E2D1] text-[10px] sm:text-xs"
                 >
                   {label}
                 </Badge>

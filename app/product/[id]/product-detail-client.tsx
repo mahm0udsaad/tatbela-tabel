@@ -73,6 +73,13 @@ const normalizeVariantLabel = (value?: string | null) => {
   return PLACEHOLDER_VARIANT_LABELS.has(text.toLowerCase()) ? null : text
 }
 
+const hasMeaningfulVariantOption = (variant: ProductVariant) =>
+  Boolean(
+    normalizeVariantLabel(variant.variant_type) ||
+      normalizeVariantLabel(variant.size) ||
+      (typeof variant.weight === "number" && variant.weight > 0)
+  )
+
 export function ProductDetailClient({
   product,
   reviews,
@@ -141,8 +148,16 @@ export function ProductDetailClient({
   )
 
   const variants = useMemo(() => product.product_variants ?? [], [product.product_variants])
-  const activeVariant = variants.find((variant) => variant.id === selectedVariant) || null
-  const availableStock = activeVariant ? activeVariant.stock : product.stock
+  const selectableVariants = useMemo(
+    () => variants.filter(hasMeaningfulVariantOption),
+    [variants]
+  )
+  const usesVariantStock = selectableVariants.length > 0
+  const activeVariant = (usesVariantStock ? selectableVariants : variants).find(
+    (variant) => variant.id === selectedVariant
+  ) || null
+  const baseStock = product.stock ?? 0
+  const availableStock = baseStock
   const effectivePrice = activeVariant?.price ?? product.price
   const isOutOfStock = availableStock <= 0
   // Hide prices for B2B products when priceHidden prop is true (from server), or when price is NULL (from DB migration)
@@ -160,11 +175,12 @@ export function ProductDetailClient({
 
   // Default select first available variant (mobile-first UX: no "empty" variant state)
   useEffect(() => {
-    if (variants.length === 0) return
+    const variantPool = usesVariantStock ? selectableVariants : variants
+    if (variantPool.length === 0) return
     if (selectedVariant) return
-    const firstAvailable = variants.find((v) => (v.stock ?? 0) > 0) ?? variants[0]
+    const firstAvailable = variantPool.find((v) => (v.stock ?? 0) > 0) ?? variantPool[0]
     setSelectedVariant(firstAvailable?.id ?? null)
-  }, [variants, selectedVariant])
+  }, [selectableVariants, selectedVariant, usesVariantStock, variants])
 
   const handleSubmitReview = () => {
     if (!canReview) {
@@ -212,7 +228,7 @@ export function ProductDetailClient({
     }
     setIsAddingToCart(true)
     try {
-      const variantIdToUse = variants.length > 0 ? selectedVariant : null
+      const variantIdToUse = usesVariantStock ? selectedVariant : null
       await addItem(product.id, quantity, variantIdToUse)
     } catch (error: any) {
       console.error('Failed to add to cart', error)
@@ -430,11 +446,11 @@ export function ProductDetailClient({
             )}
           </div>
 
-          {variants.length > 0 && (
+          {selectableVariants.length > 0 && (
             <div className="space-y-3">
               <p className="font-semibold text-foreground">اختر المتغير</p>
               <div className="flex flex-wrap gap-3">
-                {variants.map((variant) => (
+                {selectableVariants.map((variant) => (
                   <button
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant.id)}

@@ -517,6 +517,11 @@ export async function addToCart(
     variantData = variant
   }
 
+  const availableStock = product.stock ?? 0
+  if (availableStock <= 0) {
+    throw new Error('سيعود قريباً')
+  }
+
   const snapshotPrice = variantData?.price ?? product.price
 
   // Use admin client for guest cart item operations
@@ -538,8 +543,13 @@ export async function addToCart(
   const { data: existingItem } = await existingItemQuery.maybeSingle()
 
   if (existingItem) {
+    const nextQuantity = existingItem.quantity + quantity
+    if (nextQuantity > availableStock) {
+      throw new Error('الكمية المطلوبة غير متوفرة')
+    }
+
     const updates: Record<string, any> = {
-      quantity: existingItem.quantity + quantity,
+      quantity: nextQuantity,
       updated_at: new Date().toISOString(),
       unit_price: snapshotPrice,
     }
@@ -550,6 +560,10 @@ export async function addToCart(
     const { error } = await cartClient.from('cart_items').update(updates).eq('id', existingItem.id)
     if (error) throw error
   } else {
+    if (quantity > availableStock) {
+      throw new Error('الكمية المطلوبة غير متوفرة')
+    }
+
     const { error } = await cartClient.from('cart_items').insert({
       cart_id: cartIdToUse,
       product_id: productId,
