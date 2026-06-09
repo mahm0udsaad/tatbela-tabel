@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ShoppingCart, User, Home, Store, Blend, Soup, Phone, Search, Tag } from "lucide-react"
+import { ShoppingCart, Home, Store, Blend, Soup, Phone, Search, Tag } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getSupabaseClient } from "@/lib/supabase"
 import Image from "next/image"
@@ -25,7 +25,6 @@ function getCategoryIcon(slug: string) {
 }
 
 export function Navbar() {
-  const [customer, setCustomer] = useState<{ id: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [mainCategories, setMainCategories] = useState<CategoryRecord[]>([])
@@ -43,18 +42,6 @@ export function Navbar() {
     const searchFromUrl = searchParams.get("search") || ""
     setSearchTerm(searchFromUrl)
   }, [searchParams])
-
-  useEffect(() => {
-    const fetchCustomerSession = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        setCustomer(user ? { id: user.id } : null)
-      } catch {
-        setCustomer(null)
-      }
-    }
-    fetchCustomerSession()
-  }, [supabase])
 
   // Fetch only main (root) categories for navigation
   useEffect(() => {
@@ -202,39 +189,8 @@ export function Navbar() {
               )}
             </Link>
 
-            {/* Desktop User Auth Menu */}
-            <div className="hidden md:flex items-center gap-2">
-              {customer ? (
-                <>
-                  <Link
-                    href="/user/orders"
-                    className="p-2 hover:bg-muted rounded-lg transition-colors"
-                    title="طلباتي"
-                  >
-                    <User size={24} className="text-foreground" />
-                  </Link>
-                </>
-              ) : (
-                <Link
-                  href="/auth/sign-in"
-                  className="px-1 py-2 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-brand-green-dark transition-colors"
-                >
-                  تسجيل الدخول
-                </Link>
-              )}
-            </div>
-
-            {/* Mobile User + Cart */}
+            {/* Mobile Cart */}
             <div className="md:hidden flex items-center gap-2">
-              {customer ? (
-                <Link href="/user/orders" className="p-2 hover:bg-muted rounded-lg transition-colors">
-                  <User size={24} className="text-foreground" />
-                </Link>
-              ) : (
-                <Link href="/auth/sign-in" className="p-2 hover:bg-muted rounded-lg transition-colors">
-                  <User size={24} className="text-foreground" />
-                </Link>
-              )}
               <Link href={isB2BRoute ? "/b2b/cart" : "/cart"} className="p-2 hover:bg-muted rounded-lg transition-colors relative">
                 <ShoppingCart size={24} className="text-foreground" />
                 {cartCount > 0 && (

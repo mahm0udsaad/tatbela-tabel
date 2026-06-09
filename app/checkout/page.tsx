@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { ArrowRight, Check, Banknote, CreditCard, ShieldCheck } from "lucide-react"
 import type { ZodIssue } from "zod"
 
@@ -36,26 +35,20 @@ type ShippingZone = {
   estimated_days: number
 }
 
-type CustomerSession = {
-  id: string
-  email: string
-}
+const SHIPPING_INFO_STORAGE_KEY = "checkout_shipping_info"
 
 export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
-  const router = useRouter()
   const supabase = getSupabaseClient()
   const { cart, isLoading: isCartLoading, clearCart } = useCart()
   const isB2B = mode === "b2b"
   const [currentStep, setCurrentStep] = useState<"shipping" | "payment" | "confirmation">("shipping")
   const [isLoading, setIsLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("cash")
-  const [user, setUser] = useState<CustomerSession | null>(null)
   const [orderId, setOrderId] = useState("")
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [shippingError, setShippingError] = useState<string | null>(null)
   const [shippingZones, setShippingZones] = useState<ShippingZone[]>([])
   const [shippingZoneId, setShippingZoneId] = useState<string | null>(null)
-  const [isAuthChecking, setIsAuthChecking] = useState(!isB2B)
   const [formData, setFormData] = useState<ShippingFormData>({
     firstName: "",
     lastName: "",
@@ -69,31 +62,17 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   const pageTitle = isB2B ? "الدفع للجملة" : "الدفع"
 
   useEffect(() => {
-    const checkUser = async () => {
-      if (isB2B) {
-        setIsAuthChecking(false)
-        return
-      }
-
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-
-      if (!authUser) {
-        router.replace("/auth/sign-in?next=/checkout")
-        return
-      }
-
-      setUser({
-        id: authUser.id,
-        email: authUser.email ?? "",
-      })
-      setFormData((prev) => ({
-        ...prev,
-        email: prev.email || authUser.email || "",
-      }))
-      setIsAuthChecking(false)
+    // Guest checkout: no sign-in required. Pre-fill from previously saved details.
+    let savedInfo: Partial<ShippingFormData> | null = null
+    try {
+      savedInfo = JSON.parse(localStorage.getItem(SHIPPING_INFO_STORAGE_KEY) || "null")
+    } catch {
+      savedInfo = null
     }
-    checkUser()
-    
+    if (savedInfo) {
+      setFormData((prev) => ({ ...prev, ...savedInfo }))
+    }
+
     const loadZones = async () => {
       const { data, error } = await supabase
         .from("shipping_zones")
@@ -106,12 +85,17 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       }
       setShippingZones(data ?? [])
       if ((data ?? []).length > 0) {
-        setShippingZoneId(data![0].id)
-        setFormData((prev) => ({ ...prev, governorate: data![0].governorate }))
+        const savedGovernorate = savedInfo?.governorate
+        const matchedZone = savedGovernorate
+          ? data!.find((z: ShippingZone) => z.governorate === savedGovernorate)
+          : null
+        const selectedZone = matchedZone ?? data![0]
+        setShippingZoneId(selectedZone.id)
+        setFormData((prev) => ({ ...prev, governorate: prev.governorate || selectedZone.governorate }))
       }
     }
     loadZones()
-  }, [isB2B, router, supabase])
+  }, [supabase])
 
   const orderItems = cart?.items || []
   const subtotal = orderItems.reduce(
@@ -307,6 +291,12 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
     try {
       await persistOrder(orderNumber, sanitizedShippingData)
+      // Remember the buyer's details to auto-fill the next order.
+      try {
+        localStorage.setItem(SHIPPING_INFO_STORAGE_KEY, JSON.stringify(sanitizedShippingData))
+      } catch {
+        // ignore storage failures (e.g. private mode)
+      }
       await clearCart()
 
       if (paymentMethod === "cash") {
@@ -347,7 +337,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
     }
   }
 
-  if (isAuthChecking || isCartLoading) {
+  if (isCartLoading) {
     return (
       <div className="min-h-screen py-20 text-center">
         <p className="text-[#8B6F47]">جاري تحميل السلة...</p>
@@ -607,10 +597,10 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                     <p className="text-[#8B6F47]">تاريخ الطلب: {new Date().toLocaleDateString("ar-EG")}</p>
                   </div>
                   <Link
-                    href={user ? "/user/orders" : "/"}
+                    href="/"
                     className="inline-block px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors"
                   >
-                    {user ? "عرض طلباتي" : "العودة للرئيسية"}
+                    العودة للرئيسية
                   </Link>
                 </div>
               )}
