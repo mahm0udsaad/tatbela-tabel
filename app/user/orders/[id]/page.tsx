@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight, Package, MapPin, CreditCard, Calendar, ShoppingBag } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { normalizePhone } from "@/lib/customer-auth/phone"
 
 interface OrderItem {
   id: string
@@ -48,14 +47,11 @@ export default function OrderDetailsPage() {
   useEffect(() => {
     const fetchOrderDetails = async () => {
       try {
-        const authResponse = await fetch("/api/customer-auth/me", { cache: "no-store" })
-        const authPayload = await authResponse.json().catch(() => ({}))
-        if (!authResponse.ok || !authPayload?.authenticated || !authPayload?.customer) {
-          router.push("/auth/sign-in")
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push(`/auth/sign-in?next=/user/orders/${params.id ?? ""}`)
           return
         }
-        const sessionCustomer = authPayload.customer as { phone: string }
-        const normalizedPhone = normalizePhone(sessionCustomer.phone)
 
         if (!params.id) return
 
@@ -64,7 +60,7 @@ export default function OrderDetailsPage() {
           .from("orders")
           .select("*")
           .eq("id", params.id)
-          .eq("phone", normalizedPhone || sessionCustomer.phone)
+          .eq("user_id", user.id)
           .single()
 
         if (orderError) throw orderError

@@ -25,7 +25,7 @@ function getCategoryIcon(slug: string) {
 }
 
 export function Navbar() {
-  const [customer, setCustomer] = useState<{ id: string; phone: string } | null>(null)
+  const [customer, setCustomer] = useState<{ id: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [mainCategories, setMainCategories] = useState<CategoryRecord[]>([])
@@ -47,19 +47,14 @@ export function Navbar() {
   useEffect(() => {
     const fetchCustomerSession = async () => {
       try {
-        const response = await fetch("/api/customer-auth/me", { cache: "no-store" })
-        if (!response.ok) {
-          setCustomer(null)
-          return
-        }
-        const payload = await response.json()
-        setCustomer(payload?.authenticated ? payload.customer : null)
+        const { data: { user } } = await supabase.auth.getUser()
+        setCustomer(user ? { id: user.id } : null)
       } catch {
         setCustomer(null)
       }
     }
     fetchCustomerSession()
-  }, [])
+  }, [supabase])
 
   // Fetch only main (root) categories for navigation
   useEffect(() => {
