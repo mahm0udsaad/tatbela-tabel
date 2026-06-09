@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LogOut, ShoppingBag, Package, Truck, CheckCircle } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase"
-import { normalizePhone } from "@/lib/customer-auth/phone"
 
 interface Order {
   id: string
@@ -25,20 +24,16 @@ export default function OrdersPage() {
   useEffect(() => {
     const fetchUserAndOrders = async () => {
       try {
-        const authResponse = await fetch("/api/customer-auth/me", { cache: "no-store" })
-        const authPayload = await authResponse.json().catch(() => ({}))
-        if (!authResponse.ok || !authPayload?.authenticated || !authPayload?.customer) {
-          router.push("/auth/sign-in")
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push("/auth/sign-in?next=/user/orders")
           return
         }
-
-        const sessionCustomer = authPayload.customer as { id: string; phone: string }
-        const normalizedPhone = normalizePhone(sessionCustomer.phone)
 
         const { data, error } = await supabase
           .from("orders")
           .select("*")
-          .eq("phone", normalizedPhone || sessionCustomer.phone)
+          .eq("user_id", user.id)
           .order("created_at", { ascending: false })
 
         if (error) throw error
@@ -54,9 +49,7 @@ export default function OrdersPage() {
   }, [supabase, router])
 
   const handleLogout = async () => {
-    await fetch("/api/customer-auth/sign-out", {
-      method: "POST",
-    })
+    await supabase.auth.signOut()
     router.push("/")
   }
 

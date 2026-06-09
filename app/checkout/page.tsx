@@ -38,7 +38,7 @@ type ShippingZone = {
 
 type CustomerSession = {
   id: string
-  phone: string
+  email: string
 }
 
 export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
@@ -75,24 +75,20 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
         return
       }
 
-      const authResponse = await fetch("/api/customer-auth/me", {
-        method: "GET",
-        cache: "no-store",
-      })
-      const authPayload = await authResponse.json().catch(() => ({}))
+      const { data: { user: authUser } } = await supabase.auth.getUser()
 
-      if (!authResponse.ok || !authPayload?.authenticated || !authPayload?.customer) {
+      if (!authUser) {
         router.replace("/auth/sign-in?next=/checkout")
         return
       }
 
       setUser({
-        id: authPayload.customer.id,
-        phone: authPayload.customer.phone,
+        id: authUser.id,
+        email: authUser.email ?? "",
       })
       setFormData((prev) => ({
         ...prev,
-        phone: prev.phone || authPayload.customer.phone,
+        email: prev.email || authUser.email || "",
       }))
       setIsAuthChecking(false)
     }

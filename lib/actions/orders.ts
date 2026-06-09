@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
-import { normalizePhone } from '@/lib/customer-auth/phone'
+import { normalizePhone } from '@/lib/phone'
 
 type OrderItem = {
   product_id: string
