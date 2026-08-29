@@ -109,7 +109,7 @@ export function ProductDetailClient({
   const [isReviewOpen, setIsReviewOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const { addItem, isLoading: isCartLoading } = useCart()
+  const { addItem, isLoading: isCartLoading, showCartBanner } = useCart()
   const [isAddingToCart, setIsAddingToCart] = useState(false)
 
   // Embla Carousel
@@ -221,8 +221,6 @@ export function ProductDetailClient({
     setReviewStatus(null)
     setIsReviewOpen(true)
   }
-
-  const { addItem, isLoading: isCartLoading, showCartBanner } = useCart()
 
   const handleAddToCart = async () => {
     if (hidePrices) {
