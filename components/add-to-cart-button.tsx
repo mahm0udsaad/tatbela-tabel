@@ -23,7 +23,7 @@ export function AddToCartButton({
   disabled = false,
   productVariantId = null,
 }: AddToCartButtonProps) {
-  const { addItem, isLoading } = useCart()
+  const { addItem, isLoading, showCartBanner } = useCart()
   const [isAdding, setIsAdding] = useState(false)
 
   const handleAddToCart = async (e: React.MouseEvent) => {
@@ -33,6 +33,7 @@ export function AddToCartButton({
     setIsAdding(true)
     try {
       await addItem(productId, 1, productVariantId)
+      showCartBanner()
     } catch (error: any) {
       console.error('Failed to add to cart', error)
     } finally {

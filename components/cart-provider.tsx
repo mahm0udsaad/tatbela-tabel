@@ -8,7 +8,10 @@ import { useRouter } from 'next/navigation'
 type CartContextType = {
   cart: Cart | null
   isLoading: boolean
+  isCartBannerVisible: boolean
   addItem: (productId: string, quantity?: number, productVariantId?: string | null) => Promise<void>
+  showCartBanner: () => void
+  hideCartBanner: () => void
   removeItem: (itemId: string) => Promise<void>
   updateQuantity: (itemId: string, quantity: number) => Promise<void>
   refreshCart: () => Promise<void>
@@ -20,6 +23,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 export function CartProvider({ children, channel = 'b2c' }: { children: React.ReactNode; channel?: CartChannel }) {
   const [cart, setCart] = useState<Cart | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isCartBannerVisible, setIsCartBannerVisible] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -123,7 +127,20 @@ export function CartProvider({ children, channel = 'b2c' }: { children: React.Re
   }
 
   return (
-    <CartContext.Provider value={{ cart, isLoading, addItem, removeItem, updateQuantity, refreshCart, clearCart }}>
+    <CartContext.Provider
+      value={{
+        cart,
+        isLoading,
+        isCartBannerVisible,
+        addItem,
+        showCartBanner: () => setIsCartBannerVisible(true),
+        hideCartBanner: () => setIsCartBannerVisible(false),
+        removeItem,
+        updateQuantity,
+        refreshCart,
+        clearCart,
+      }}
+    >
       {children}
     </CartContext.Provider>
   )

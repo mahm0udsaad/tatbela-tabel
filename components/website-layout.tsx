@@ -5,6 +5,7 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Toaster } from "@/components/ui/toaster"
 import { CartProvider } from "@/components/cart-provider"
+import { CartBanner } from "@/components/cart-banner"
 
 export function WebsiteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -16,11 +17,12 @@ export function WebsiteLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // For website routes, wrap with Navbar and Footer
+  // For website routes, wrap with Navbar, CartBanner, and Footer
   return (
     <CartProvider channel={isB2BRoute ? "b2b" : "b2c"}>
       <div className="pt-22 md:pt-22">
         <Navbar />
+        <CartBanner channel={isB2BRoute ? "b2b" : "b2c"} />
         {children}
         <Footer />
       </div>

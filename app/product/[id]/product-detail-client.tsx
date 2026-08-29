@@ -222,6 +222,8 @@ export function ProductDetailClient({
     setIsReviewOpen(true)
   }
 
+  const { addItem, isLoading: isCartLoading, showCartBanner } = useCart()
+
   const handleAddToCart = async () => {
     if (hidePrices) {
       return
@@ -230,6 +232,7 @@ export function ProductDetailClient({
     try {
       const variantIdToUse = usesVariantStock ? selectedVariant : null
       await addItem(product.id, quantity, variantIdToUse)
+      showCartBanner()
     } catch (error: any) {
       console.error('Failed to add to cart', error)
     } finally {
