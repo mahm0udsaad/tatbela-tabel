@@ -353,25 +353,98 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
       })
       .filter((x): x is CartItem => Boolean(x))
   } else {
-    items = (data.cart_items ?? [])
-      .filter((item: any) => {
-        if (!item.products) return false
-        if (channel === 'b2c' && item.products.is_b2b) return false
-        if (channel === 'b2b' && item.products.is_b2b === false) return false
-        return true
+    const rawCartItems = (data.cart_items ?? []) as any[]
+    const missingProductItems = rawCartItems.filter((item) => !item.products)
+    const missingOfferIds = Array.from(new Set(missingProductItems.map((item) => item.product_id).filter(Boolean)))
+
+    let offersById = new Map<string, any>()
+    let offerVariantsById = new Map<string, any>()
+
+    if (missingOfferIds.length > 0) {
+      const { data: offersData } = await dbClient
+        .from('offers')
+        .select(`
+          id,
+          name,
+          name_ar,
+          price,
+          stock,
+          brand,
+          has_tax,
+          is_archived,
+          offer_images (
+            image_url,
+            is_primary,
+            sort_order
+          )
+        `)
+        .in('id', missingOfferIds)
+
+      if (offersData) {
+        offersById = new Map(offersData.map((o: any) => [o.id, o]))
+      }
+
+      const missingVariantIds = Array.from(
+        new Set(missingProductItems.map((i) => i.product_variant_id).filter((v): v is string => Boolean(v))),
+      )
+
+      if (missingVariantIds.length > 0) {
+        const { data: offerVariantsData } = await dbClient
+          .from('offer_variants')
+          .select('id, weight, size, variant_type, price')
+          .in('id', missingVariantIds)
+
+        if (offerVariantsData) {
+          offerVariantsById = new Map(offerVariantsData.map((v: any) => [v.id, v]))
+        }
+      }
+    }
+
+    items = rawCartItems
+      .map((item: any) => {
+        let productObj = item.products
+        let variantObj = item.product_variants ?? null
+
+        if (!productObj) {
+          const offer = offersById.get(item.product_id)
+          if (!offer || offer.is_archived) return null
+          productObj = {
+            id: offer.id,
+            name: offer.name || offer.name_ar,
+            name_ar: offer.name_ar,
+            price: offer.price,
+            image_url:
+              offer.offer_images?.find((img: any) => img.is_primary)?.image_url ||
+              offer.offer_images?.[0]?.image_url ||
+              null,
+            brand: offer.brand || 'Tatbeelah',
+            category: 'offers',
+            is_b2b: false,
+            has_tax: offer.has_tax ?? false,
+            product_images: offer.offer_images ?? null,
+          }
+          if (item.product_variant_id && !variantObj) {
+            variantObj = offerVariantsById.get(item.product_variant_id) ?? null
+          }
+        }
+
+        if (channel === 'b2c' && productObj.is_b2b) return null
+        if (channel === 'b2b' && productObj.is_b2b === false) return null
+
+        return {
+          id: item.id,
+          product_id: item.product_id,
+          product_variant_id: item.product_variant_id ?? null,
+          unit_price: item.unit_price ?? variantObj?.price ?? productObj.price,
+          quantity: item.quantity,
+          variant: variantObj,
+          product: {
+            ...productObj,
+            product_images: productObj.product_images ?? null,
+          },
+        } as CartItem
       })
-      .map((item: any) => ({
-        id: item.id,
-        product_id: item.product_id,
-        product_variant_id: item.product_variant_id ?? null,
-        unit_price: item.unit_price ?? item.product_variants?.price ?? item.products.price,
-        quantity: item.quantity,
-        variant: item.product_variants ?? null,
-        product: {
-          ...item.products,
-          product_images: item.products.product_images ?? null,
-        },
-      }))
+      .filter((x): x is CartItem => Boolean(x))
   }
 
   const subtotal = items.reduce((sum: number, item: CartItem) => {
@@ -468,48 +541,69 @@ export async function addToCart(
     }
   }
 
-  // Fetch product and optional variant to snapshot price and validate stock
-  const { data: product } =
-    channel === 'b2b'
-      ? await getSupabaseAdminClient()
-          .from('products')
-          .select('id, price, stock, is_b2b, b2b_price_hidden')
-          .eq('id', productId)
-          .single()
-      : await supabase.from('products').select('id, price, stock, is_b2b, b2b_price_hidden').eq('id', productId).single()
+  // Fetch product or offer and optional variant to snapshot price and validate stock
+  const clientToUse = channel === 'b2b' ? getSupabaseAdminClient() : supabase
 
-  if (!product) {
+  const { data: product } = await clientToUse
+    .from('products')
+    .select('id, price, stock, is_b2b, b2b_price_hidden')
+    .eq('id', productId)
+    .maybeSingle()
+
+  let isOffer = false
+  let targetItem: {
+    id: string
+    price: number
+    stock: number
+    is_b2b?: boolean
+    b2b_price_hidden?: boolean
+  } | null = product
+
+  if (!targetItem) {
+    const { data: offer } = await clientToUse
+      .from('offers')
+      .select('id, price, stock, is_archived')
+      .eq('id', productId)
+      .maybeSingle()
+
+    if (offer && !offer.is_archived) {
+      targetItem = {
+        id: offer.id,
+        price: offer.price,
+        stock: offer.stock,
+        is_b2b: false,
+        b2b_price_hidden: false,
+      }
+      isOffer = true
+    }
+  }
+
+  if (!targetItem) {
     throw new Error('المنتج غير متوفر')
   }
 
-  if (channel === 'b2c' && product.is_b2b) {
+  if (channel === 'b2c' && targetItem.is_b2b) {
     throw new Error('هذا المنتج مخصص لمنتجات الجملة')
   }
 
-  if (channel === 'b2b' && !product.is_b2b) {
+  if (channel === 'b2b' && !targetItem.is_b2b) {
     throw new Error('هذا المنتج متاح للقطاع الفردي فقط')
   }
 
-  if (channel === 'b2b' && product.b2b_price_hidden) {
+  if (channel === 'b2b' && targetItem.b2b_price_hidden) {
     throw new Error('يرجى التواصل مع المبيعات لإتمام هذا الطلب')
   }
 
   let variantData: { id: string; price: number | null; stock: number | null } | null = null
   if (productVariantId) {
-    const { data: variant } =
-      channel === 'b2b'
-        ? await getSupabaseAdminClient()
-            .from('product_variants')
-            .select('id, price, stock')
-            .eq('id', productVariantId)
-            .eq('product_id', productId)
-            .single()
-        : await supabase
-            .from('product_variants')
-            .select('id, price, stock')
-            .eq('id', productVariantId)
-            .eq('product_id', productId)
-            .single()
+    const table = isOffer ? 'offer_variants' : 'product_variants'
+    const foreignKey = isOffer ? 'offer_id' : 'product_id'
+    const { data: variant } = await clientToUse
+      .from(table)
+      .select('id, price, stock')
+      .eq('id', productVariantId)
+      .eq(foreignKey, productId)
+      .maybeSingle()
 
     if (!variant) {
       throw new Error('هذا المتغير غير متاح')
@@ -517,12 +611,12 @@ export async function addToCart(
     variantData = variant
   }
 
-  const availableStock = product.stock ?? 0
+  const availableStock = targetItem.stock ?? 0
   if (availableStock <= 0) {
     throw new Error('سيعود قريباً')
   }
 
-  const snapshotPrice = variantData?.price ?? product.price
+  const snapshotPrice = variantData?.price ?? targetItem.price
 
   // Use admin client for guest cart item operations
   const cartClient = user ? supabase : admin
