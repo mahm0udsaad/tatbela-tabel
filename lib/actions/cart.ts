@@ -191,14 +191,14 @@ const isRuleActive = (rule: any | null) => {
   return true
 }
 
-export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null> {
+export async function getCart(channel: CartChannel = 'b2c', overrideCartId?: string): Promise<Cart | null> {
   const supabase = await createClient()
   const cookieStore = await cookies()
   const cartCookieKey = CART_COOKIE_BY_CHANNEL[channel]
-  const cartId = cookieStore.get(cartCookieKey)?.value
+  const cartId = overrideCartId || cookieStore.get(cartCookieKey)?.value
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (user && cartId) {
+  if (user && cartId && cartId !== overrideCartId) {
     await mergeGuestCartIntoUserCart({
       channel,
       userId: user.id,
@@ -269,7 +269,7 @@ export async function getCart(channel: CartChannel = 'b2c'): Promise<Cart | null
     return null
   }
 
-  const { data, error } = await query.single()
+  const { data, error } = await query.maybeSingle()
 
   if (error || !data) {
     return null
@@ -675,7 +675,8 @@ export async function addToCart(
     .update({ updated_at: new Date().toISOString() })
     .eq('id', cartIdToUse)
     
-  return { success: true }
+  const updatedCart = await getCart(channel, cartIdToUse)
+  return { success: true, cart: updatedCart }
 }
 
 export async function updateCartItemQuantity(itemId: string, quantity: number) {
@@ -686,7 +687,17 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
     return removeItemFromCart(itemId)
   }
 
+  let cartChannel: CartChannel = 'b2c'
+
   if (user) {
+    const { data: item } = await supabase
+      .from('cart_items')
+      .select('cart_id, carts(channel)')
+      .eq('id', itemId)
+      .single()
+    if (item?.carts) {
+      cartChannel = (item.carts as any).channel ?? 'b2c'
+    }
     const { error } = await supabase
       .from('cart_items')
       .update({ quantity, updated_at: new Date().toISOString() })
@@ -697,6 +708,9 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
     const cookieStore = await cookies()
     const guestCartId = cookieStore.get('cartId')?.value || cookieStore.get('b2bCartId')?.value
     if (!guestCartId) throw new Error('سلة التسوق غير موجودة')
+    if (cookieStore.get('b2bCartId')?.value === guestCartId) {
+      cartChannel = 'b2b'
+    }
     const { error } = await getSupabaseAdminClient()
       .from('cart_items')
       .update({ quantity, updated_at: new Date().toISOString() })
@@ -705,14 +719,25 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
     if (error) throw error
   }
 
-  return { success: true }
+  const updatedCart = await getCart(cartChannel)
+  return { success: true, cart: updatedCart }
 }
 
 export async function removeItemFromCart(itemId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  let cartChannel: CartChannel = 'b2c'
+
   if (user) {
+    const { data: item } = await supabase
+      .from('cart_items')
+      .select('cart_id, carts(channel)')
+      .eq('id', itemId)
+      .single()
+    if (item?.carts) {
+      cartChannel = (item.carts as any).channel ?? 'b2c'
+    }
     const { error } = await supabase
       .from('cart_items')
       .delete()
@@ -723,6 +748,9 @@ export async function removeItemFromCart(itemId: string) {
     const cookieStore = await cookies()
     const guestCartId = cookieStore.get('cartId')?.value || cookieStore.get('b2bCartId')?.value
     if (!guestCartId) throw new Error('سلة التسوق غير موجودة')
+    if (cookieStore.get('b2bCartId')?.value === guestCartId) {
+      cartChannel = 'b2b'
+    }
     const { error } = await getSupabaseAdminClient()
       .from('cart_items')
       .delete()
@@ -731,7 +759,8 @@ export async function removeItemFromCart(itemId: string) {
     if (error) throw error
   }
 
-  return { success: true }
+  const updatedCart = await getCart(cartChannel)
+  return { success: true, cart: updatedCart }
 }
 
 export async function clearCart(channel: CartChannel = 'b2c') {

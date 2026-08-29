@@ -40,8 +40,12 @@ export function CartProvider({ children, channel = 'b2c' }: { children: React.Re
 
   const addItem = async (productId: string, quantity: number = 1, productVariantId?: string | null) => {
     try {
-      await addToCart(productId, quantity, productVariantId, channel)
-      await refreshCart()
+      const result = await addToCart(productId, quantity, productVariantId, channel)
+      if (result?.cart) {
+        setCart(result.cart)
+      } else {
+        await refreshCart()
+      }
       toast({
         title: "تمت الإضافة للسلة",
         description: "تم إضافة المنتج بنجاح إلى عربة التسوق",
@@ -65,8 +69,12 @@ export function CartProvider({ children, channel = 'b2c' }: { children: React.Re
 
   const removeItem = async (itemId: string) => {
     try {
-      await removeItemFromCart(itemId)
-      await refreshCart()
+      const result = await removeItemFromCart(itemId)
+      if (result?.cart) {
+        setCart(result.cart)
+      } else {
+        await refreshCart()
+      }
       toast({
         title: "تم الحذف",
         description: "تم حذف المنتج من السلة",
@@ -85,8 +93,12 @@ export function CartProvider({ children, channel = 'b2c' }: { children: React.Re
 
   const updateQuantity = async (itemId: string, quantity: number) => {
     try {
-      await updateCartItemQuantity(itemId, quantity)
-      await refreshCart()
+      const result = await updateCartItemQuantity(itemId, quantity)
+      if (result?.cart) {
+        setCart(result.cart)
+      } else {
+        await refreshCart()
+      }
       router.refresh()
     } catch (error) {
       console.error(error)
@@ -102,6 +114,7 @@ export function CartProvider({ children, channel = 'b2c' }: { children: React.Re
   const clearCart = async () => {
     try {
       await clearCartAction(channel)
+      setCart(null)
       await refreshCart()
     } catch (error) {
       console.error('Failed to clear cart', error)
