@@ -209,57 +209,19 @@ export async function getCart(channel: CartChannel = 'b2c', overrideCartId?: str
 
   // Use admin client for guest carts since RLS blocks anonymous access
   const dbClient = user ? supabase : getSupabaseAdminClient()
+  const admin = getSupabaseAdminClient()
 
-  // NOTE: B2B product data is fetched via service role on the server to guarantee isolation
-  // after tightening public RLS. So we avoid joining products/product_variants for the b2b cart.
-  let query = dbClient.from('carts').select(
-    channel === 'b2b'
-      ? `
-        id,
-        channel,
-        cart_items (
-          id,
-          product_id,
-          product_variant_id,
-          unit_price,
-          quantity
-        )
-      `
-      : `
-        id,
-        channel,
-        cart_items (
-          id,
-          product_id,
-          product_variant_id,
-          unit_price,
-          quantity,
-          product_variants (
-            id,
-            weight,
-            size,
-            variant_type,
-            price
-          ),
-          products (
-            id,
-            name,
-            name_ar,
-            price,
-            image_url,
-            brand,
-            category,
-            is_b2b,
-            has_tax,
-            product_images (
-              image_url,
-              is_primary,
-              sort_order
-            )
-          )
-        )
-      `,
-  )
+  let query = dbClient.from('carts').select(`
+    id,
+    channel,
+    cart_items (
+      id,
+      product_id,
+      product_variant_id,
+      unit_price,
+      quantity
+    )
+  `)
 
   if (user) {
     query = query.eq('user_id', user.id).eq('status', 'active').eq('channel', channel)
@@ -275,177 +237,140 @@ export async function getCart(channel: CartChannel = 'b2c', overrideCartId?: str
     return null
   }
 
-  let items: CartItem[] = []
+  const rawItems = (data.cart_items ?? []) as Array<{
+    id: string
+    product_id: string
+    product_variant_id?: string | null
+    unit_price?: number | null
+    quantity: number
+  }>
 
-  if (channel === 'b2b') {
-    const rawItems = (data.cart_items ?? []) as Array<{
-      id: string
-      product_id: string
-      product_variant_id?: string | null
-      unit_price?: number | null
-      quantity: number
-    }>
+  if (rawItems.length === 0) {
+    return {
+      id: data.id,
+      items: [],
+      subtotal: 0,
+      channel,
+      freeShipping: null,
+    }
+  }
 
-    const productIds = Array.from(new Set(rawItems.map((i) => i.product_id).filter(Boolean)))
-    const variantIds = Array.from(
-      new Set(rawItems.map((i) => i.product_variant_id).filter((v): v is string => Boolean(v))),
-    )
+  const productIds = Array.from(new Set(rawItems.map((i) => i.product_id).filter(Boolean)))
+  const variantIds = Array.from(
+    new Set(rawItems.map((i) => i.product_variant_id).filter((v): v is string => Boolean(v))),
+  )
 
-    const admin = getSupabaseAdminClient()
-    const [{ data: productsData, error: productsError }, { data: variantsData, error: variantsError }] =
-      await Promise.all([
-        productIds.length
-          ? admin
-              .from('products')
-              .select(
-                `
-                id,
-                name,
-                name_ar,
-                price,
-                image_url,
-                brand,
-                category,
-                is_b2b,
-                b2b_price_hidden,
-                has_tax,
-                product_images (
-                  image_url,
-                  is_primary,
-                  sort_order
-                )
-              `,
-              )
-              .in('id', productIds)
-          : Promise.resolve({ data: [], error: null } as any),
-        variantIds.length
-          ? admin
-              .from('product_variants')
-              .select('id, weight, size, variant_type, price')
-              .in('id', variantIds)
-          : Promise.resolve({ data: [], error: null } as any),
-      ])
-
-    if (productsError) throw productsError
-    if (variantsError) throw variantsError
-
-    const productsById = new Map((productsData ?? []).map((p: any) => [p.id, p]))
-    const variantsById = new Map((variantsData ?? []).map((v: any) => [v.id, v]))
-
-    items = rawItems
-      .map((item) => {
-        const product = productsById.get(item.product_id)
-        if (!product) return null
-        if (product.is_b2b !== true) return null
-        const variant = item.product_variant_id ? variantsById.get(item.product_variant_id) ?? null : null
-        return {
-          id: item.id,
-          product_id: item.product_id,
-          product_variant_id: item.product_variant_id ?? null,
-          unit_price: item.unit_price ?? variant?.price ?? product.price,
-          quantity: item.quantity,
-          variant,
-          product: {
-            ...product,
-            product_images: product.product_images ?? null,
-          },
-        } as CartItem
-      })
-      .filter((x): x is CartItem => Boolean(x))
-  } else {
-    const rawCartItems = (data.cart_items ?? []) as any[]
-    const missingProductItems = rawCartItems.filter((item) => !item.products)
-    const missingOfferIds = Array.from(new Set(missingProductItems.map((item) => item.product_id).filter(Boolean)))
-
-    let offersById = new Map<string, any>()
-    let offerVariantsById = new Map<string, any>()
-
-    if (missingOfferIds.length > 0) {
-      const { data: offersData } = await dbClient
-        .from('offers')
-        .select(`
-          id,
-          name,
-          name_ar,
-          price,
-          stock,
-          brand,
-          has_tax,
-          is_archived,
-          offer_images (
+  const [
+    { data: productsData },
+    { data: offersData },
+    { data: productVariantsData },
+    { data: offerVariantsData },
+  ] = await Promise.all([
+    productIds.length
+      ? admin
+          .from('products')
+          .select(`
+            id,
+            name,
+            name_ar,
+            price,
             image_url,
-            is_primary,
-            sort_order
-          )
-        `)
-        .in('id', missingOfferIds)
-
-      if (offersData) {
-        offersById = new Map(offersData.map((o: any) => [o.id, o]))
-      }
-
-      const missingVariantIds = Array.from(
-        new Set(missingProductItems.map((i) => i.product_variant_id).filter((v): v is string => Boolean(v))),
-      )
-
-      if (missingVariantIds.length > 0) {
-        const { data: offerVariantsData } = await dbClient
+            brand,
+            category,
+            is_b2b,
+            b2b_price_hidden,
+            has_tax,
+            product_images (
+              image_url,
+              is_primary,
+              sort_order
+            )
+          `)
+          .in('id', productIds)
+      : Promise.resolve({ data: [] } as any),
+    productIds.length
+      ? admin
+          .from('offers')
+          .select(`
+            id,
+            name,
+            name_ar,
+            price,
+            brand,
+            has_tax,
+            is_archived,
+            offer_images (
+              image_url,
+              is_primary,
+              sort_order
+            )
+          `)
+          .in('id', productIds)
+      : Promise.resolve({ data: [] } as any),
+    variantIds.length
+      ? admin
+          .from('product_variants')
+          .select('id, weight, size, variant_type, price')
+          .in('id', variantIds)
+      : Promise.resolve({ data: [] } as any),
+    variantIds.length
+      ? admin
           .from('offer_variants')
           .select('id, weight, size, variant_type, price')
-          .in('id', missingVariantIds)
+          .in('id', variantIds)
+      : Promise.resolve({ data: [] } as any),
+  ])
 
-        if (offerVariantsData) {
-          offerVariantsById = new Map(offerVariantsData.map((v: any) => [v.id, v]))
+  const productsById = new Map((productsData ?? []).map((p: any) => [p.id, p]))
+  const offersById = new Map((offersData ?? []).map((o: any) => [o.id, o]))
+  const variantsById = new Map((productVariantsData ?? []).map((v: any) => [v.id, v]))
+  const offerVariantsById = new Map((offerVariantsData ?? []).map((v: any) => [v.id, v]))
+
+  const items: CartItem[] = rawItems
+    .map((item) => {
+      let productObj: any = productsById.get(item.product_id)
+      let variantObj: any = item.product_variant_id ? variantsById.get(item.product_variant_id) ?? null : null
+
+      if (!productObj) {
+        const offer = offersById.get(item.product_id)
+        if (!offer || offer.is_archived) return null
+        productObj = {
+          id: offer.id,
+          name: offer.name || offer.name_ar,
+          name_ar: offer.name_ar,
+          price: offer.price,
+          image_url:
+            offer.offer_images?.find((img: any) => img.is_primary)?.image_url ||
+            offer.offer_images?.[0]?.image_url ||
+            null,
+          brand: offer.brand || 'Tatbeelah',
+          category: 'offers',
+          is_b2b: false,
+          has_tax: offer.has_tax ?? false,
+          product_images: offer.offer_images ?? null,
+        }
+        if (item.product_variant_id && !variantObj) {
+          variantObj = offerVariantsById.get(item.product_variant_id) ?? null
         }
       }
-    }
 
-    items = rawCartItems
-      .map((item: any) => {
-        let productObj = item.products
-        let variantObj = item.product_variants ?? null
+      if (channel === 'b2c' && productObj.is_b2b) return null
+      if (channel === 'b2b' && productObj.is_b2b !== true) return null
 
-        if (!productObj) {
-          const offer = offersById.get(item.product_id)
-          if (!offer || offer.is_archived) return null
-          productObj = {
-            id: offer.id,
-            name: offer.name || offer.name_ar,
-            name_ar: offer.name_ar,
-            price: offer.price,
-            image_url:
-              offer.offer_images?.find((img: any) => img.is_primary)?.image_url ||
-              offer.offer_images?.[0]?.image_url ||
-              null,
-            brand: offer.brand || 'Tatbeelah',
-            category: 'offers',
-            is_b2b: false,
-            has_tax: offer.has_tax ?? false,
-            product_images: offer.offer_images ?? null,
-          }
-          if (item.product_variant_id && !variantObj) {
-            variantObj = offerVariantsById.get(item.product_variant_id) ?? null
-          }
-        }
-
-        if (channel === 'b2c' && productObj.is_b2b) return null
-        if (channel === 'b2b' && productObj.is_b2b === false) return null
-
-        return {
-          id: item.id,
-          product_id: item.product_id,
-          product_variant_id: item.product_variant_id ?? null,
-          unit_price: item.unit_price ?? variantObj?.price ?? productObj.price,
-          quantity: item.quantity,
-          variant: variantObj,
-          product: {
-            ...productObj,
-            product_images: productObj.product_images ?? null,
-          },
-        } as CartItem
-      })
-      .filter((x): x is CartItem => Boolean(x))
-  }
+      return {
+        id: item.id,
+        product_id: item.product_id,
+        product_variant_id: item.product_variant_id ?? null,
+        unit_price: item.unit_price ?? variantObj?.price ?? productObj.price,
+        quantity: item.quantity,
+        variant: variantObj,
+        product: {
+          ...productObj,
+          product_images: productObj.product_images ?? null,
+        },
+      } as CartItem
+    })
+    .filter((x): x is CartItem => Boolean(x))
 
   const subtotal = items.reduce((sum: number, item: CartItem) => {
     const priceToUse = item.unit_price ?? item.variant?.price ?? item.product.price
