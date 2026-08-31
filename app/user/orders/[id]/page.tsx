@@ -48,41 +48,59 @@ export default function OrderDetailsPage() {
     const fetchOrderDetails = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          router.push(`/auth/sign-in?next=/user/orders/${params.id ?? ""}`)
-          return
-        }
 
         if (!params.id) return
 
-        // Fetch order
-        const { data: orderData, error: orderError } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("id", params.id)
-          .eq("user_id", user.id)
-          .single()
+        if (user) {
+          // Fetch order
+          const { data: orderData, error: orderError } = await supabase
+            .from("orders")
+            .select("*")
+            .eq("id", params.id)
+            .eq("user_id", user.id)
+            .maybeSingle()
 
-        if (orderError) throw orderError
-        setOrder(orderData)
+          if (orderData) {
+            setOrder(orderData)
 
-        // Fetch order items
-        const { data: itemsData, error: itemsError } = await supabase
-          .from("order_items")
-          .select(`
-            *,
-            products (
-              image_url
+            // Fetch order items
+            const { data: itemsData } = await supabase
+              .from("order_items")
+              .select(`
+                *,
+                products (
+                  image_url
+                )
+              `)
+              .eq("order_id", params.id)
+
+            setItems(itemsData || [])
+            return
+          }
+        }
+
+        // Fallback for guest user or local order
+        if (typeof window !== "undefined") {
+          try {
+            const guestOrders = JSON.parse(localStorage.getItem("tatbeelah_guest_orders") || "[]")
+            const found = guestOrders.find(
+              (o: any) => o.id === params.id || o.orderNumber === params.id || o.order_number === params.id
             )
-          `)
-          .eq("order_id", params.id)
+            if (found) {
+              setOrder(found)
+              setItems(found.items || [])
+              return
+            }
+          } catch (e) {
+            console.error("Failed to parse guest orders", e)
+          }
+        }
 
-        if (itemsError) throw itemsError
-        setItems(itemsData || [])
-
+        if (!user) {
+          router.push(`/auth/sign-in?next=/user/orders/${params.id ?? ""}`)
+        }
       } catch (error) {
         console.error("Error fetching order details:", error)
-        // Handle error (e.g. redirect to orders list if not found)
       } finally {
         setIsLoading(false)
       }

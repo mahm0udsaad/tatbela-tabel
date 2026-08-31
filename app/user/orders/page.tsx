@@ -20,24 +20,33 @@ export default function OrdersPage() {
   const supabase = getSupabaseClient()
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isGuest, setIsGuest] = useState(false)
 
   useEffect(() => {
     const fetchUserAndOrders = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          router.push("/auth/sign-in?next=/user/orders")
-          return
+        if (user) {
+          setIsGuest(false)
+          const { data, error } = await supabase
+            .from("orders")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+
+          if (error) throw error
+          setOrders(data || [])
+        } else {
+          setIsGuest(true)
+          if (typeof window !== "undefined") {
+            try {
+              const localOrders = JSON.parse(localStorage.getItem("tatbeelah_guest_orders") || "[]")
+              setOrders(localOrders)
+            } catch {
+              setOrders([])
+            }
+          }
         }
-
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-
-        if (error) throw error
-        setOrders(data || [])
       } catch (error) {
         console.error("Error fetching orders:", error)
       } finally {
@@ -46,7 +55,7 @@ export default function OrdersPage() {
     }
 
     fetchUserAndOrders()
-  }, [supabase, router])
+  }, [supabase])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -64,7 +73,7 @@ export default function OrdersPage() {
       case "delivered":
         return <CheckCircle className="text-green-500" size={20} />
       default:
-        return null
+        return <Package className="text-blue-500" size={20} />
     }
   }
 
@@ -79,7 +88,7 @@ export default function OrdersPage() {
       case "delivered":
         return "تم التسليم"
       default:
-        return status
+        return status || "قيد المعالجة"
     }
   }
 
@@ -90,15 +99,26 @@ export default function OrdersPage() {
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-[#2B2520]">طلباتي</h1>
-            <p className="text-[#8B6F47]">تتبع حالة طلباتك</p>
+            <p className="text-[#8B6F47]">
+              {isGuest ? "الطلبات المحفوظة على هذا الجهاز" : "تتبع حالة طلباتك"}
+            </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold"
-          >
-            تسجيل الخروج
-            <LogOut size={20} />
-          </button>
+          {isGuest ? (
+            <Link
+              href="/auth/sign-in?next=/user/orders"
+              className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors font-semibold text-sm"
+            >
+              تسجيل الدخول
+            </Link>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold text-sm"
+            >
+              تسجيل الخروج
+              <LogOut size={18} />
+            </button>
+          )}
         </div>
       </section>
 

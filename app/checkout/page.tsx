@@ -55,7 +55,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   const [shippingError, setShippingError] = useState<string | null>(null)
   const [shippingZones, setShippingZones] = useState<ShippingZone[]>([])
   const [shippingZoneId, setShippingZoneId] = useState<string | null>(null)
-  const [isAuthChecking, setIsAuthChecking] = useState(!isB2B)
+  const [isAuthChecking, setIsAuthChecking] = useState(false)
   const [formData, setFormData] = useState<ShippingFormData>({
     firstName: "",
     lastName: "",
@@ -70,27 +70,21 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
 
   useEffect(() => {
     const checkUser = async () => {
-      if (isB2B) {
-        setIsAuthChecking(false)
-        return
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          setUser({
+            id: authUser.id,
+            email: authUser.email ?? "",
+          })
+          setFormData((prev) => ({
+            ...prev,
+            email: prev.email || authUser.email || "",
+          }))
+        }
+      } catch (err) {
+        console.error("Failed to check auth user in checkout", err)
       }
-
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-
-      if (!authUser) {
-        router.replace("/auth/sign-in?next=/checkout")
-        return
-      }
-
-      setUser({
-        id: authUser.id,
-        email: authUser.email ?? "",
-      })
-      setFormData((prev) => ({
-        ...prev,
-        email: prev.email || authUser.email || "",
-      }))
-      setIsAuthChecking(false)
     }
     checkUser()
     
@@ -111,7 +105,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       }
     }
     loadZones()
-  }, [isB2B, router, supabase])
+  }, [isB2B, supabase])
 
   const orderItems = cart?.items || []
   const subtotal = orderItems.reduce(
@@ -306,7 +300,55 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
     setIsLoading(true)
 
     try {
-      await persistOrder(orderNumber, sanitizedShippingData)
+      const { newOrderId } = await persistOrder(orderNumber, sanitizedShippingData)
+
+      // Save order to localStorage for guest & local tracking
+      if (typeof window !== "undefined") {
+        try {
+          const orderRecord = {
+            id: newOrderId || orderNumber,
+            orderNumber,
+            order_number: orderNumber,
+            created_at: new Date().toISOString(),
+            total_amount: total,
+            subtotal,
+            shipping_cost: shipping,
+            tax_amount: tax,
+            status: "processing",
+            payment_method: paymentMethod,
+            payment_status: paymentMethod === "cash" ? "pending" : "processing",
+            address: sanitizedShippingData.address,
+            city: sanitizedShippingData.city || sanitizedShippingData.governorate,
+            postal_code: sanitizedShippingData.postalCode,
+            phone: sanitizedShippingData.phone,
+            first_name: sanitizedShippingData.firstName,
+            last_name: sanitizedShippingData.lastName,
+            customer_email: sanitizedShippingData.email,
+            items_count: orderItems.reduce((acc, item) => acc + item.quantity, 0),
+            items: orderItems.map((item) => {
+              const priceToUse = item.unit_price ?? item.product.price
+              return {
+                id: item.id,
+                product_id: item.product.id,
+                product_name: item.product.name,
+                product_brand: item.product.brand,
+                price: priceToUse,
+                quantity: item.quantity,
+                total: priceToUse * item.quantity,
+                products: {
+                  image_url: item.product.image_url || item.product.product_images?.[0]?.image_url || null,
+                },
+              }
+            }),
+          }
+          const existing = JSON.parse(localStorage.getItem("tatbeelah_guest_orders") || "[]")
+          const updated = [orderRecord, ...existing.filter((o: any) => o.orderNumber !== orderNumber && o.id !== newOrderId)]
+          localStorage.setItem("tatbeelah_guest_orders", JSON.stringify(updated.slice(0, 30)))
+        } catch (err) {
+          console.error("Failed to save order to localStorage:", err)
+        }
+      }
+
       await clearCart()
 
       if (paymentMethod === "cash") {
@@ -606,12 +648,20 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
                     <p className="text-[#2B2520] font-semibold mb-2">رقم الطلب: #{orderId}</p>
                     <p className="text-[#8B6F47]">تاريخ الطلب: {new Date().toLocaleDateString("ar-EG")}</p>
                   </div>
-                  <Link
-                    href={user ? "/user/orders" : "/"}
-                    className="inline-block px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors"
-                  >
-                    {user ? "عرض طلباتي" : "العودة للرئيسية"}
-                  </Link>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Link
+                      href="/user/orders"
+                      className="inline-block px-8 py-3 bg-brand-green text-white rounded-lg font-bold hover:bg-brand-green-dark transition-colors"
+                    >
+                      تتبع الطلبات
+                    </Link>
+                    <Link
+                      href="/"
+                      className="inline-block px-8 py-3 border-2 border-brand-green text-brand-green rounded-lg font-bold hover:bg-[#F5F1E8] transition-colors"
+                    >
+                      العودة للرئيسية
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
