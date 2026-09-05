@@ -3,6 +3,7 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 
 import { verifyPaymobHmac } from "@/lib/payments/paymob-hmac"
 import { getSupabaseAdminClient } from "@/lib/supabase/admin"
+import { PurchaseTracker } from "@/components/purchase-tracker"
 
 export const dynamic = "force-dynamic"
 
@@ -157,6 +158,12 @@ export default async function PaymentStatusPage({ searchParams }: PaymentStatusP
 
   return (
     <main className="min-h-screen">
+      {outcome === "success" && (
+        <PurchaseTracker
+          orderNumber={order?.order_number || params.merchant_order_id || ""}
+          totalAmount={Number(order?.total_amount ?? 0)}
+        />
+      )}
       <section className="py-8">
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-4xl font-bold text-[#2B2520]">تتبع الدفع</h1>

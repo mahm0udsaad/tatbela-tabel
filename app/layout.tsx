@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { Cairo } from "next/font/google"
 import { WebsiteLayout } from "@/components/website-layout"
+import { MetaPixel } from "@/components/meta-pixel"
 import "./globals.css"
 
 const cairo = Cairo({
@@ -49,6 +50,9 @@ export default function RootLayout({
     <link rel="icon" href="/favicon.ico" sizes="any" />
     </head>
       <body className="font-sans antialiased">
+        <Suspense fallback={null}>
+          <MetaPixel />
+        </Suspense>
         <Suspense fallback={null}>
           <WebsiteLayout>{children}</WebsiteLayout>
         </Suspense>

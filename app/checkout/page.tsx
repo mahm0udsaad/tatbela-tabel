@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowRight, Check, Banknote, CreditCard, ShieldCheck } from "lucide-react"
@@ -16,6 +16,12 @@ import {
   type PaymobRequestPayload,
 } from "@/lib/validation/paymob"
 import { placeOrder } from "@/lib/actions/orders"
+import {
+  trackInitiateCheckout,
+  trackAddPaymentInfo,
+  trackPurchase,
+  type PixelContentItem,
+} from "@/lib/meta-pixel"
 
 type ShippingFormData = {
   firstName: string
@@ -133,6 +139,24 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
   
   const total = subtotal + tax + shipping
 
+  // Map cart items into the shape the Meta Pixel expects.
+  const pixelItems: PixelContentItem[] = orderItems.map((item) => ({
+    id: item.product.id,
+    quantity: item.quantity,
+    price: Number(item.unit_price ?? item.product.price ?? 0),
+    name: item.product.name_ar ?? item.product.name,
+  }))
+
+  // Fire Meta Pixel InitiateCheckout once, after the cart has loaded with items.
+  const initiateCheckoutTracked = useRef(false)
+  useEffect(() => {
+    if (initiateCheckoutTracked.current) return
+    if (isCartLoading || orderItems.length === 0) return
+    initiateCheckoutTracked.current = true
+    trackInitiateCheckout(pixelItems)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCartLoading, orderItems.length])
+
   const formatValidationIssues = (issues: ZodIssue[]) => {
     if (!issues.length) return "يرجى التحقق من بيانات التوصيل"
     return issues[0]?.message || "يرجى التحقق من بيانات التوصيل"
@@ -190,6 +214,7 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
     setFormData(sanitizedData)
     setShippingError(null)
     setCurrentStep("payment")
+    trackAddPaymentInfo(pixelItems, total)
   }
 
   const persistOrder = async (orderNumber: string, billingData: ShippingFormData) => {
@@ -352,6 +377,8 @@ export function CheckoutView({ mode = "b2c" }: { mode?: "b2c" | "b2b" }) {
       await clearCart()
 
       if (paymentMethod === "cash") {
+        // Cash orders are confirmed immediately — fire Purchase now.
+        trackPurchase({ items: pixelItems, value: total, orderId: orderNumber })
         setOrderId(orderNumber)
         setCurrentStep("confirmation")
         return

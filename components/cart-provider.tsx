@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useTransition } 
 import { useToast } from '@/hooks/use-toast'
 import { addToCart, getCart, removeItemFromCart, updateCartItemQuantity, clearCart as clearCartAction, type Cart, type CartChannel } from '@/lib/actions/cart'
 import { useRouter } from 'next/navigation'
+import { trackAddToCart } from '@/lib/meta-pixel'
 
 type CartContextType = {
   cart: Cart | null
@@ -50,6 +51,20 @@ export function CartProvider({ children, channel = 'b2c' }: { children: React.Re
       } else {
         await refreshCart()
       }
+
+      // Fire Meta Pixel AddToCart with the resolved item price/name.
+      const addedItem = result?.cart?.items?.find(
+        (item) =>
+          item.product_id === productId &&
+          (productVariantId ? item.product_variant_id === productVariantId : true),
+      )
+      trackAddToCart({
+        id: productId,
+        quantity,
+        price: Number(addedItem?.unit_price ?? addedItem?.product?.price ?? 0),
+        name: addedItem?.product?.name_ar ?? addedItem?.product?.name,
+      })
+
       toast({
         title: "تمت الإضافة للسلة",
         description: "تم إضافة المنتج بنجاح إلى عربة التسوق",

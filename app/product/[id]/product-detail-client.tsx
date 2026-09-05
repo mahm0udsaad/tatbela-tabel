@@ -9,6 +9,7 @@ import useEmblaCarousel from "embla-carousel-react"
 import { useCart } from "@/components/cart-provider"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { trackViewContent } from "@/lib/meta-pixel"
 
 type ProductImage = {
   id: string
@@ -122,6 +123,16 @@ export function ProductDetailClient({
     })
     return sorted.length > 0 ? sorted : [{ id: "placeholder", image_url: "/placeholder.svg", is_primary: true }]
   }, [product.product_images])
+
+  // Fire Meta Pixel ViewContent once when the product page mounts.
+  useEffect(() => {
+    trackViewContent({
+      id: product.id,
+      name: product.name_ar,
+      price: Number(product.price ?? 0),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id])
 
   const scrollPrev = useCallback(() => {
     if (emblaApi) {
